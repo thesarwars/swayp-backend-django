@@ -10,6 +10,8 @@ from apps.authentication.models import OTP, OTPPurpose
 from apps.authentication.utils.otp import OTPService
 
 from apps.users.models import AccountType, User
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+
 
 User = get_user_model()
 
@@ -289,3 +291,10 @@ class ResendOTPSerializer(serializers.Serializer):
         attrs["user"] = user
 
         return attrs
+    
+
+class RefreshSerializer(TokenRefreshSerializer):
+    pass
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()

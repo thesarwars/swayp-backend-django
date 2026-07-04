@@ -10,10 +10,15 @@ from apps.authentication.services.registration_service import RegistrationServic
 from apps.authentication.services.verify_otp_service import (
     VerifyOTPService,
 )
+from apps.authentication.services.logout_service import (
+    LogoutService,
+)
 
 from apps.authentication.services.resend_otp_service import (
     ResendOTPService,
 )
+
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.authentication.api.serializers import (
     RegisterSerializer,
@@ -21,6 +26,12 @@ from apps.authentication.api.serializers import (
     ResendOTPSerializer,
     LoginSerializer,
     LoginVerifyOTPSerializer,
+    RefreshSerializer,
+    LogoutSerializer,
+)
+
+from apps.authentication.services.refresh_token_service import (
+    RefreshTokenService,
 )
 
 
@@ -138,4 +149,47 @@ class ResendOTPView(APIView):
                 "message": "OTP sent successfully.",
             },
             status=status.HTTP_200_OK,
+        )
+    
+
+
+class RefreshView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = RefreshSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        tokens = RefreshTokenService.refresh(
+            serializer.validated_data["refresh"]
+        )
+
+        return Response(
+            {
+                "success": True,
+                "data": tokens,
+            }
+        )
+    
+
+
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LogoutSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        LogoutService.logout(
+            serializer.validated_data["refresh"]
+        )
+
+        return Response(
+            status=status.HTTP_204_NO_CONTENT
         )

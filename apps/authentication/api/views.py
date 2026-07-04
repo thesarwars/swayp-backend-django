@@ -35,6 +35,7 @@ from apps.authentication.api.serializers import (
 from drf_spectacular.utils import (
     OpenApiExample,
     extend_schema,
+    OpenApiResponse,
 )
 
 from apps.authentication.services.refresh_token_service import (
@@ -97,6 +98,28 @@ class RegisterView(APIView):
         )
     
 
+
+    
+@extend_schema(
+    tags=["Authentication"],
+    summary="Verify Registration OTP",
+    description="Verify the OTP sent after registration.",
+    request=VerifyOTPSerializer,
+    responses={
+        200: OpenApiResponse(description="Account verified."),
+        400: OpenApiResponse(description="Invalid OTP."),
+    },
+    examples=[
+        OpenApiExample(
+            "Verify Registration OTP",
+            value={
+                "email": "john@gmail.com",
+                "otp": "123456",
+            },
+            request_only=True,
+        )
+    ],
+)
 class VerifyOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -117,6 +140,29 @@ class VerifyOTPView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Login",
+    description="Validate credentials and send login OTP.",
+    request=LoginSerializer,
+    responses={
+        200: OpenApiResponse(description="OTP sent."),
+        400: OpenApiResponse(description="Invalid credentials."),
+    },
+    examples=[
+        OpenApiExample(
+            "Login",
+            value={
+                "email": "john@gmail.com",
+                "password": "Password@123",
+            },
+            request_only=True,
+        )
+    ],
+)
     
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -137,6 +183,30 @@ class LoginView(APIView):
             status=status.HTTP_200_OK,
         )
     
+
+
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Verify Login OTP",
+    description="Verify login OTP and return JWT tokens.",
+    request=LoginVerifyOTPSerializer,
+    responses={
+        200: OpenApiResponse(description="Login successful."),
+        400: OpenApiResponse(description="Invalid OTP."),
+    },
+    examples=[
+        OpenApiExample(
+            "Verify Login OTP",
+            value={
+                "email": "john@gmail.com",
+                "otp": "123456",
+            },
+            request_only=True,
+        )
+    ],
+)
 
 class LoginVerifyOTPView(APIView):
     permission_classes = [AllowAny]
@@ -164,6 +234,28 @@ class LoginVerifyOTPView(APIView):
         )
     
 
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Resend OTP",
+    description="Generate and resend OTP.",
+    request=ResendOTPSerializer,
+    responses={
+        200: OpenApiResponse(description="OTP sent."),
+    },
+    examples=[
+        OpenApiExample(
+            "Resend OTP",
+            value={
+                "email": "john@gmail.com",
+                "purpose": "LOGIN",
+            },
+            request_only=True,
+        )
+    ],
+)
+    
+
 class ResendOTPView(APIView):
     permission_classes = [AllowAny]
 
@@ -189,6 +281,27 @@ class ResendOTPView(APIView):
     
 
 
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Refresh Access Token",
+    description="Generate a new access token using a refresh token.",
+    request=RefreshSerializer,
+    responses={
+        200: OpenApiResponse(description="Token refreshed."),
+    },
+    examples=[
+        OpenApiExample(
+            "Refresh Token",
+            value={
+                "refresh": "your_refresh_token",
+            },
+            request_only=True,
+        )
+    ],
+)
+
 class RefreshView(APIView):
     permission_classes = [AllowAny]
 
@@ -211,7 +324,24 @@ class RefreshView(APIView):
         )
     
 
-
+@extend_schema(
+    tags=["Authentication"],
+    summary="Logout",
+    description="Logout current session.",
+    request=LogoutSerializer,
+    responses={
+        204: OpenApiResponse(description="Logged out."),
+    },
+    examples=[
+        OpenApiExample(
+            "Logout",
+            value={
+                "refresh": "your_refresh_token",
+            },
+            request_only=True,
+        )
+    ],
+)
 class LogoutView(APIView):
     permission_classes = [AllowAny]
 
@@ -229,6 +359,28 @@ class LogoutView(APIView):
         return Response(
             status=status.HTTP_204_NO_CONTENT
         )
+    
+
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Forgot Password",
+    description="Send password reset OTP.",
+    request=ForgotPasswordSerializer,
+    responses={
+        200: OpenApiResponse(description="OTP sent."),
+    },
+    examples=[
+        OpenApiExample(
+            "Forgot Password",
+            value={
+                "email": "john@gmail.com",
+            },
+            request_only=True,
+        )
+    ],
+)
     
 class ForgotPasswordView(APIView):
     permission_classes = [AllowAny]
@@ -251,6 +403,29 @@ class ForgotPasswordView(APIView):
             }
         )
 
+
+
+@extend_schema(
+    tags=["Authentication"],
+    summary="Reset Password",
+    description="Reset account password using OTP.",
+    request=ResetPasswordSerializer,
+    responses={
+        200: OpenApiResponse(description="Password reset successful."),
+    },
+    examples=[
+        OpenApiExample(
+            "Reset Password",
+            value={
+                "email": "john@gmail.com",
+                "otp": "123456",
+                "password": "NewPassword@123",
+                "confirm_password": "NewPassword@123",
+            },
+            request_only=True,
+        )
+    ],
+)
 
 class ResetPasswordView(APIView):
     permission_classes = [AllowAny]

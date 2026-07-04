@@ -1,7 +1,15 @@
 from django.urls import path
 
 from apps.authentication.api.views import (
-    RegisterView, VerifyOTPView, LoginView, LoginVerifyOTPView, ResendOTPView
+    ForgotPasswordView,
+    LogoutView,
+    RegisterView,
+    ResetPasswordView,
+    VerifyOTPView, 
+    LoginView, 
+    LoginVerifyOTPView, 
+    ResendOTPView,
+    RefreshView,
 )
 
 urlpatterns = [
@@ -27,5 +35,30 @@ urlpatterns = [
     "resend-otp/",
     ResendOTPView.as_view(),
     name="resend-otp",
-),
+    ),
+
+
+    path(
+    "refresh/",
+    RefreshView.as_view(),
+    name="refresh",
+    ),
+
+    path(
+    "logout/",
+    LogoutView.as_view(),
+    name="logout",
+    ),
+
+    path(
+    "forgot-password/",
+    ForgotPasswordView.as_view(),
+    name="forgot-password",
+    ) ,
+
+    path(
+    "reset-password/",
+        ResetPasswordView.as_view(),
+    name="reset-password",
+    ),
 ]

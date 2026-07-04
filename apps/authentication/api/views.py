@@ -32,6 +32,11 @@ from apps.authentication.api.serializers import (
     ForgotPasswordSerializer,
 )
 
+from drf_spectacular.utils import (
+    OpenApiExample,
+    extend_schema,
+)
+
 from apps.authentication.services.refresh_token_service import (
     RefreshTokenService,
 )
@@ -47,6 +52,32 @@ from apps.authentication.services.login_verify_service import (
 
 from apps.authentication.services.login_service import LoginService
 
+
+
+
+@extend_schema(
+    tags=["Authentication"],
+    request=RegisterSerializer,
+    responses={201: None},
+    description="Register a new user.",
+    examples=[
+        OpenApiExample(
+            "Business",
+            value={
+                "account_type": "BUSINESS",
+                "full_name": "John Doe",
+                "address": "Dhaka",
+                "email": "john@gmail.com",
+                "phone_number": "+8801712345678",
+                "password": "Password@123",
+                "confirm_password": "Password@123",
+                "business_name": "ABC Ltd",
+                "poc_name": "John Doe",
+                "billing_address": "Dhaka",
+            },
+        )
+    ],
+)
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]

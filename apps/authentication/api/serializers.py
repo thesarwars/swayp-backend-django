@@ -213,3 +213,79 @@ class LoginSerializer(serializers.Serializer):
         attrs["user"] = user
 
         return attrs
+    
+
+class LoginVerifyOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(
+        min_length=6,
+        max_length=6,
+    )
+
+    def validate(self, attrs):
+        email = attrs["email"].lower().strip()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                {"email": "User does not exist."}
+            )
+
+        otp_obj = (
+            OTP.objects.filter(
+                user=user,
+                purpose=OTPPurpose.LOGIN,
+                used_at__isnull=True,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if otp_obj is None:
+            raise serializers.ValidationError(
+                {"otp": "OTP not found."}
+            )
+
+        if otp_obj.expires_at < timezone.now():
+            raise serializers.ValidationError(
+                {"otp": "OTP expired."}
+            )
+
+        if not OTPService.verify_otp(
+            attrs["otp"],
+            otp_obj.code_hash,
+        ):
+            otp_obj.attempts += 1
+            otp_obj.save(update_fields=["attempts"])
+
+            raise serializers.ValidationError(
+                {"otp": "Invalid OTP."}
+            )
+
+        attrs["user"] = user
+        attrs["otp_obj"] = otp_obj
+
+        return attrs
+    
+
+class ResendOTPSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    purpose = serializers.ChoiceField(
+        choices=OTPPurpose.choices
+    )
+
+    def validate(self, attrs):
+        email = attrs["email"].lower().strip()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                {"email": "User does not exist."}
+            )
+
+        attrs["user"] = user
+
+        return attrs

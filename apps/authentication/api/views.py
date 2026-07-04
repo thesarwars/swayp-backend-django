@@ -18,6 +18,13 @@ from apps.authentication.api.serializers import (
     RegisterSerializer,
     VerifyOTPSerializer,
     LoginSerializer,
+    LoginVerifyOTPSerializer,
+)
+
+
+
+from apps.authentication.services.login_verify_service import (
+    LoginVerifyService,
 )
 
 from apps.authentication.services.login_service import LoginService
@@ -77,6 +84,32 @@ class LoginView(APIView):
             {
                 "success": True,
                 "message": "OTP has been sent.",
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+
+class LoginVerifyOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginVerifyOTPSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        tokens = LoginVerifyService.verify(
+            serializer.validated_data["user"],
+            serializer.validated_data["otp_obj"],
+            request,
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Login successful.",
+                "data": tokens,
             },
             status=status.HTTP_200_OK,
         )

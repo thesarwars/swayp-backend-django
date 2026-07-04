@@ -3,10 +3,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.authentication.api.serializers import RegisterSerializer
+from apps.authentication.api.serializers import RegisterSerializer, ResetPasswordSerializer
 from apps.authentication.services.registration_service import RegistrationService
 
 
+from apps.authentication.services.reset_password_service import ResetPasswordService
 from apps.authentication.services.verify_otp_service import (
     VerifyOTPService,
 )
@@ -28,10 +29,14 @@ from apps.authentication.api.serializers import (
     LoginVerifyOTPSerializer,
     RefreshSerializer,
     LogoutSerializer,
+    ForgotPasswordSerializer,
 )
 
 from apps.authentication.services.refresh_token_service import (
     RefreshTokenService,
+)
+from apps.authentication.services.forgot_password_service import (
+    ForgotPasswordService,
 )
 
 
@@ -192,4 +197,49 @@ class LogoutView(APIView):
 
         return Response(
             status=status.HTTP_204_NO_CONTENT
+        )
+    
+class ForgotPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        ForgotPasswordService.send(
+            serializer.user
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "OTP sent successfully.",
+            }
+        )
+
+
+class ResetPasswordView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        ResetPasswordService.reset(
+            email=serializer.validated_data["email"],
+            otp=serializer.validated_data["otp"],
+            password=serializer.validated_data["password"],
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Password reset successful.",
+            }
         )

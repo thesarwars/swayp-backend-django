@@ -6,17 +6,19 @@ from rest_framework.views import APIView
 from apps.authentication.api.serializers import RegisterSerializer
 from apps.authentication.services.registration_service import RegistrationService
 
-from apps.authentication.api.serializers import (
-    RegisterSerializer,
-    VerifyOTPSerializer,
-)
+
 from apps.authentication.services.verify_otp_service import (
     VerifyOTPService,
+)
+
+from apps.authentication.services.resend_otp_service import (
+    ResendOTPService,
 )
 
 from apps.authentication.api.serializers import (
     RegisterSerializer,
     VerifyOTPSerializer,
+    ResendOTPSerializer,
     LoginSerializer,
     LoginVerifyOTPSerializer,
 )
@@ -110,6 +112,30 @@ class LoginVerifyOTPView(APIView):
                 "success": True,
                 "message": "Login successful.",
                 "data": tokens,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+
+class ResendOTPView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = ResendOTPSerializer(
+            data=request.data
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        ResendOTPService.resend(
+            serializer.validated_data["user"],
+            serializer.validated_data["purpose"],
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "OTP sent successfully.",
             },
             status=status.HTTP_200_OK,
         )

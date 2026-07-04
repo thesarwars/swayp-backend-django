@@ -1,7 +1,7 @@
 from django.urls import path
 
 from apps.authentication.api.views import (
-    RegisterView, VerifyOTPView, LoginView, LoginVerifyOTPView
+    RegisterView, VerifyOTPView, LoginView, LoginVerifyOTPView, ResendOTPView
 )
 
 urlpatterns = [
@@ -23,4 +23,9 @@ urlpatterns = [
         "login/verify/",
         LoginVerifyOTPView.as_view(),
     ),
+    path(
+    "resend-otp/",
+    ResendOTPView.as_view(),
+    name="resend-otp",
+),
 ]

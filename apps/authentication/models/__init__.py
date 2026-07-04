@@ -1,2 +1,2 @@
-from .otp import OTP
+from .otp import OTP, OTPPurpose
 from .refresh_token import RefreshToken

@@ -1,6 +1,6 @@
 import re
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 from django.utils import timezone
@@ -178,5 +178,38 @@ class VerifyOTPSerializer(serializers.Serializer):
 
         attrs["user"] = user
         attrs["otp_obj"] = otp_obj
+
+        return attrs
+    
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        email = attrs["email"].lower().strip()
+        password = attrs["password"]
+
+        user = authenticate(
+            username=email,
+            password=password,
+        )
+
+        if not user:
+            raise serializers.ValidationError(
+                {"detail": "Invalid email or password."}
+            )
+
+        if not user.is_active:
+            raise serializers.ValidationError(
+                {"detail": "Account is inactive."}
+            )
+
+        if not user.is_verified:
+            raise serializers.ValidationError(
+                {"detail": "Account is not verified."}
+            )
+
+        attrs["user"] = user
 
         return attrs

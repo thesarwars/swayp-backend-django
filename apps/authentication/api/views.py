@@ -14,6 +14,14 @@ from apps.authentication.services.verify_otp_service import (
     VerifyOTPService,
 )
 
+from apps.authentication.api.serializers import (
+    RegisterSerializer,
+    VerifyOTPSerializer,
+    LoginSerializer,
+)
+
+from apps.authentication.services.login_service import LoginService
+
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
@@ -50,6 +58,25 @@ class VerifyOTPView(APIView):
                 "success": True,
                 "message": "Account verified successfully.",
                 "data": tokens,
+            },
+            status=status.HTTP_200_OK,
+        )
+    
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        LoginService.login(
+            serializer.validated_data["user"]
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "OTP has been sent.",
             },
             status=status.HTTP_200_OK,
         )

@@ -1,44 +1,25 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
+from apps.common.base_views import BaseAPIView
+from apps.common.responses import ApiResponse
 
-from .dtos import WalletSummaryResponseDTO
+from .schemas import wallet_summary_schema
+from .serializers import WalletSummarySerializer
 from .services import WalletService
-from drf_spectacular.utils import (
-    extend_schema,
-    OpenApiResponse,
-)
 
 
-@extend_schema(
-    tags=["Wallet"],
-    summary="Wallet Summary",
-    description="""
-Returns the authenticated user's wallet summary.
+class WalletSummaryAPIView(BaseAPIView):
 
-Includes:
+    service_class = WalletService
 
-- Current balance
-- Currency
-- Last updated time
-- Wallet status
-""",
-    responses={
-        200: OpenApiResponse(
-            description="Wallet summary retrieved successfully."
-        ),
-        401: OpenApiResponse(
-            description="Unauthorized."
-        ),
-    },
-)
-class WalletSummaryAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
+    @wallet_summary_schema
     def get(self, request):
-        wallet = WalletService.get_summary(request.user)
+        wallet = self.service.get_summary(
+            request.user
+        )
 
-        serializer = WalletSummaryResponseDTO(wallet)
+        serializer = WalletSummarySerializer(
+            wallet
+        )
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return ApiResponse.success(
+            data=serializer.data
+        )

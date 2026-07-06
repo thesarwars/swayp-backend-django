@@ -24,3 +24,8 @@ class ForbiddenException(APIException):
     status_code = status.HTTP_403_FORBIDDEN
     default_detail = "Permission denied."
     default_code = "forbidden"
+
+class InsufficientBalanceException(BadRequestException):
+
+    default_detail = "Insufficient wallet balance."
+    default_code = "insufficient_balance"

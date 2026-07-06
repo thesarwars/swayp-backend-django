@@ -1,28 +1,30 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-
+from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
+
+from .schemas import (
+    provider_list_schema,
+    provider_search_schema,
+)
 
 from .serializers import (
     ProviderSerializer,
     ProviderQuerySerializer,
     ProviderSearchQuerySerializer,
 )
+
 from .services import ProviderService
-from .schemas import (
-    provider_list_schema,
-    provider_search_schema,
-)
 
 
-class ProviderListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class ProviderListAPIView(BaseAPIView):
 
-    service = ProviderService()
+    service_class = ProviderService
 
     @provider_list_schema
     def get(self, request):
-        query = ProviderQuerySerializer(data=request.query_params)
+        query = ProviderQuerySerializer(
+            data=request.query_params
+        )
+
         query.is_valid(raise_exception=True)
 
         result = self.service.list_providers(
@@ -43,10 +45,9 @@ class ProviderListAPIView(APIView):
         )
 
 
-class ProviderSearchAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+class ProviderSearchAPIView(BaseAPIView):
 
-    service = ProviderService()
+    service_class = ProviderService
 
     @provider_search_schema
     def get(self, request):

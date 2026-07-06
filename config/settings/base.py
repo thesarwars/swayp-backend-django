@@ -88,6 +88,8 @@ LOCAL_APPS = [
     "apps.audit",
     "apps.wallet",
     "apps.bill_categories",
+    "apps.providers",
+    "apps.payments",
 ]
 
 INSTALLED_APPS = (

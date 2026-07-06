@@ -4,8 +4,59 @@ from rest_framework.views import APIView
 
 from .dtos import ProviderResponseDTO
 from .services import ProviderService
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiParameter,
+    OpenApiResponse,
+    OpenApiTypes,
+)
 
 
+
+
+@extend_schema(
+    tags=["Providers"],
+    summary="List Providers",
+    description="""
+Returns providers.
+
+Supports filtering by category and searching by provider name.
+""",
+    parameters=[
+        OpenApiParameter(
+            name="categoryId",
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description="Bill Category ID",
+        ),
+        OpenApiParameter(
+            name="search",
+            type=OpenApiTypes.STR,
+            location=OpenApiParameter.QUERY,
+            description="Search provider name",
+        ),
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            default=1,
+            location=OpenApiParameter.QUERY,
+        ),
+        OpenApiParameter(
+            name="pageSize",
+            type=OpenApiTypes.INT,
+            default=20,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(
+            description="Providers fetched successfully."
+        ),
+        401: OpenApiResponse(
+            description="Unauthorized."
+        ),
+    },
+)
 class ProviderListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -48,6 +99,39 @@ class ProviderListAPIView(APIView):
         )
     
 
+
+
+@extend_schema(
+    tags=["Providers"],
+    summary="Search Providers",
+    description="Search providers by keyword.",
+    parameters=[
+        OpenApiParameter(
+            name="q",
+            type=OpenApiTypes.STR,
+            required=True,
+            location=OpenApiParameter.QUERY,
+            description="Search keyword",
+        ),
+        OpenApiParameter(
+            name="page",
+            type=OpenApiTypes.INT,
+            default=1,
+            location=OpenApiParameter.QUERY,
+        ),
+        OpenApiParameter(
+            name="pageSize",
+            type=OpenApiTypes.INT,
+            default=20,
+            location=OpenApiParameter.QUERY,
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(
+            description="Providers fetched successfully."
+        ),
+    },
+)
 class ProviderSearchAPIView(APIView):
     permission_classes = [IsAuthenticated]
 

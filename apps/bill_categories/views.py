@@ -4,7 +4,31 @@ from rest_framework.views import APIView
 
 from .dtos import BillCategoryResponseDTO
 from .services import BillCategoryService
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiResponse,
+)
 
+
+
+
+@extend_schema(
+    tags=["Bill Categories"],
+    summary="List Bill Categories",
+    description="""
+Returns all bill categories shown on the dashboard.
+
+Authentication Required.
+""",
+    responses={
+        200: OpenApiResponse(
+            description="Bill categories fetched successfully."
+        ),
+        401: OpenApiResponse(
+            description="Authentication credentials were not provided."
+        ),
+    },
+)
 
 class BillCategoryListAPIView(APIView):
     permission_classes = [IsAuthenticated]

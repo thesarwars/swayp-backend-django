@@ -21,30 +21,8 @@ class ProviderService:
             search=search,
         )
 
-        result = PaginationService.paginate(
+        return PaginationService.paginate(
             queryset=queryset,
             page=page,
             page_size=page_size,
         )
-
-        providers = []
-
-        for provider in result["items"]:
-            providers.append(
-                {
-                    "id": provider.id,
-                    "categoryId": provider.category.id,
-                    "categoryName": provider.category.name,
-                    "providerName": provider.provider_name,
-                    "providerCode": provider.provider_code,
-                    "logo": provider.logo,
-                    "description": provider.description,
-                    "country": provider.country,
-                    "supportsAutoPay": provider.supports_auto_pay,
-                }
-            )
-
-        return {
-            "items": providers,
-            "pagination": result["pagination"],
-        }

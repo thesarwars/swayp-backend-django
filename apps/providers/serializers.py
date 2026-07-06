@@ -16,31 +16,25 @@ class ProviderSearchQuerySerializer(PaginationQuerySerializer):
 
 
 class ProviderSerializer(serializers.Serializer):
-    id = serializers.UUIDField()
+    id = serializers.UUIDField(source="id")
 
-    categoryId = serializers.UUIDField()
-    categoryName = serializers.CharField()
+    categoryId = serializers.UUIDField(source="category.id")
+    categoryName = serializers.CharField(source="category.name")
 
-    providerName = serializers.CharField()
-    providerCode = serializers.CharField()
+    providerName = serializers.CharField(source="provider_name")
+    providerCode = serializers.CharField(source="provider_code")
 
     logo = serializers.URLField()
 
-    description = serializers.CharField(
-        allow_blank=True,
-        allow_null=True,
-    )
+    description = serializers.CharField()
 
     country = serializers.CharField()
 
-    supportsAutoPay = serializers.BooleanField()
+    supportsAutoPay = serializers.BooleanField(source="supports_auto_pay")
 
 
 class ProviderListResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
-
     message = serializers.CharField()
-
     data = ProviderSerializer(many=True)
-
     pagination = PaginationResponseSerializer()

@@ -33,7 +33,7 @@ class ProviderListAPIView(APIView):
         )
 
         serializer = ProviderSerializer(
-            result["items"],
+            instance=result["items"],
             many=True,
         )
 
@@ -63,9 +63,9 @@ class ProviderSearchAPIView(APIView):
         )
 
         serializer = ProviderSerializer(
-            result["items"],
+            instance=result["items"],
             many=True,
-        )
+        )   
 
         return success_response(
             data=serializer.data,

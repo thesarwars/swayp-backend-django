@@ -78,6 +78,7 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_filters",
     
+    
 ]
 
 LOCAL_APPS = [
@@ -174,6 +175,8 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
     ),
+
+    "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",
 }
 
 PASSWORD_HASHERS = [

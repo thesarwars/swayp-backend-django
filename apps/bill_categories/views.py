@@ -1,59 +1,24 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
+from apps.common.base_views import BaseAPIView
+from apps.common.responses import ApiResponse
 
-from .dtos import BillCategoryResponseDTO
+from .schemas import bill_category_list_schema
+from .serializers import BillCategorySerializer
 from .services import BillCategoryService
-from drf_spectacular.utils import (
-    extend_schema,
-    OpenApiResponse,
-)
 
 
+class BillCategoryListAPIView(BaseAPIView):
 
+    service_class = BillCategoryService
 
-@extend_schema(
-    tags=["Bill Categories"],
-    summary="List Bill Categories",
-    description="""
-Returns all bill categories shown on the dashboard.
-
-Authentication Required.
-""",
-    responses={
-        200: OpenApiResponse(
-            description="Bill categories fetched successfully."
-        ),
-        401: OpenApiResponse(
-            description="Authentication credentials were not provided."
-        ),
-    },
-)
-
-class BillCategoryListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.service = BillCategoryService()
-
+    @bill_category_list_schema
     def get(self, request):
         categories = self.service.get_dashboard_categories()
 
-        response = [
-            BillCategoryResponseDTO(
-                id=item["id"],
-                name=item["name"],
-                icon=item["icon"],
-                color=item["color"],
-                displayOrder=item["displayOrder"],
-            ).to_dict()
-            for item in categories
-        ]
+        serializer = BillCategorySerializer(
+            categories,
+            many=True,
+        )
 
-        return Response(
-            {
-                "success": True,
-                "data": response,
-            }
+        return ApiResponse.success(
+            data=serializer.data
         )

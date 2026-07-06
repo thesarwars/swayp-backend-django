@@ -3,7 +3,12 @@ from decimal import Decimal
 from django.db import transaction
 
 from apps.common.enums import WalletStatus
+from apps.common.exceptions import (
+    BadRequestException,
+    InsufficientBalanceException,
+)
 
+from .models import WalletTransaction
 from .repositories import (
     WalletRepository,
     WalletTransactionRepository,
@@ -11,17 +16,28 @@ from .repositories import (
 
 
 class WalletService:
-    @staticmethod
-    def get_summary(user):
+
+    def get_summary(self, user):
         return WalletRepository.get_by_user(user)
 
-    @staticmethod
     @transaction.atomic
-    def deposit(wallet, amount, reference, description=""):
-        wallet = WalletRepository.get_by_user(wallet.user)
+    def deposit(
+        self,
+        *,
+        wallet,
+        amount,
+        reference,
+        description="",
+    ):
+        wallet = WalletRepository.get_by_user(
+            wallet.user,
+            for_update=True,
+        )
+
+        amount = Decimal(amount)
 
         before = wallet.balance
-        after = before + Decimal(amount)
+        after = before + amount
 
         wallet.balance = after
         WalletRepository.save(wallet)
@@ -31,23 +47,36 @@ class WalletService:
             amount=amount,
             balance_before=before,
             balance_after=after,
-            transaction_type="DEPOSIT",
+            transaction_type=WalletTransaction.TransactionType.DEPOSIT,
             reference=reference,
             description=description,
         )
 
         return wallet
 
-    @staticmethod
     @transaction.atomic
-    def withdraw(wallet, amount, reference, description=""):
-        wallet = WalletRepository.get_by_user(wallet.user)
+    def withdraw(
+        self,
+        *,
+        wallet,
+        amount,
+        reference,
+        description="",
+    ):
+        wallet = WalletRepository.get_by_user(
+            wallet.user,
+            for_update=True,
+        )
+
+        amount = Decimal(amount)
 
         if wallet.status != WalletStatus.ACTIVE:
-            raise ValueError("Wallet is not active.")
+            raise BadRequestException(
+                "Wallet is not active."
+            )
 
         if wallet.balance < amount:
-            raise ValueError("Insufficient balance.")
+           raise InsufficientBalanceException()
 
         before = wallet.balance
         after = before - amount
@@ -60,7 +89,7 @@ class WalletService:
             amount=amount,
             balance_before=before,
             balance_after=after,
-            transaction_type="WITHDRAW",
+            transaction_type=WalletTransaction.TransactionType.WITHDRAW,
             reference=reference,
             description=description,
         )

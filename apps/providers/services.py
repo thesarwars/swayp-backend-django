@@ -1,9 +1,10 @@
-from django.core.paginator import Paginator
+from apps.common.pagination import PaginationService
 
 from .repositories import ProviderRepository
 
 
 class ProviderService:
+
     def __init__(self):
         self.repository = ProviderRepository()
 
@@ -20,32 +21,30 @@ class ProviderService:
             search=search,
         )
 
-        paginator = Paginator(queryset, page_size)
-        result = paginator.get_page(page)
+        result = PaginationService.paginate(
+            queryset=queryset,
+            page=page,
+            page_size=page_size,
+        )
 
-        return {
-            "items": [
+        providers = []
+
+        for provider in result["items"]:
+            providers.append(
                 {
-                    "id": str(provider.id),
+                    "id": provider.id,
+                    "categoryId": provider.category.id,
+                    "categoryName": provider.category.name,
                     "providerName": provider.provider_name,
                     "providerCode": provider.provider_code,
                     "logo": provider.logo,
                     "description": provider.description,
                     "country": provider.country,
                     "supportsAutoPay": provider.supports_auto_pay,
-                    "category": {
-                        "id": str(provider.category.id),
-                        "name": provider.category.name,
-                    },
                 }
-                for provider in result
-            ],
-            "pagination": {
-                "page": result.number,
-                "pageSize": page_size,
-                "totalPages": paginator.num_pages,
-                "totalItems": paginator.count,
-                "hasNext": result.has_next(),
-                "hasPrevious": result.has_previous(),
-            },
+            )
+
+        return {
+            "items": providers,
+            "pagination": result["pagination"],
         }

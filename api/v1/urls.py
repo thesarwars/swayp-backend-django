@@ -7,4 +7,9 @@ urlpatterns = [
     ),
 
     path("wallet/", include("apps.wallet.urls")),
+
+    path(
+        "bill-categories/",
+        include("apps.bill_categories.urls"),
+    ),
 ]

@@ -87,6 +87,7 @@ LOCAL_APPS = [
     "apps.notifications",
     "apps.audit",
     "apps.wallet",
+    "apps.bill_categories",
 ]
 
 INSTALLED_APPS = (

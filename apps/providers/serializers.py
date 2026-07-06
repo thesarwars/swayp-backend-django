@@ -16,7 +16,7 @@ class ProviderSearchQuerySerializer(PaginationQuerySerializer):
 
 
 class ProviderSerializer(serializers.Serializer):
-    id = serializers.UUIDField(source="id")
+    id = serializers.UUIDField()
 
     categoryId = serializers.UUIDField(source="category.id")
     categoryName = serializers.CharField(source="category.name")

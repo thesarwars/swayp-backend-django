@@ -5,9 +5,9 @@ from django.core.validators import MinValueValidator
 from django.db import models
 
 from apps.common.enums import Currency, WalletStatus,PaymentStatus
+from apps.common.models import BaseModel
 
-
-class Wallet(models.Model):
+class Wallet(BaseModel):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -43,8 +43,7 @@ class Wallet(models.Model):
 
     is_balance_hidden = models.BooleanField(default=False)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    
 
     class Meta:
         db_table = "wallets"
@@ -58,7 +57,7 @@ class Wallet(models.Model):
         return f"{self.user} Wallet"
     
 
-class WalletTransaction(models.Model):
+class WalletTransaction(BaseModel):
     wallet = models.ForeignKey(
         Wallet,
         on_delete=models.CASCADE,
@@ -103,7 +102,7 @@ class WalletTransaction(models.Model):
 
     description = models.TextField(blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    
 
     class Meta:
         db_table = "wallet_transactions"

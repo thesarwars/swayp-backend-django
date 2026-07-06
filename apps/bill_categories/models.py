@@ -1,11 +1,10 @@
 import uuid
 
 from django.db import models
+from apps.common.models import BaseModel
 
-
-class BillCategory(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
+class BillCategory(BaseModel):
+   
     name = models.CharField(max_length=100, unique=True)
     icon = models.URLField(max_length=500)
     color = models.CharField(max_length=20)
@@ -13,8 +12,7 @@ class BillCategory(models.Model):
 
     is_active = models.BooleanField(default=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+   
 
     class Meta:
         db_table = "bill_categories"

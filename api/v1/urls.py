@@ -5,4 +5,6 @@ urlpatterns = [
         "auth/",
         include("apps.authentication.api.urls"),
     ),
+
+    path("wallet/", include("apps.wallet.urls")),
 ]

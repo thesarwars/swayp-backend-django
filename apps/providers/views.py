@@ -1,7 +1,7 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
-from apps.common.api_response import success_response
+from apps.common.responses import ApiResponse
 
 from .serializers import (
     ProviderSerializer,
@@ -33,11 +33,11 @@ class ProviderListAPIView(APIView):
         )
 
         serializer = ProviderSerializer(
-            instance=result["items"],
+            result["items"],
             many=True,
         )
 
-        return success_response(
+        return ApiResponse.success(
             data=serializer.data,
             pagination=result["pagination"],
         )
@@ -63,11 +63,11 @@ class ProviderSearchAPIView(APIView):
         )
 
         serializer = ProviderSerializer(
-            instance=result["items"],
+            result["items"],
             many=True,
-        )   
+        )
 
-        return success_response(
+        return ApiResponse.success(
             data=serializer.data,
             pagination=result["pagination"],
         )

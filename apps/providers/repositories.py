@@ -4,20 +4,22 @@ from .models import Provider
 
 
 class ProviderRepository:
+
     @staticmethod
-    def get_all():
+    def get_queryset():
         return (
-            Provider.objects.select_related("category")
+            Provider.objects
+            .select_related("category")
             .filter(status=Provider.Status.ACTIVE)
         )
 
-    @staticmethod
     def filter(
+        self,
         *,
         category_id=None,
         search=None,
     ):
-        queryset = ProviderRepository.get_all()
+        queryset = self.get_queryset()
 
         if category_id:
             queryset = queryset.filter(category_id=category_id)
@@ -30,10 +32,5 @@ class ProviderRepository:
 
         return queryset.order_by("provider_name")
 
-    @staticmethod
-    def get_by_id(provider_id):
-        return (
-            ProviderRepository.get_all()
-            .filter(id=provider_id)
-            .first()
-        )
+    def get_by_id(self, provider_id):
+        return self.get_queryset().filter(id=provider_id).first()

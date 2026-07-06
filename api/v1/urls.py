@@ -12,4 +12,8 @@ urlpatterns = [
         "bill-categories/",
         include("apps.bill_categories.urls"),
     ),
+    path(
+        "providers/",
+        include("apps.providers.urls"),
+    ),
 ]

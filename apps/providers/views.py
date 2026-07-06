@@ -46,3 +46,46 @@ class ProviderListAPIView(APIView):
                 "pagination": result["pagination"],
             }
         )
+    
+
+class ProviderSearchAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = ProviderService()
+
+    def get(self, request):
+        q = request.query_params.get("q", "").strip()
+
+        page = int(request.query_params.get("page", 1))
+        page_size = int(request.query_params.get("pageSize", 20))
+
+        result = self.service.list_providers(
+            search=q,
+            page=page,
+            page_size=page_size,
+        )
+
+        providers = [
+            ProviderResponseDTO(
+                id=item["id"],
+                categoryId=item["category"]["id"],
+                categoryName=item["category"]["name"],
+                providerName=item["providerName"],
+                providerCode=item["providerCode"],
+                logo=item["logo"],
+                description=item["description"],
+                country=item["country"],
+                supportsAutoPay=item["supportsAutoPay"],
+            ).to_dict()
+            for item in result["items"]
+        ]
+
+        return Response(
+            {
+                "success": True,
+                "data": providers,
+                "pagination": result["pagination"],
+            }
+        )

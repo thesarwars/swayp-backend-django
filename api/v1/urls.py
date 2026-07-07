@@ -16,4 +16,10 @@ urlpatterns = [
         "providers/",
         include("apps.providers.urls"),
     ),
+
+    
+    path(
+        "notifications/",
+        include("apps.notifications.urls"),
+    ),
 ]

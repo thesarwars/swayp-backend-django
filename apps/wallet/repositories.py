@@ -10,7 +10,10 @@ class WalletRepository:
         if for_update:
             queryset = queryset.select_for_update()
 
+        
+
         return queryset.get(user=user)
+    
 
     @staticmethod
     def save(wallet):

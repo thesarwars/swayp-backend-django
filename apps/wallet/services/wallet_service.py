@@ -7,18 +7,21 @@ from apps.common.exceptions import (
     BadRequestException,
     InsufficientBalanceException,
 )
-
-from .models import WalletTransaction
-from .repositories import (
+from apps.wallet.models import WalletTransaction
+from apps.wallet.repositories import (
     WalletRepository,
     WalletTransactionRepository,
 )
+from apps.wallet.selectors.wallet_selector import WalletSelector
 
 
 class WalletService:
 
+    def __init__(self):
+        self.selector = WalletSelector()
+
     def get_summary(self, user):
-        return WalletRepository.get_by_user(user)
+        return self.selector.get_summary(user)
 
     @transaction.atomic
     def deposit(
@@ -76,7 +79,7 @@ class WalletService:
             )
 
         if wallet.balance < amount:
-           raise InsufficientBalanceException()
+            raise InsufficientBalanceException()
 
         before = wallet.balance
         after = before - amount

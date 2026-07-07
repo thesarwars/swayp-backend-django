@@ -1,13 +1,16 @@
 from apps.common.exceptions import NotFoundException
-from apps.common.pagination import PaginationService
 
-from .repositories import NotificationRepository
+from apps.notifications.repositories import NotificationRepository
+from apps.notifications.selectors.notification_selector import (
+    NotificationSelector,
+)
 
 
 class NotificationService:
 
     def __init__(self):
         self.repository = NotificationRepository()
+        self.selector = NotificationSelector()
 
     def list_notifications(
         self,
@@ -16,10 +19,8 @@ class NotificationService:
         page=1,
         page_size=20,
     ):
-        queryset = self.repository.list_by_user(user)
-
-        return PaginationService.paginate(
-            queryset=queryset,
+        return self.selector.list_notifications(
+            user=user,
             page=page,
             page_size=page_size,
         )
@@ -29,7 +30,9 @@ class NotificationService:
         *,
         user,
     ):
-        return self.repository.unread_count(user)
+        return self.selector.unread_count(
+            user=user,
+        )
 
     def mark_as_read(
         self,
@@ -37,7 +40,7 @@ class NotificationService:
         user,
         notification_id,
     ):
-        notification = self.repository.get_by_id(
+        notification = self.selector.get_notification(
             user=user,
             notification_id=notification_id,
         )
@@ -48,7 +51,9 @@ class NotificationService:
             )
 
         if not notification.is_read:
-            self.repository.mark_as_read(notification)
+            self.repository.mark_as_read(
+                notification,
+            )
 
         return notification
 

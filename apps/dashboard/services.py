@@ -3,7 +3,7 @@ from datetime import datetime
 from apps.common.exceptions import (
     NotFoundException,
 )
-
+from django.utils import timezone
 from .repositories import DashboardRepository
 
 
@@ -44,7 +44,7 @@ class DashboardService:
 
     @staticmethod
     def _get_greeting():
-        hour = datetime.now().hour
+        hour = timezone.localtime().hour
 
         if 5 <= hour < 12:
             return "Good Morning"

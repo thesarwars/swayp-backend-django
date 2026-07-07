@@ -1,24 +1,25 @@
-from datetime import datetime
+from django.utils import timezone
 
 from apps.common.exceptions import (
     NotFoundException,
 )
-from django.utils import timezone
-from .repositories import DashboardRepository
+from apps.dashboard.selectors.dashboard_selector import (
+    DashboardSelector,
+)
 
 
 class DashboardService:
 
     def __init__(self):
-        self.repository = DashboardRepository()
+        self.selector = DashboardSelector()
 
     def get_profile_summary(
         self,
         *,
         user,
     ):
-        user = self.repository.get_user(
-            user.id
+        user = self.selector.get_user(
+            user.id,
         )
 
         if user is None:
@@ -36,7 +37,7 @@ class DashboardService:
             ),
             "greeting": self._get_greeting(),
             "unread_notification_count": (
-                self.repository.get_unread_notification_count(
+                self.selector.get_unread_notification_count(
                     user
                 )
             ),

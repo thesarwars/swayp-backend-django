@@ -8,6 +8,7 @@ from .serializers import (
     ProfileSummarySerializer,
 )
 from .services import DashboardService
+import traceback
 
 
 class ProfileSummaryAPIView(BaseAPIView):
@@ -16,14 +17,40 @@ class ProfileSummaryAPIView(BaseAPIView):
 
     @profile_summary_schema
     def get(self, request):
-        result = self.service.get_profile_summary(
-            user=request.user,
-        )
+        try:
+            print("========== Profile Summary Started ==========")
 
-        serializer = ProfileSummarySerializer(
-            result,
-        )
+            result = self.service.get_profile_summary(
+                user=request.user,
+            )
+            print("✓ Service completed")
+            print(result)
 
-        return ApiResponse.success(
-            data=serializer.data,
-        )
+            serializer = ProfileSummarySerializer(result)
+            print("✓ Serializer completed")
+            print(serializer.data)
+
+            response = ApiResponse.success(
+                data=serializer.data,
+            )
+            print("✓ Response generated")
+
+            return response
+
+        except Exception:
+            print("\n========== EXCEPTION ==========")
+            traceback.print_exc()
+            print("================================\n")
+            raise
+    # def get(self, request):
+    #     result = self.service.get_profile_summary(
+    #         user=request.user,
+    #     )
+
+    #     serializer = ProfileSummarySerializer(
+    #         result,
+    #     )
+
+    #     return ApiResponse.success(
+    #         data=serializer.data,
+    #     )

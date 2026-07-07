@@ -56,6 +56,16 @@ class User(
     PermissionsMixin,
     BaseModel,
 ):
+    
+    first_name = models.CharField(
+        max_length=100,
+        blank=True,
+    )
+
+    last_name = models.CharField(
+        max_length=100,
+        blank=True,
+    )
     email = models.EmailField(
         unique=True,
         db_index=True,
@@ -104,3 +114,9 @@ class User(
 
     def __str__(self):
         return self.email
+    
+    def get_full_name(self):
+        return f"{self.first_name} {self.last_name}".strip()
+
+    def get_short_name(self):
+        return self.first_name or self.email

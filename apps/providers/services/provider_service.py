@@ -1,12 +1,9 @@
-from apps.common.pagination import PaginationService
-
-from .repositories import ProviderRepository
+from apps.providers.selectors.provider_selector import ProviderSelector
 
 
 class ProviderService:
-
     def __init__(self):
-        self.repository = ProviderRepository()
+        self.selector = ProviderSelector()
 
     def list_providers(
         self,
@@ -16,13 +13,9 @@ class ProviderService:
         page=1,
         page_size=20,
     ):
-        queryset = self.repository.filter(
+        return self.selector.list_providers(
             category_id=category_id,
             search=search,
-        )
-
-        return PaginationService.paginate(
-            queryset=queryset,
             page=page,
             page_size=page_size,
         )

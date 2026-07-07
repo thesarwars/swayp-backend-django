@@ -22,4 +22,9 @@ urlpatterns = [
         "notifications/",
         include("apps.notifications.urls"),
     ),
+
+    path(
+        "dashboard/",
+        include("apps.dashboard.urls"),
+    ),
 ]

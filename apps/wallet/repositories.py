@@ -1,3 +1,4 @@
+from apps.common.exceptions import NotFoundException
 from .models import Wallet, WalletTransaction
 
 
@@ -10,9 +11,10 @@ class WalletRepository:
         if for_update:
             queryset = queryset.select_for_update()
 
-        
-
-        return queryset.get(user=user)
+        try:
+            return queryset.get(user=user)
+        except Wallet.DoesNotExist:
+            raise NotFoundException("Wallet not found.")
     
 
     @staticmethod

@@ -91,6 +91,7 @@ LOCAL_APPS = [
     "apps.bill_categories",
     "apps.providers",
     "apps.payments",
+    "apps.dashboard",
 ]
 
 INSTALLED_APPS = (

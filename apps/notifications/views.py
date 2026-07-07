@@ -17,7 +17,7 @@ class NotificationListAPIView(BaseAPIView):
 
     service_class = NotificationService
 
-    @notification_list_schema
+    @notification_list_schema  
     def get(self, request):
         query = NotificationQuerySerializer(
             data=request.query_params,

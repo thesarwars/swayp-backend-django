@@ -28,8 +28,13 @@ urlpatterns = [
         include("apps.dashboard.urls"),
     ),
 
-      path(
+    path(
         "payments/",
         include("apps.payments.urls"),
+        
+    ),
+    path(
+        "payment-tracking/",
+        include("apps.payment_tracking.urls"),
     ),
 ]

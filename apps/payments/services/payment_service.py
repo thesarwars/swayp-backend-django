@@ -6,10 +6,15 @@ from uuid import uuid4
 
 from django.db import transaction
 from apps.common.exceptions import(
-    InsufficientBalanceException
+    InsufficientBalanceException,
+    BadRequestException,
 )
 
-from apps.common.enums import PaymentStatus
+from apps.common.enums import( 
+    PaymentStatus,
+    ProviderStatus,
+    WalletStatus,
+)
 from apps.providers.repositories import (
     ProviderRepository,
 )
@@ -24,10 +29,15 @@ from apps.payments.repositories import(
     PaymentRepository
 )
 
+from apps.notifications.models import Notification
+from apps.payment_tracking.models import PaymentTracking
+
+
 class PaymentService:
 
     def __init__(self):
         self.selector = PaymentSelector()
+        self.repository = PaymentRepository()
 
     def payment_history(
         self,
@@ -59,15 +69,33 @@ class PaymentService:
         self,
         *,
         user,
-        provider,
-        category,
+        provider_id,
+        category_id,
         amount,
         payment_method,
-    ):
+):
+        provider = self.repository.get_provider(
+            provider_id,
+        )
+
+        category = self.repository.get_category(
+            category_id,
+        )
+
+        if provider.category_id != category.id:
+            raise BadRequestException(
+                "Provider does not belong to this category."
+            )
+
         wallet = WalletRepository.get_by_user(
             user,
             for_update=True,
         )
+
+        if wallet.status != WalletStatus.ACTIVE:
+            raise BadRequestException(
+                "Wallet is not active."
+            )
 
         amount = Decimal(amount)
 
@@ -76,7 +104,7 @@ class PaymentService:
 
         reference = uuid4().hex.upper()
 
-        payment = PaymentRepository.create_payment(
+        payment = self.repository.create(
             user=user,
             provider=provider,
             category=category,
@@ -84,9 +112,9 @@ class PaymentService:
             fee=Decimal("0.00"),
             total=amount,
             currency=wallet.currency,
+            payment_method=payment_method,
             status=PaymentStatus.PENDING,
             transaction_reference=reference,
-            payment_method=payment_method,
         )
 
         PaymentTracking.objects.create(
@@ -95,9 +123,7 @@ class PaymentService:
         )
 
         before = wallet.balance
-        after = before - amount
-
-        wallet.balance = after
+        wallet.balance -= amount
         WalletRepository.save(wallet)
 
         WalletTransactionRepository.create(
@@ -105,11 +131,18 @@ class PaymentService:
             payment=payment,
             amount=amount,
             balance_before=before,
-            balance_after=after,
+            balance_after=wallet.balance,
             transaction_type="PAYMENT",
             status=PaymentStatus.PENDING,
             reference=reference,
-            description="Bill payment",
+            description=f"Payment to {provider.provider_name}",
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Initiated",
+            message=f"Your payment to {provider.provider_name} has been initiated.",
+            type="PAYMENT",
         )
 
         return payment

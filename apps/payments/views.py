@@ -64,39 +64,64 @@ class PaymentHistoryAPIView(BaseAPIView):
 
             raise
 
-
+import traceback
 class CreatePaymentAPIView(BaseAPIView):
 
     service_class = PaymentService
 
     @create_payment_schema
     def post(self, request):
-        serializer = CreatePaymentSerializer(
-            data=request.data,
-        )
+        try:
+            serializer = CreatePaymentSerializer(
+                data=request.data,
+            )
 
-        serializer.is_valid(
-            raise_exception=True,
-        )
+            serializer.is_valid(
+                raise_exception=True,
+            )
 
-        provider = ProviderRepository.get_by_id(
-            serializer.validated_data["providerId"],
-        )
+            payment = self.service.create_payment(
+                user=request.user,
+                provider_id=serializer.validated_data["providerId"],
+                category_id=serializer.validated_data["categoryId"],
+                amount=serializer.validated_data["amount"],
+                payment_method=serializer.validated_data["paymentMethod"],
+            )
 
-        category = BillCategoryRepository.get_by_id(
-            serializer.validated_data["categoryId"],
-        )
+            return ApiResponse.success(
+                message="Payment created successfully.",
+                data=PaymentSerializer(payment).data,
+                status_code=201,
+            )
 
-        payment = self.service.create_payment(
-            user=request.user,
-            provider=provider,
-            category=category,
-            amount=serializer.validated_data["amount"],
-            payment_method=serializer.validated_data["paymentMethod"],
-        )
+        except Exception:
+            traceback.print_exc()
+            raise
 
-        return ApiResponse.success(
-            message="Payment created successfully.",
-            data=PaymentSerializer(payment).data,
-            status_code=201,
-        )
+# class CreatePaymentAPIView(BaseAPIView):
+
+#     service_class = PaymentService
+
+#     @create_payment_schema
+#     def post(self, request):
+#         serializer = CreatePaymentSerializer(
+#             data=request.data,
+#         )
+
+#         serializer.is_valid(
+#             raise_exception=True,
+#         )
+
+#         payment = self.service.create_payment(
+#             user=request.user,
+#             provider_id=serializer.validated_data["providerId"],
+#             category_id=serializer.validated_data["categoryId"],
+#             amount=serializer.validated_data["amount"],
+#             payment_method=serializer.validated_data["paymentMethod"],
+#         )
+
+#         return ApiResponse.success(
+#             message="Payment created successfully.",
+#             data=PaymentSerializer(payment).data,
+#             status_code=201,
+#         )

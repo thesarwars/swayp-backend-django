@@ -2,6 +2,8 @@ from apps.payments.models import Payment
 from django.db import transaction
 
 from apps.common.exceptions import NotFoundException
+from apps.providers.models import Provider
+from apps.bill_categories.models import BillCategory
 
 class PaymentRepository:
 
@@ -89,26 +91,30 @@ class PaymentRepository:
         return payment
     
 
-    @classmethod
-    def create_payment(cls, **kwargs):
-        return Payment.objects.create(**kwargs)
-
-    @classmethod
-    def get_for_user(
-        cls,
-        *,
-        payment_id,
-        user,
-    ):
+    @staticmethod
+    def get_provider(provider_id):
         try:
-            return (
-                cls.get_queryset()
-                .get(
-                    id=payment_id,
-                    user=user,
-                )
+            return Provider.objects.get(
+                id=provider_id,
+                status="ACTIVE",
             )
-        except Payment.DoesNotExist:
+        except Provider.DoesNotExist:
             raise NotFoundException(
-                "Payment not found."
+                "Provider not found."
             )
+
+    @staticmethod
+    def get_category(category_id):
+        try:
+            return BillCategory.objects.get(
+                id=category_id,
+                is_active=True,
+            )
+        except BillCategory.DoesNotExist:
+            raise NotFoundException(
+                "Bill category not found."
+            )
+
+    @staticmethod
+    def create(**kwargs):
+        return Payment.objects.create(**kwargs)

@@ -9,6 +9,13 @@ from .serializers import (
     PaymentSerializer,
 )
 from .services import PaymentService
+from apps.bill_categories.repositories import BillCategoryRepository
+from apps.providers.repositories import ProviderRepository
+
+from .serializers import (
+    CreatePaymentSerializer,
+)
+from .schemas import create_payment_schema
 
 
 class PaymentHistoryAPIView(BaseAPIView):
@@ -56,3 +63,40 @@ class PaymentHistoryAPIView(BaseAPIView):
             print("=" * 80 + "\n")
 
             raise
+
+
+class CreatePaymentAPIView(BaseAPIView):
+
+    service_class = PaymentService
+
+    @create_payment_schema
+    def post(self, request):
+        serializer = CreatePaymentSerializer(
+            data=request.data,
+        )
+
+        serializer.is_valid(
+            raise_exception=True,
+        )
+
+        provider = ProviderRepository.get_by_id(
+            serializer.validated_data["providerId"],
+        )
+
+        category = BillCategoryRepository.get_by_id(
+            serializer.validated_data["categoryId"],
+        )
+
+        payment = self.service.create_payment(
+            user=request.user,
+            provider=provider,
+            category=category,
+            amount=serializer.validated_data["amount"],
+            payment_method=serializer.validated_data["paymentMethod"],
+        )
+
+        return ApiResponse.success(
+            message="Payment created successfully.",
+            data=PaymentSerializer(payment).data,
+            status_code=201,
+        )

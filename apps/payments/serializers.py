@@ -97,3 +97,25 @@ class PaymentHistoryQuerySerializer(
         required=False,
         max_length=100,
     )
+
+
+class CreatePaymentSerializer(serializers.Serializer):
+    providerId = serializers.UUIDField()
+
+    categoryId = serializers.UUIDField()
+
+    amount = serializers.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        min_value=0.01,
+    )
+
+    paymentMethod = serializers.CharField(
+        max_length=50,
+    )
+
+
+class CreatePaymentResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = PaymentSerializer()

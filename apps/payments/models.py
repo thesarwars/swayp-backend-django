@@ -21,7 +21,7 @@ class Payment(BaseModel):
     )
 
     category = models.ForeignKey(
-        "bills.BillCategory",
+        "bill_categories.BillCategory",
         on_delete=models.PROTECT,
         related_name="payments",
     )

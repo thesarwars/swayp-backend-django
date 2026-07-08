@@ -1,6 +1,8 @@
 from apps.common.pagination import PaginationService
 
-from apps.payments.repositories import PaymentRepository
+from apps.payments.repositories import (
+    PaymentRepository,
+)
 
 
 class PaymentSelector:
@@ -14,9 +16,21 @@ class PaymentSelector:
         user,
         page=1,
         page_size=20,
+        status=None,
+        provider_id=None,
+        category_id=None,
+        from_date=None,
+        to_date=None,
+        search=None,
     ):
         queryset = self.repository.list_by_user(
-            user
+            user=user,
+            status=status,
+            provider_id=provider_id,
+            category_id=category_id,
+            from_date=from_date,
+            to_date=to_date,
+            search=search,
         )
 
         return PaginationService.paginate(

@@ -8,6 +8,8 @@ from apps.common.swagger import (
 from .serializers import (
     PaymentHistoryQuerySerializer,
     PaymentHistoryResponseSerializer,
+    CreatePaymentResponseSerializer,
+    CreatePaymentSerializer,
 )
 
 
@@ -20,6 +22,19 @@ payment_history_schema = extend_schema(
     ],
     responses={
         200: PaymentHistoryResponseSerializer,
+        400: BAD_REQUEST_RESPONSE,
+        401: UNAUTHORIZED_RESPONSE,
+    },
+)
+
+
+create_payment_schema = extend_schema(
+    tags=["Payments"],
+    summary="Create Payment",
+    description="Creates a new bill payment.",
+    request=CreatePaymentSerializer,
+    responses={
+        201: CreatePaymentResponseSerializer,
         400: BAD_REQUEST_RESPONSE,
         401: UNAUTHORIZED_RESPONSE,
     },

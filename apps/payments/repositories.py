@@ -1,5 +1,7 @@
 from apps.payments.models import Payment
+from django.db import transaction
 
+from apps.common.exceptions import NotFoundException
 
 class PaymentRepository:
 
@@ -85,3 +87,28 @@ class PaymentRepository:
     def save(payment):
         payment.save()
         return payment
+    
+
+    @classmethod
+    def create_payment(cls, **kwargs):
+        return Payment.objects.create(**kwargs)
+
+    @classmethod
+    def get_for_user(
+        cls,
+        *,
+        payment_id,
+        user,
+    ):
+        try:
+            return (
+                cls.get_queryset()
+                .get(
+                    id=payment_id,
+                    user=user,
+                )
+            )
+        except Payment.DoesNotExist:
+            raise NotFoundException(
+                "Payment not found."
+            )

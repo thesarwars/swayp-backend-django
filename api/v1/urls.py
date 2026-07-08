@@ -27,4 +27,9 @@ urlpatterns = [
         "dashboard/",
         include("apps.dashboard.urls"),
     ),
+
+      path(
+        "payments/",
+        include("apps.payments.urls"),
+    ),
 ]

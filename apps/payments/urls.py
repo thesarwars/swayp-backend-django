@@ -4,6 +4,7 @@ from .views import (
     PaymentHistoryAPIView,
     CreatePaymentAPIView,
     PaymentProcessingAPIView,
+    PaymentSuccessAPIView,
 )
 app_name = "payments"
 
@@ -20,8 +21,13 @@ urlpatterns = [
     ),
 
     path(
-    "<uuid:payment_id>/processing/",
-    PaymentProcessingAPIView.as_view(),
-    name="payment-processing",
-),
+        "<uuid:payment_id>/processing/",
+        PaymentProcessingAPIView.as_view(),
+        name="payment-processing",
+    ),
+    path(
+        "<uuid:payment_id>/successful/",
+        PaymentSuccessAPIView.as_view(),
+        name="payment-successful",
+    ),
 ]

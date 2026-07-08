@@ -3,6 +3,8 @@ from rest_framework import serializers
 from apps.common.serializers import PaginationQuerySerializer
 
 
+
+
 class PaymentSerializer(serializers.Serializer):
     id = serializers.UUIDField()
 
@@ -140,3 +142,6 @@ class PaymentStatusUpdateResponseSerializer(
 ):
     success = serializers.BooleanField()
     message = serializers.CharField()
+
+
+

@@ -3,7 +3,7 @@ import traceback
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 
-from .schemas import payment_history_schema
+from .schemas import payment_history_schema, payment_success_schema
 from .serializers import (
     PaymentHistoryQuerySerializer,
     PaymentSerializer,
@@ -117,4 +117,26 @@ class PaymentProcessingAPIView(
 
         return ApiResponse.success(
             message="Payment is now processing.",
+        )
+    
+
+
+class PaymentSuccessAPIView(
+    BaseAPIView,
+):
+    service_class = PaymentService
+
+    @payment_success_schema
+    def patch(
+        self,
+        request,
+        payment_id,
+    ):
+        self.service.mark_successful(
+            user=request.user,
+            payment_id=payment_id,
+        )
+
+        return ApiResponse.success(
+            message="Payment marked as successful.",
         )

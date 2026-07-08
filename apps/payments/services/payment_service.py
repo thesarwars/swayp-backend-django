@@ -195,3 +195,73 @@ class PaymentService:
         )
 
         return payment
+    
+
+    @transaction.atomic
+    def mark_successful(
+        self,
+        *,
+        user,
+        payment_id,
+    ):
+        payment = self.repository.get_for_update(
+            payment_id=payment_id,
+            user=user,
+        )
+
+        if payment.status != PaymentStatus.PROCESSING:
+            raise BadRequestException(
+                "Only processing payments can be completed."
+            )
+
+        payment.status = PaymentStatus.SUCCESSFUL
+        payment.provider_reference = (
+            uuid4().hex.upper()
+        )
+
+        PaymentRepository.save(payment)
+
+        tracking = (
+            PaymentTrackingRepository()
+            .get_by_payment_for_update(
+                payment=payment,
+            )
+        )
+
+        tracking.status = (
+            PaymentStatus.SUCCESSFUL
+        )
+
+        PaymentTrackingRepository().save(
+            tracking,
+        )
+
+        wallet_transaction = (
+            WalletTransactionRepository.get_by_payment(
+                payment
+            )
+        )   
+
+        wallet_transaction.status = (
+            PaymentStatus.SUCCESSFUL
+        )
+
+        wallet_transaction.save(
+            update_fields=[
+                "status",
+                "updated_at",
+            ]
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Successful",
+            message=(
+                f"Payment "
+                f"{payment.transaction_reference} "
+                f"completed successfully."
+            ),
+            type="PAYMENT",
+        )
+
+        return payment

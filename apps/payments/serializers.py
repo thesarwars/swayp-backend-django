@@ -119,3 +119,24 @@ class CreatePaymentResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = PaymentSerializer()
+
+
+class PaymentStatusUpdateSerializer(
+    serializers.Serializer,
+):
+    status = serializers.ChoiceField(
+        choices=[
+            "PROCESSING",
+            "SUCCESSFUL",
+            "FAILED",
+            "CANCELLED",
+            "REFUNDED",
+        ]
+    )
+
+
+class PaymentStatusUpdateResponseSerializer(
+    serializers.Serializer,
+):
+    success = serializers.BooleanField()
+    message = serializers.CharField()

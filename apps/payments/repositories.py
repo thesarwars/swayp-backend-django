@@ -118,3 +118,42 @@ class PaymentRepository:
     @staticmethod
     def create(**kwargs):
         return Payment.objects.create(**kwargs)
+    
+
+    @classmethod
+    def get_for_update(
+        cls,
+        *,
+        payment_id,
+        user,
+    ):
+        try:
+            return (
+                Payment.objects
+                .select_for_update()
+                .select_related(
+                    "user",
+                    "provider",
+                    "category",
+                )
+                .get(
+                    id=payment_id,
+                    user=user,
+                )
+            )
+        except Payment.DoesNotExist:
+            raise NotFoundException(
+                "Payment not found."
+            )
+
+    @staticmethod
+    def save(payment):
+        payment.save(
+            update_fields=[
+                "status",
+                "provider_reference",
+                "updated_at",
+            ]
+        )
+
+        return payment

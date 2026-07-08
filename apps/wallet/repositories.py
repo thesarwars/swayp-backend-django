@@ -41,3 +41,14 @@ class WalletTransactionRepository:
             .filter(wallet=wallet)
             .order_by("-created_at")
         )
+    
+    @staticmethod
+    def get_by_payment(payment):
+        try:
+            return WalletTransaction.objects.get(
+                payment=payment,
+            )
+        except WalletTransaction.DoesNotExist:
+            raise NotFoundException(
+                "Wallet transaction not found."
+            )

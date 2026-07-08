@@ -44,3 +44,28 @@ class PaymentTrackingRepository:
     def save(self, tracking):
         tracking.save()
         return tracking
+
+
+    def get_by_payment_for_update(
+        self,
+        *,
+        payment,
+    ):
+        return (
+            PaymentTracking.objects
+            .select_for_update()
+            .get(
+                payment=payment,
+            )
+        )
+
+    def save(self, tracking):
+        tracking.save(
+            update_fields=[
+                "status",
+                "estimated_completion",
+                "updated_at",
+            ]
+        )
+
+        return tracking

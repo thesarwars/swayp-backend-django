@@ -3,7 +3,10 @@ from apps.payments.selectors.payment_selector import (
 )
 from decimal import Decimal
 from uuid import uuid4
-
+from django.utils import timezone
+from apps.payment_tracking.repositories import (
+    PaymentTrackingRepository,
+)
 from django.db import transaction
 from apps.common.exceptions import(
     InsufficientBalanceException,
@@ -142,6 +145,122 @@ class PaymentService:
             user=user,
             title="Payment Initiated",
             message=f"Your payment to {provider.provider_name} has been initiated.",
+            type="PAYMENT",
+        )
+
+        return payment
+    
+
+    @transaction.atomic
+    def mark_processing(
+        self,
+        *,
+        user,
+        payment_id,
+    ):
+        payment = self.repository.get_for_update(
+            payment_id=payment_id,
+            user=user,
+        )
+
+        if payment.status != PaymentStatus.PENDING:
+            raise BadRequestException(
+                "Only pending payments can be processed."
+            )
+
+        payment.status = PaymentStatus.PROCESSING
+        PaymentRepository.save(payment)
+
+        tracking = (
+            PaymentTrackingRepository()
+            .get_by_payment_for_update(
+                payment=payment,
+            )
+        )
+
+        tracking.status = PaymentStatus.PROCESSING
+        tracking.estimated_completion = (
+            timezone.now()
+        )
+
+        PaymentTrackingRepository().save(
+            tracking,
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Processing",
+            message=f"Payment {payment.transaction_reference} is being processed.",
+            type="PAYMENT",
+        )
+
+        return payment
+    
+
+    @transaction.atomic
+    def mark_successful(
+        self,
+        *,
+        user,
+        payment_id,
+    ):
+        payment = self.repository.get_for_update(
+            payment_id=payment_id,
+            user=user,
+        )
+
+        if payment.status != PaymentStatus.PROCESSING:
+            raise BadRequestException(
+                "Only processing payments can be completed."
+            )
+
+        payment.status = PaymentStatus.SUCCESSFUL
+        payment.provider_reference = (
+            uuid4().hex.upper()
+        )
+
+        PaymentRepository.save(payment)
+
+        tracking = (
+            PaymentTrackingRepository()
+            .get_by_payment_for_update(
+                payment=payment,
+            )
+        )
+
+        tracking.status = (
+            PaymentStatus.SUCCESSFUL
+        )
+
+        PaymentTrackingRepository().save(
+            tracking,
+        )
+
+        wallet_transaction = (
+            WalletTransactionRepository.get_by_payment(
+                payment
+            )
+        )   
+
+        wallet_transaction.status = (
+            PaymentStatus.SUCCESSFUL
+        )
+
+        wallet_transaction.save(
+            update_fields=[
+                "status",
+                "updated_at",
+            ]
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Successful",
+            message=(
+                f"Payment "
+                f"{payment.transaction_reference} "
+                f"completed successfully."
+            ),
             type="PAYMENT",
         )
 

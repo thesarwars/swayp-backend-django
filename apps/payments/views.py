@@ -3,7 +3,7 @@ import traceback
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 
-from .schemas import payment_history_schema
+from .schemas import payment_history_schema, payment_success_schema
 from .serializers import (
     PaymentHistoryQuerySerializer,
     PaymentSerializer,
@@ -14,6 +14,9 @@ from apps.providers.repositories import ProviderRepository
 
 from .serializers import (
     CreatePaymentSerializer,
+)
+from .schemas import (
+    payment_processing_schema,
 )
 from .schemas import create_payment_schema
 
@@ -64,64 +67,76 @@ class PaymentHistoryAPIView(BaseAPIView):
 
             raise
 
-import traceback
+
+
+
 class CreatePaymentAPIView(BaseAPIView):
 
     service_class = PaymentService
 
     @create_payment_schema
     def post(self, request):
-        try:
-            serializer = CreatePaymentSerializer(
-                data=request.data,
-            )
+        serializer = CreatePaymentSerializer(
+            data=request.data,
+        )
 
-            serializer.is_valid(
-                raise_exception=True,
-            )
+        serializer.is_valid(
+            raise_exception=True,
+        )
 
-            payment = self.service.create_payment(
-                user=request.user,
-                provider_id=serializer.validated_data["providerId"],
-                category_id=serializer.validated_data["categoryId"],
-                amount=serializer.validated_data["amount"],
-                payment_method=serializer.validated_data["paymentMethod"],
-            )
+        payment = self.service.create_payment(
+            user=request.user,
+            provider_id=serializer.validated_data["providerId"],
+            category_id=serializer.validated_data["categoryId"],
+            amount=serializer.validated_data["amount"],
+            payment_method=serializer.validated_data["paymentMethod"],
+        )
 
-            return ApiResponse.success(
-                message="Payment created successfully.",
-                data=PaymentSerializer(payment).data,
-                status_code=201,
-            )
+        return ApiResponse.success(
+            message="Payment created successfully.",
+            data=PaymentSerializer(payment).data,
+            status_code=201,
+        )
+    
 
-        except Exception:
-            traceback.print_exc()
-            raise
+class PaymentProcessingAPIView(
+    BaseAPIView,
+):
+    service_class = PaymentService
 
-# class CreatePaymentAPIView(BaseAPIView):
+    @payment_processing_schema
+    def patch(
+        self,
+        request,
+        payment_id,
+    ):
+        self.service.mark_processing(
+            user=request.user,
+            payment_id=payment_id,
+        )
 
-#     service_class = PaymentService
+        return ApiResponse.success(
+            message="Payment is now processing.",
+        )
+    
 
-#     @create_payment_schema
-#     def post(self, request):
-#         serializer = CreatePaymentSerializer(
-#             data=request.data,
-#         )
 
-#         serializer.is_valid(
-#             raise_exception=True,
-#         )
+class PaymentSuccessAPIView(
+    BaseAPIView,
+):
+    service_class = PaymentService
 
-#         payment = self.service.create_payment(
-#             user=request.user,
-#             provider_id=serializer.validated_data["providerId"],
-#             category_id=serializer.validated_data["categoryId"],
-#             amount=serializer.validated_data["amount"],
-#             payment_method=serializer.validated_data["paymentMethod"],
-#         )
+    @payment_success_schema
+    def patch(
+        self,
+        request,
+        payment_id,
+    ):
+        self.service.mark_successful(
+            user=request.user,
+            payment_id=payment_id,
+        )
 
-#         return ApiResponse.success(
-#             message="Payment created successfully.",
-#             data=PaymentSerializer(payment).data,
-#             status_code=201,
-#         )
+        return ApiResponse.success(
+            message="Payment marked as successful.",
+        )

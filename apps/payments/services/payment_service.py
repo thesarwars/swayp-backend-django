@@ -7,6 +7,11 @@ from django.utils import timezone
 from apps.payment_tracking.repositories import (
     PaymentTrackingRepository,
 )
+
+from apps.payments.services.payment_state_service import (
+    PaymentStateService,
+)
+
 from django.db import transaction
 from apps.common.exceptions import(
     InsufficientBalanceException,
@@ -163,13 +168,15 @@ class PaymentService:
             user=user,
         )
 
-        if payment.status != PaymentStatus.PENDING:
-            raise BadRequestException(
-                "Only pending payments can be processed."
-            )
+        PaymentStateService.to_processing(
+        payment,
 
-        payment.status = PaymentStatus.PROCESSING
-        PaymentRepository.save(payment)
+        )
+
+        PaymentRepository.update_status(
+        payment=payment,
+        status=PaymentStatus.PROCESSING,
+        )
 
         tracking = (
             PaymentTrackingRepository()
@@ -178,13 +185,10 @@ class PaymentService:
             )
         )
 
-        tracking.status = PaymentStatus.PROCESSING
-        tracking.estimated_completion = (
-            timezone.now()
-        )
-
-        PaymentTrackingRepository().save(
-            tracking,
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.PROCESSING,
+            estimated_completion=timezone.now(),
         )
 
         Notification.objects.create(
@@ -209,18 +213,15 @@ class PaymentService:
             user=user,
         )
 
-        if payment.status != PaymentStatus.PROCESSING:
-            raise BadRequestException(
-                "Only processing payments can be completed."
-            )
-
-        payment.status = PaymentStatus.SUCCESSFUL
-        payment.provider_reference = (
-            uuid4().hex.upper()
+        PaymentStateService.to_success(
+            payment,
         )
 
-        PaymentRepository.save(payment)
-
+        PaymentRepository.update_status(
+            payment=payment,
+            status=PaymentStatus.SUCCESSFUL,
+            provider_reference=uuid4().hex.upper(),
+        )
         tracking = (
             PaymentTrackingRepository()
             .get_by_payment_for_update(
@@ -228,12 +229,9 @@ class PaymentService:
             )
         )
 
-        tracking.status = (
-            PaymentStatus.SUCCESSFUL
-        )
-
-        PaymentTrackingRepository().save(
-            tracking,
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.SUCCESSFUL,
         )
 
         wallet_transaction = (

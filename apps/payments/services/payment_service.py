@@ -8,6 +8,8 @@ from apps.payment_tracking.repositories import (
     PaymentTrackingRepository,
 )
 
+from apps.common.enums import TransactionType
+
 from apps.payments.services.payment_state_service import (
     PaymentStateService,
 )
@@ -258,6 +260,89 @@ class PaymentService:
                 f"Payment "
                 f"{payment.transaction_reference} "
                 f"completed successfully."
+            ),
+            type="PAYMENT",
+        )
+
+        return payment
+    
+
+    @transaction.atomic
+    def mark_failed(
+        self,
+        *,
+        user,
+        payment_id,
+    ):
+        payment = self.repository.get_for_update(
+            payment_id=payment_id,
+            user=user,
+        )
+
+        PaymentStateService.to_failed(
+            payment,
+        )
+
+        wallet = WalletRepository.get_by_user(
+            user,
+            for_update=True,
+        )
+
+        wallet_transaction = (
+            WalletTransactionRepository.get_by_payment(
+                payment,
+            )
+        )
+
+        balance_before = wallet.balance
+
+        WalletRepository.update_balance(
+            wallet,
+            wallet.balance + payment.total,
+        )
+
+        PaymentRepository.update_status(
+            payment=payment,
+            status=PaymentStatus.FAILED,
+        )
+
+        tracking = (
+            PaymentTrackingRepository
+            .get_by_payment_for_update(
+                payment=payment,
+            )
+        )
+
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.FAILED,
+        )
+
+        wallet_transaction.status = (
+            PaymentStatus.FAILED
+        )
+
+        wallet_transaction.balance_after = (
+            wallet.balance
+        )
+
+        wallet_transaction.save(
+            update_fields=[
+                "status",
+                "balance_after",
+                "updated_at",
+            ]
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Failed",
+            message=(
+                f"Payment "
+                f"{payment.transaction_reference} "
+                f"failed. "
+                f"The deducted amount has been returned "
+                f"to your wallet."
             ),
             type="PAYMENT",
         )

@@ -19,7 +19,7 @@ from .schemas import (
     payment_processing_schema,
 )
 from .schemas import create_payment_schema
-
+from .schemas import payment_failed_schema
 
 class PaymentHistoryAPIView(BaseAPIView):
 
@@ -139,4 +139,25 @@ class PaymentSuccessAPIView(
 
         return ApiResponse.success(
             message="Payment marked as successful.",
+        )
+    
+
+class PaymentFailedAPIView(
+    BaseAPIView,
+):
+    service_class = PaymentService
+
+    @payment_failed_schema
+    def patch(
+        self,
+        request,
+        payment_id,
+    ):
+        self.service.mark_failed(
+            user=request.user,
+            payment_id=payment_id,
+        )
+
+        return ApiResponse.success(
+            message="Payment marked as failed.",
         )

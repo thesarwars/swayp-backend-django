@@ -78,3 +78,15 @@ payment_processing_schema = extend_schema(
         404: NOT_FOUND_RESPONSE,
     },
 )
+
+payment_failed_schema = extend_schema(
+    tags=["Payments"],
+    summary="Mark Payment Failed",
+    description="Marks a payment as failed and refunds the deducted wallet balance.",
+    responses={
+        200: PaymentStatusUpdateResponseSerializer,
+        400: BAD_REQUEST_RESPONSE,
+        401: UNAUTHORIZED_RESPONSE,
+        404: NOT_FOUND_RESPONSE,
+    },
+)

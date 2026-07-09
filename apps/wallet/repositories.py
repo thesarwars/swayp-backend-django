@@ -42,13 +42,40 @@ class WalletTransactionRepository:
             .order_by("-created_at")
         )
     
-    @staticmethod
-    def get_by_payment(payment):
+    @classmethod
+    def get_by_payment(
+        cls,
+        payment,
+        *,
+        for_update=False,
+    ):
+        queryset = cls.get_queryset()
+
+        if for_update:
+            queryset = queryset.select_for_update()
+
         try:
-            return WalletTransaction.objects.get(
+            return queryset.get(
                 payment=payment,
             )
         except WalletTransaction.DoesNotExist:
             raise NotFoundException(
                 "Wallet transaction not found."
             )
+        
+
+    @staticmethod
+    def update_balance(
+        wallet,
+        balance,
+    ):
+        wallet.balance = balance
+
+        wallet.save(
+            update_fields=[
+                "balance",
+                "updated_at",
+            ]
+        )
+
+        return wallet

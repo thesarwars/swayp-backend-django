@@ -1,4 +1,6 @@
-from .models import PaymentTracking
+from apps.payment_tracking.models import (
+    PaymentTracking,
+)
 
 
 class PaymentTrackingRepository:
@@ -14,58 +16,80 @@ class PaymentTrackingRepository:
             )
         )
 
-    def list_by_user(self, user):
+    @classmethod
+    def list_by_user(
+        cls,
+        *,
+        user,
+    ):
         return (
-            self.get_queryset()
+            cls.get_queryset()
             .filter(
                 payment__user=user,
             )
             .order_by("-created_at")
         )
 
+    @classmethod
     def get_by_payment(
-        self,
+        cls,
         *,
         user,
         payment_id,
     ):
         return (
-            self.get_queryset()
+            cls.get_queryset()
             .filter(
-                payment_id=payment_id,
                 payment__user=user,
+                payment_id=payment_id,
             )
             .first()
         )
 
-    def create(self, **kwargs):
-        return PaymentTracking.objects.create(**kwargs)
+    @staticmethod
+    def create(**kwargs):
+        return PaymentTracking.objects.create(
+            **kwargs
+        )
 
-    def save(self, tracking):
-        tracking.save()
-        return tracking
-
-
+    @classmethod
     def get_by_payment_for_update(
-        self,
+        cls,
         *,
         payment,
     ):
         return (
-            PaymentTracking.objects
+            cls.get_queryset()
             .select_for_update()
             .get(
                 payment=payment,
             )
         )
 
-    def save(self, tracking):
+    @staticmethod
+    def update_status(
+        *,
+        tracking,
+        status,
+        estimated_completion=None,
+    ):
+        tracking.status = status
+
+        fields = [
+            "status",
+            "updated_at",
+        ]
+
+        if estimated_completion is not None:
+            tracking.estimated_completion = (
+                estimated_completion
+            )
+            fields.append(
+                "estimated_completion"
+            )
+
         tracking.save(
-            update_fields=[
-                "status",
-                "estimated_completion",
-                "updated_at",
-            ]
+            update_fields=fields,
         )
 
         return tracking

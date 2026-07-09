@@ -32,3 +32,12 @@ class Currency(models.TextChoices):
     BDT = "BDT", "Bangladeshi Taka"
     USD = "USD", "US Dollar"
     EUR = "EUR", "Euro"
+
+
+class TransactionType(models.TextChoices):
+    DEPOSIT = "DEPOSIT", "Deposit"
+    WITHDRAW = "WITHDRAW", "Withdraw"
+    PAYMENT = "PAYMENT", "Payment"
+    REFUND = "REFUND", "Refund"
+    CASHBACK = "CASHBACK", "Cashback"
+    REWARD = "REWARD", "Reward"

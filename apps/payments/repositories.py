@@ -1,9 +1,8 @@
-from apps.payments.models import Payment
-from django.db import transaction
-
-from apps.common.exceptions import NotFoundException
-from apps.providers.models import Provider
 from apps.bill_categories.models import BillCategory
+from apps.common.exceptions import NotFoundException
+from apps.payments.models import Payment
+from apps.providers.models import Provider
+
 
 class PaymentRepository:
 
@@ -12,13 +11,14 @@ class PaymentRepository:
         return (
             Payment.objects
             .select_related(
+                "user",
                 "provider",
                 "category",
             )
         )
 
-    @classmethod
-    def create(cls, **kwargs):
+    @staticmethod
+    def create(**kwargs):
         return Payment.objects.create(**kwargs)
 
     @classmethod
@@ -85,11 +85,65 @@ class PaymentRepository:
             .first()
         )
 
+    @classmethod
+    def get_for_update(
+        cls,
+        *,
+        payment_id,
+        user,
+    ):
+        try:
+            return (
+                cls.get_queryset()
+                .select_for_update()
+                .get(
+                    id=payment_id,
+                    user=user,
+                )
+            )
+        except Payment.DoesNotExist:
+            raise NotFoundException(
+                "Payment not found."
+            )
+
     @staticmethod
-    def save(payment):
-        payment.save()
+    def save(
+        payment,
+        *,
+        update_fields=None,
+    ):
+        payment.save(
+            update_fields=update_fields,
+        )
         return payment
-    
+
+    @staticmethod
+    def update_status(
+        *,
+        payment,
+        status,
+        provider_reference=None,
+    ):
+        payment.status = status
+
+        fields = [
+            "status",
+            "updated_at",
+        ]
+
+        if provider_reference is not None:
+            payment.provider_reference = (
+                provider_reference
+            )
+            fields.append(
+                "provider_reference"
+            )
+
+        payment.save(
+            update_fields=fields,
+        )
+
+        return payment
 
     @staticmethod
     def get_provider(provider_id):
@@ -114,46 +168,3 @@ class PaymentRepository:
             raise NotFoundException(
                 "Bill category not found."
             )
-
-    @staticmethod
-    def create(**kwargs):
-        return Payment.objects.create(**kwargs)
-    
-
-    @classmethod
-    def get_for_update(
-        cls,
-        *,
-        payment_id,
-        user,
-    ):
-        try:
-            return (
-                Payment.objects
-                .select_for_update()
-                .select_related(
-                    "user",
-                    "provider",
-                    "category",
-                )
-                .get(
-                    id=payment_id,
-                    user=user,
-                )
-            )
-        except Payment.DoesNotExist:
-            raise NotFoundException(
-                "Payment not found."
-            )
-
-    @staticmethod
-    def save(payment):
-        payment.save(
-            update_fields=[
-                "status",
-                "provider_reference",
-                "updated_at",
-            ]
-        )
-
-        return payment

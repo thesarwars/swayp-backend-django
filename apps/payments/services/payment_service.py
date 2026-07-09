@@ -7,6 +7,13 @@ from django.utils import timezone
 from apps.payment_tracking.repositories import (
     PaymentTrackingRepository,
 )
+
+from apps.common.enums import TransactionType
+
+from apps.payments.services.payment_state_service import (
+    PaymentStateService,
+)
+
 from django.db import transaction
 from apps.common.exceptions import(
     InsufficientBalanceException,
@@ -163,13 +170,15 @@ class PaymentService:
             user=user,
         )
 
-        if payment.status != PaymentStatus.PENDING:
-            raise BadRequestException(
-                "Only pending payments can be processed."
-            )
+        PaymentStateService.to_processing(
+        payment,
 
-        payment.status = PaymentStatus.PROCESSING
-        PaymentRepository.save(payment)
+        )
+
+        PaymentRepository.update_status(
+        payment=payment,
+        status=PaymentStatus.PROCESSING,
+        )
 
         tracking = (
             PaymentTrackingRepository()
@@ -178,13 +187,10 @@ class PaymentService:
             )
         )
 
-        tracking.status = PaymentStatus.PROCESSING
-        tracking.estimated_completion = (
-            timezone.now()
-        )
-
-        PaymentTrackingRepository().save(
-            tracking,
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.PROCESSING,
+            estimated_completion=timezone.now(),
         )
 
         Notification.objects.create(
@@ -209,18 +215,15 @@ class PaymentService:
             user=user,
         )
 
-        if payment.status != PaymentStatus.PROCESSING:
-            raise BadRequestException(
-                "Only processing payments can be completed."
-            )
-
-        payment.status = PaymentStatus.SUCCESSFUL
-        payment.provider_reference = (
-            uuid4().hex.upper()
+        PaymentStateService.to_success(
+            payment,
         )
 
-        PaymentRepository.save(payment)
-
+        PaymentRepository.update_status(
+            payment=payment,
+            status=PaymentStatus.SUCCESSFUL,
+            provider_reference=uuid4().hex.upper(),
+        )
         tracking = (
             PaymentTrackingRepository()
             .get_by_payment_for_update(
@@ -228,12 +231,9 @@ class PaymentService:
             )
         )
 
-        tracking.status = (
-            PaymentStatus.SUCCESSFUL
-        )
-
-        PaymentTrackingRepository().save(
-            tracking,
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.SUCCESSFUL,
         )
 
         wallet_transaction = (
@@ -260,6 +260,89 @@ class PaymentService:
                 f"Payment "
                 f"{payment.transaction_reference} "
                 f"completed successfully."
+            ),
+            type="PAYMENT",
+        )
+
+        return payment
+    
+
+    @transaction.atomic
+    def mark_failed(
+        self,
+        *,
+        user,
+        payment_id,
+    ):
+        payment = self.repository.get_for_update(
+            payment_id=payment_id,
+            user=user,
+        )
+
+        PaymentStateService.to_failed(
+            payment,
+        )
+
+        wallet = WalletRepository.get_by_user(
+            user,
+            for_update=True,
+        )
+
+        wallet_transaction = (
+            WalletTransactionRepository.get_by_payment(
+                payment,
+            )
+        )
+
+        balance_before = wallet.balance
+
+        WalletRepository.update_balance(
+            wallet,
+            wallet.balance + payment.total,
+        )
+
+        PaymentRepository.update_status(
+            payment=payment,
+            status=PaymentStatus.FAILED,
+        )
+
+        tracking = (
+            PaymentTrackingRepository
+            .get_by_payment_for_update(
+                payment=payment,
+            )
+        )
+
+        PaymentTrackingRepository.update_status(
+            tracking=tracking,
+            status=PaymentStatus.FAILED,
+        )
+
+        wallet_transaction.status = (
+            PaymentStatus.FAILED
+        )
+
+        wallet_transaction.balance_after = (
+            wallet.balance
+        )
+
+        wallet_transaction.save(
+            update_fields=[
+                "status",
+                "balance_after",
+                "updated_at",
+            ]
+        )
+
+        Notification.objects.create(
+            user=user,
+            title="Payment Failed",
+            message=(
+                f"Payment "
+                f"{payment.transaction_reference} "
+                f"failed. "
+                f"The deducted amount has been returned "
+                f"to your wallet."
             ),
             type="PAYMENT",
         )

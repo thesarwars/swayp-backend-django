@@ -29,3 +29,66 @@ class InsufficientBalanceException(BadRequestException):
 
     default_detail = "Insufficient wallet balance."
     default_code = "insufficient_balance"
+
+
+class InvalidPaymentStateException(BadRequestException):
+    default_message = "Invalid payment state transition."
+
+    def __init__(self, message=None):
+        super().__init__(message or self.default_message)
+
+
+class PaymentAlreadyRefundedException(
+    InvalidPaymentStateException
+):
+    default_message = (
+        "Payment has already been refunded."
+    )
+
+
+class PaymentAlreadyCompletedException(
+    InvalidPaymentStateException
+):
+    default_message = (
+        "Payment has already been completed."
+    )
+
+
+class PaymentAlreadyProcessingException(
+    InvalidPaymentStateException
+):
+    default_message = (
+        "Payment is already processing."
+    )
+
+
+class PaymentNotRefundableException(
+    InvalidPaymentStateException
+):
+    default_message = (
+        "Only successful payments can be refunded."
+    )
+
+
+class DuplicatePaymentException(
+    BadRequestException
+):
+    default_message = (
+        "Duplicate payment request."
+    )
+
+
+class ProviderUnavailableException(
+    BadRequestException
+):
+    default_message = (
+        "Payment provider is unavailable."
+    )
+
+
+class WalletFrozenException(
+    BadRequestException
+):
+    default_message = (
+        "Wallet is frozen."
+    )

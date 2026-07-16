@@ -10,3 +10,4 @@ staticfiles/
 htmlcov/
 .idea/
 .vscode/
+docs/

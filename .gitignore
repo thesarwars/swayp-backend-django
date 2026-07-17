@@ -11,3 +11,7 @@ htmlcov/
 .idea/
 .vscode/
 docs/
+
+# Tests are kept local, not pushed
+tests/
+.DS_Store

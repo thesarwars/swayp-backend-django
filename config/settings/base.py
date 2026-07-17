@@ -263,3 +263,12 @@ FIELD_ENCRYPTION_KEYS = env.list(
     "FIELD_ENCRYPTION_KEYS",
     default=[],
 )
+
+
+# Provider selection (E1-S4) — "mock" until each real provider's epic lands.
+# Real: Plaid / Stripe+Moov / Lob-PostGrid / Anthropic (BRD §5).
+BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
+MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
+DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
+CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
+LLM_PROVIDER = env("LLM_PROVIDER", default="mock")

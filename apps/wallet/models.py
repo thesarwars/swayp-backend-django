@@ -24,7 +24,7 @@ class Wallet(BaseModel):
     currency = models.CharField(
         max_length=10,
         choices=Currency.choices,
-        default=Currency.BDT,
+        default=Currency.USD,
     )
 
     reward_points = models.PositiveIntegerField(default=0)

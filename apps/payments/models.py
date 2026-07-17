@@ -45,7 +45,7 @@ class Payment(BaseModel):
     currency = models.CharField(
         max_length=10,
         choices=Currency.choices,
-        default=Currency.BDT,
+        default=Currency.USD,
     )
 
     status = models.CharField(

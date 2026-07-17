@@ -10,17 +10,25 @@ from apps.common.exceptions import (
 class PaymentStateMachine:
 
     TRANSITIONS = {
+        PaymentStatus.SCHEDULED: {
+            PaymentStatus.PENDING,
+            PaymentStatus.CANCELLED,
+        },
         PaymentStatus.PENDING: {
             PaymentStatus.PROCESSING,
+            PaymentStatus.CANCELLED,
         },
         PaymentStatus.PROCESSING: {
             PaymentStatus.SUCCESSFUL,
             PaymentStatus.FAILED,
+            PaymentStatus.CANCELLED,
         },
         PaymentStatus.SUCCESSFUL: {
             PaymentStatus.REFUNDED,
+            PaymentStatus.RETURNED,
         },
         PaymentStatus.FAILED: set(),
+        PaymentStatus.RETURNED: set(),
         PaymentStatus.REFUNDED: set(),
         PaymentStatus.CANCELLED: set(),
     }

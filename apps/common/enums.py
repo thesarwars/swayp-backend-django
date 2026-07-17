@@ -8,12 +8,14 @@ class WalletStatus(models.TextChoices):
 
 
 class PaymentStatus(models.TextChoices):
+    SCHEDULED = "SCHEDULED", "Scheduled"
     PENDING = "PENDING", "Pending"
     PROCESSING = "PROCESSING", "Processing"
     SUCCESSFUL = "SUCCESSFUL", "Successful"
     FAILED = "FAILED", "Failed"
     CANCELLED = "CANCELLED", "Cancelled"
     REFUNDED = "REFUNDED", "Refunded"
+    RETURNED = "RETURNED", "Returned"
 
 
 class NotificationType(models.TextChoices):
@@ -41,3 +43,73 @@ class TransactionType(models.TextChoices):
     REFUND = "REFUND", "Refund"
     CASHBACK = "CASHBACK", "Cashback"
     REWARD = "REWARD", "Reward"
+
+
+# --- Money-movement vocabulary (E1-S3) ---
+
+
+class PaymentRail(models.TextChoices):
+    ACH_STANDARD = "ACH_STANDARD", "ACH Standard"
+    ACH_SAMEDAY = "ACH_SAMEDAY", "ACH Same-Day"
+    NETWORK = "NETWORK", "Network"
+    CHECK = "CHECK", "Check"
+
+
+class PaymentProcessor(models.TextChoices):
+    # STRIPE = configured-account vendors, MOOV = ACH, LOB = checks (BRD §5).
+    # Dwolla / GoCardless / Stripe-Treasury are excluded on record.
+    MOCK = "MOCK", "Mock"
+    STRIPE = "STRIPE", "Stripe"
+    MOOV = "MOOV", "Moov"
+    LOB = "LOB", "Lob"
+
+
+class BillFrequency(models.TextChoices):
+    MONTHLY = "MONTHLY", "Monthly"
+    QUARTERLY = "QUARTERLY", "Quarterly"
+    WEEKLY = "WEEKLY", "Weekly"
+    ONE_TIME = "ONE_TIME", "One-time"
+
+
+class BillOccurrenceStatus(models.TextChoices):
+    UPCOMING = "UPCOMING", "Upcoming"
+    DUE = "DUE", "Due"
+    OVERDUE = "OVERDUE", "Overdue"
+    SCHEDULED = "SCHEDULED", "Scheduled"
+    PAID = "PAID", "Paid"
+
+
+class AutopayMode(models.TextChoices):
+    AUTO = "AUTO", "Auto-pay"
+    REMIND = "REMIND", "Remind me"
+
+
+class VendorPaymentMethodType(models.TextChoices):
+    NETWORK = "NETWORK", "Network"
+    ACH = "ACH", "ACH"
+    CHECK = "CHECK", "Check"
+
+
+class VendorSource(models.TextChoices):
+    DIRECTORY = "DIRECTORY", "Directory"
+    QR = "QR", "QR"
+    MANUAL = "MANUAL", "Manual"
+    IMPORT = "IMPORT", "Import"
+
+
+class BankAccountType(models.TextChoices):
+    CHECKING = "CHECKING", "Checking"
+    SAVINGS = "SAVINGS", "Savings"
+
+
+class PaymentStageStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    RUNNING = "RUNNING", "Running"
+    DONE = "DONE", "Done"
+    FAILED = "FAILED", "Failed"
+
+
+class ScanStatus(models.TextChoices):
+    RUNNING = "RUNNING", "Running"
+    DONE = "DONE", "Done"
+    FAILED = "FAILED", "Failed"

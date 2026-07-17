@@ -229,3 +229,29 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+
+# Celery (E1-S1)
+# Broker/backend read from env; beat pinned to US Eastern so daily money
+# jobs (autopay, status rolls, cutoffs) fire on the correct calendar day.
+
+CELERY_BROKER_URL = env(
+    "REDIS_URL",
+    default="redis://localhost:6379/0",
+)
+
+CELERY_RESULT_BACKEND = env(
+    "REDIS_URL",
+    default="redis://localhost:6379/0",
+)
+
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+
+CELERY_TIMEZONE = "America/New_York"
+CELERY_ENABLE_UTC = True
+
+# Beat schedule scaffold — later epics register jobs here
+# (send_otp, sync_transactions, autopay_scheduler, bill_status_refresher…).
+CELERY_BEAT_SCHEDULE = {}

@@ -255,3 +255,11 @@ CELERY_ENABLE_UTC = True
 # Beat schedule scaffold — later epics register jobs here
 # (send_otp, sync_transactions, autopay_scheduler, bill_status_refresher…).
 CELERY_BEAT_SCHEDULE = {}
+
+
+# Field-level encryption (E1-S6) — provider secrets ONLY (never bank numbers).
+# Comma-separated Fernet keys; the first encrypts, all decrypt (rotation).
+FIELD_ENCRYPTION_KEYS = env.list(
+    "FIELD_ENCRYPTION_KEYS",
+    default=[],
+)

@@ -10,7 +10,7 @@ staticfiles/
 htmlcov/
 .idea/
 .vscode/
-docs/
+# docs/
 
 # Tests are kept local, not pushed
 tests/

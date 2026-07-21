@@ -74,6 +74,8 @@ class User(
     phone_number = models.CharField(
         max_length=20,
         unique=True,
+        null=True,
+        blank=True,
         db_index=True,
     )
 
@@ -85,10 +87,7 @@ class User(
         default=False,
     )
 
-    is_verified = models.BooleanField(
-        default=False,
-    )
-
+    is_verified = models.BooleanField(default=False,)
     failed_login_attempts = models.PositiveIntegerField(
         default=0,
     )

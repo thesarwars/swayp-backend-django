@@ -23,11 +23,8 @@ class RegisterSerializer(serializers.Serializer):
     )
 
     address = serializers.CharField()
-
     email = serializers.EmailField()
-
     phone_number = PhoneNumberField()
-
     password = serializers.CharField(
         write_only=True,
         min_length=12,

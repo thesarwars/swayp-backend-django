@@ -24,19 +24,14 @@ class RegistrationService:
 
         password = validated_data.pop("password")
         validated_data.pop("confirm_password")
-
         account_type = validated_data.pop("account_type")
-
         full_name = validated_data.pop("full_name")
         address = validated_data.pop("address")
-
         business_name = validated_data.pop("business_name", "")
         poc_name = validated_data.pop("poc_name", "")
         billing_address = validated_data.pop("billing_address")
-
         email = validated_data.pop("email")
         phone_number = validated_data.pop("phone_number")
-
         user = User.objects.create_user(
             email=email,
             phone_number=phone_number,

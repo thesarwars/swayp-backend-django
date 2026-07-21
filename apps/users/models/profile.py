@@ -25,7 +25,7 @@ class Profile(BaseModel):
         max_length=255,
     )
 
-    address = models.TextField()
+    address = models.TextField(blank=True, null=True)
 
     class Meta:
         db_table = "profiles"

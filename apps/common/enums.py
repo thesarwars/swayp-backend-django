@@ -113,3 +113,8 @@ class ScanStatus(models.TextChoices):
     RUNNING = "RUNNING", "Running"
     DONE = "DONE", "Done"
     FAILED = "FAILED", "Failed"
+
+
+class VendorStatus(models.TextChoices):
+    ACTIVE="ACTIVE","Active"
+    INACTIVE="INACTIVE","Inactive"

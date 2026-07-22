@@ -1,10 +1,10 @@
 from django.conf import settings
 from django.db import models
-
 from apps.common.models import BaseModel
 from apps.bill_categories.models import BillCategory
+from apps.users.models.user import User
 
-from .constants import VendorSource, VendorStatus
+from apps.common.enums import VendorSource, VendorStatus
 
 
 class Vendor(BaseModel):
@@ -14,26 +14,14 @@ class Vendor(BaseModel):
     One Provider can be saved by many users as Vendor.
     """
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="vendors"
-    )
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="vendors")
 
     name = models.CharField(
         max_length=150
     )
 
-    category = models.ForeignKey(
-        BillCategory,
-        on_delete=models.PROTECT,
-        related_name="vendors"
-    )
-
-    logo = models.URLField(
-        max_length=500,
-        blank=True
-    )
+    category = models.ForeignKey(BillCategory,on_delete=models.PROTECT,related_name="vendors")
+    logo = models.URLField(max_length=500,blank=True)
 
     business_type = models.CharField(
         max_length=100,

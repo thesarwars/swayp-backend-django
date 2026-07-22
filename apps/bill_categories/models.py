@@ -13,7 +13,6 @@ class BillCategory(BaseModel):
     is_active = models.BooleanField(default=True)
 
    
-
     class Meta:
         db_table = "bill_categories"
         ordering = ["display_order", "name"]

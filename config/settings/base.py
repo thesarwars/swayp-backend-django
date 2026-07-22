@@ -92,7 +92,8 @@ LOCAL_APPS = [
     "apps.providers",
     "apps.payments",
     "apps.dashboard",
-    "apps.payment_tracking"
+    "apps.payment_tracking",
+    "apps.vendors",
 ]
 
 INSTALLED_APPS = (

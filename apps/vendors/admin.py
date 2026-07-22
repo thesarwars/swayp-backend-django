@@ -81,10 +81,7 @@ class VendorPaymentMethodAdmin(admin.ModelAdmin):
         "is_primary",
     )
 
-    search_fields = (
-        "vendor__name",
-    )
-
+    search_fields = ("vendor__name",)
     readonly_fields = (
         "masked_account",
     )

@@ -1,11 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from apps.common.enums import BankAccountType, VendorPaymentMethodType
 from apps.common.models import BaseModel
-from .constants import (
-    VendorPaymentMethodType,
-    BankAccountType,
-)
 from .vendor import Vendor
 
 
@@ -45,7 +42,7 @@ class VendorPaymentMethod(BaseModel):
     state = models.CharField(max_length=2,blank=True)
     zip_code = models.CharField(max_length=10,blank=True)
     check_memo = models.CharField(max_length=100,blank=True)
-
+ 
     class Meta:
         db_table = "vendor_payment_methods"
 
@@ -55,7 +52,7 @@ class VendorPaymentMethod(BaseModel):
                 condition=Q(is_primary=True),
                 name="one_primary_method_per_vendor"
             )
-        ]
+        ] 
 
     def clean(self):
         """

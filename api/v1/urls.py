@@ -37,4 +37,7 @@ urlpatterns = [
         "payment-tracking/",
         include("apps.payment_tracking.urls"),
     ),
+    path(
+        "vendors/",include("apps.vendors.urls")
+    ),
 ]

@@ -1,56 +1,95 @@
+from django.conf import settings
 from django.db import models
-from django.contrib.auth.models import User
+
 from apps.common.models import BaseModel
-# Create your models here.
+from apps.bill_categories.models import BillCategory
+
+from .constants import VendorSource, VendorStatus
 
 
 class Vendor(BaseModel):
-    class PaymentMethod(models.TextChoices):
-        STRIPE = 'STRIPE', 'Stripe Bill Pay Network'
-        ACH = 'ACH', 'ACH Bank Transfer'
-        CHECK = 'CHECK', 'Physical Check'
+    """
+    User owned payee.
 
-    class ChoiceVendorMethod(models.TextChoices):
-        STRIPE_SEARCH = 'STRIPE_SEARCH', 'Search Stripe Directory'
-        QR_CODE = 'QR_CODE', 'Scan Vendor QR Code'
-        MANUAL = 'MANUAL', 'Enter Manually'
+    One Provider can be saved by many users as Vendor.
+    """
 
-    class Status(models.TextChoices):
-        DRAFT = "DRAFT", "Draft"
-        ACTIVE = "ACTIVE", "Active"
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="vendors"
+    )
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='vendors')
-    # basic vendor information
-    name = models.CharField(max_length=255)
-    business_type = models.CharField(max_length=100)
-    delivery_speed = models.CharField(max_length=100,blank=True, null=True)
-    
-    # payment and dashboard overview fields
-    payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices, default=PaymentMethod.STRIPE)
-    choicevendor_method = models.CharField(max_length=20, choices=ChoiceVendorMethod.choices, default=ChoiceVendorMethod.MANUAL)
+    name = models.CharField(
+        max_length=150
+    )
 
-    # if vendor is added via Stripe
-    stripe_vendor_id = models.CharField(max_length=255, blank=True, null=True)
-    account_number_ref = models.CharField(max_length=100, blank=True, null=True)
-    is_verified = models.BooleanField(default=False)
+    category = models.ForeignKey(
+        BillCategory,
+        on_delete=models.PROTECT,
+        related_name="vendors"
+    )
 
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    logo = models.URLField(
+        max_length=500,
+        blank=True
+    )
+
+    business_type = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    notes = models.TextField(
+        blank=True
+    )
+
+    source = models.CharField(
+        max_length=20,
+        choices=VendorSource.choices,
+        default=VendorSource.MANUAL
+    )
+
+    status = models.CharField(
+        max_length=20,
+        choices=VendorStatus.choices,
+        default=VendorStatus.ACTIVE
+    )
+
+    directory_payee_id = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    directory_verified = models.BooleanField(
+        default=False
+    )
+
+    late_fee_amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    late_fee_grace_days = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        db_table = "vendors"
+
+        ordering = [
+            "name"
+        ]
+
+        indexes = [
+            models.Index(fields=["user"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["name"]),
+        ]
 
     def __str__(self):
-        return f"{self.name} ({self.payment_method})"
-
-
-class VendorBankDetail(BaseModel):
-    class AccountType(models.TextChoices):
-        CHECKING = 'CHECKING', 'Checking'
-        SAVINGS = 'SAVINGS', 'Savings'
-
-    vendor = models.OneToOneField(Vendor, on_delete=models.CASCADE, related_name='bank_details')
-    
-    routing_number = models.CharField(max_length=50)
-    account_number = models.CharField(max_length=50)
-    account_type = models.CharField(max_length=20, choices=AccountType.choices, default=AccountType.CHECKING)
-    account_holder_name = models.CharField(max_length=255)
-
-    def __str__(self):
-        return f"Bank for {self.vendor.name}"
+        return self.name

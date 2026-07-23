@@ -1,0 +1,88 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: swayp-db
+    environment:
+      POSTGRES_DB: swayp_db
+      POSTGRES_USER: swayp
+      POSTGRES_PASSWORD: swayp123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U swayp -d swayp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: swayp-redis
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    container_name: swayp-web
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      POSTGRES_DB: swayp_db
+      POSTGRES_USER: swayp
+      POSTGRES_PASSWORD: swayp123
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery-worker:
+    build: .
+    container_name: swayp-celery-worker
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      POSTGRES_DB: swayp_db
+      POSTGRES_USER: swayp
+      POSTGRES_PASSWORD: swayp123
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery-beat:
+    build: .
+    container_name: swayp-celery-beat
+    command: celery -A config beat -l info
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      POSTGRES_DB: swayp_db
+      POSTGRES_USER: swayp
+      POSTGRES_PASSWORD: swayp123
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+volumes:
+  postgres_data:

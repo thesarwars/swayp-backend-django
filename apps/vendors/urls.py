@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.vendors.api.views.qr_views import QRDecodeAPIView
 from apps.vendors.api.views.vendor_view import (
     VendorListCreateAPIView,
     VendorDetailAPIView,
@@ -25,5 +26,7 @@ urlpatterns = [
     path("<uuid:vendor_id>/payment-methods/<uuid:method_id>/set-primary/",SetPrimaryPaymentMethodAPIView.as_view(),name="vendor-payment-method-set-primary"),
     # Provider Directory Search
     path("directory-search/",ProviderDirectorySearchAPIView.as_view(),name="provider-directory-search"),
+
+    path("qr/decode/",QRDecodeAPIView.as_view(),name="vendor-qr-decode",),
 
 ]

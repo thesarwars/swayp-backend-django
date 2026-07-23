@@ -5,6 +5,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import OTP, OTPPurpose
+from apps.authentication.services.email_services import EmailService
 from apps.authentication.utils.otp import OTPService
 from apps.users.models import (
     AccountType,
@@ -67,8 +68,9 @@ class RegistrationService:
             expires_at=timezone.now() + timedelta(minutes=5),
         )
 
-        # TODO:
-        # Send OTP via email/SMS using Celery
-        print(f"Registration OTP: {otp}")
+        try:
+            EmailService.send_registration_otp(email, otp)
+        except Exception:
+            print(f"Registration OTP: {otp}")
 
         return user

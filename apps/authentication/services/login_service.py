@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import OTP, OTPPurpose
+from apps.authentication.services.email_services import EmailService
 from apps.authentication.utils.otp import OTPService
 
 
@@ -28,5 +29,7 @@ class LoginService:
             expires_at=timezone.now() + timedelta(minutes=5),
         )
 
-        # TODO: Send OTP using Email/SMS
-        print(f"Login OTP: {otp}")
+        try:
+            EmailService.send_otp_email(user.email, otp, purpose="login")
+        except Exception:
+            print(f"Login OTP: {otp}")

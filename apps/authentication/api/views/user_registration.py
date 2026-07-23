@@ -43,6 +43,8 @@ from apps.authentication.services.verify_otp_service import (
         )
     ],
 )
+
+
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 

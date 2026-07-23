@@ -232,6 +232,15 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
+EMAIL_HOST = env("EMAIL_HOST", default="smtp.hostinger.com")
+EMAIL_PORT = int(env("EMAIL_PORT", default="465"))
+EMAIL_USE_TLS = env("EMAIL_USE_TLS", default="False").lower() in {"1", "true", "yes", "on"}
+EMAIL_USE_SSL = env("EMAIL_USE_SSL", default="True").lower() in {"1", "true", "yes", "on"}
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="noreply@getswayp.com")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@getswayp.com")
+SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
 
 # Celery (E1-S1)
 # Broker/backend read from env; beat pinned to US Eastern so daily money

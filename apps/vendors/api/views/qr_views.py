@@ -12,14 +12,12 @@ from apps.vendors.services.qr_decoder import QRDecodeService
 class QRDecodeAPIView(APIView):
     """
     POST /vendors/qr/decode/
-
     Accepts:
 
     1. JSON
     {
         "payload": "..."
     }
-
     2. multipart/form-data
     image=<qr image>
     """

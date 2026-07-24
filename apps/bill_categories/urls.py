@@ -1,11 +1,9 @@
 from django.urls import path
 
-from .views import BillCategoryListAPIView
+from apps.bill_categories.views.bill import BillCreateAPIView
 
 urlpatterns = [
     path(
-        "",
-        BillCategoryListAPIView.as_view(),
-        name="bill-category-list",
+        "",BillCreateAPIView.as_view(),name="bill-create",
     ),
 ]

@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.db import models
 from apps.common.models import BaseModel
-from apps.bill_categories.models import BillCategory
+from apps.bill_categories.models.bill_category import BillCategory
 from apps.users.models.user import User
 
 from apps.common.enums import VendorSource, VendorStatus

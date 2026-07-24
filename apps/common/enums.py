@@ -118,3 +118,14 @@ class ScanStatus(models.TextChoices):
 class VendorStatus(models.TextChoices):
     ACTIVE="ACTIVE","Active"
     INACTIVE="INACTIVE","Inactive"
+
+# new added
+class BillType(models.TextChoices):
+    FIXED = "FIXED", "Fixed"
+    VARIABLE = "VARIABLE", "Variable"
+
+
+class BillSource(models.TextChoices):
+    MANUAL = "MANUAL", "Manual"
+    QR = "QR", "QR Scan"
+    DETECTED = "DETECTED", "Detected"

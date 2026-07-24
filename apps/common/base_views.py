@@ -6,11 +6,7 @@ from .mixins import (
 )
 
 
-class BaseAPIView(
-    AuthenticatedAPIViewMixin,
-    ServiceMixin,
-    APIView,
-):
+class BaseAPIView(AuthenticatedAPIViewMixin,ServiceMixin,APIView):
     """
     Base view for authenticated APIs.
 

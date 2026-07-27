@@ -14,14 +14,19 @@ class BillOccurrence(BaseModel):
     due_date = models.DateField()
     amount = models.DecimalField(max_digits=18,decimal_places=2)
     status = models.CharField(max_length=20,choices=BillOccurrenceStatus.choices,default=BillOccurrenceStatus.UPCOMING)
-
+    paid_at = models.DateTimeField(null=True,blank=True)
+    payment_reference = models.CharField(max_length=255,blank=True)
+    failure_reason = models.TextField(blank=True)
     class Meta:
         db_table = "bill_occurrences"
         ordering = ["due_date"]
 
         constraints = [
             models.UniqueConstraint(fields=["bill", "due_date"],name="uniq_occurrence_per_due_date"),
-            models.CheckConstraint(check=models.Q(amount__gt=0),name="occurrence_amount_positive"),
+            models.CheckConstraint(
+    condition=models.Q(amount__gt=0),
+    name="occurrence_amount_positive",
+)
         ]
 
         indexes = [

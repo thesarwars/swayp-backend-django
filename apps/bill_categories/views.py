@@ -19,6 +19,4 @@ class BillCategoryListAPIView(BaseAPIView):
             many=True,
         )
 
-        return ApiResponse.success(
-            data=serializer.data
-        )
+        return ApiResponse.success(data=serializer.data)

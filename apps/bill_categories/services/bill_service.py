@@ -1,9 +1,10 @@
+from rest_framework.exceptions import ValidationError
+
 from apps.bill_categories.selectors.bill_category_selector import (
     BillCategorySelector,
 )
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-
 from apps.bill_categories.models import BillCategory
 from apps.bill_categories.models.bill import Bill
 from apps.vendors.models import Vendor, VendorPaymentMethod
@@ -36,7 +37,6 @@ class BillService:
         )
 
         payment_method = None
-
         payment_method_id = validated_data.get("payment_method")
 
         if payment_method_id:
@@ -61,3 +61,77 @@ class BillService:
         )
 
         return bill
+
+    
+    def get_bill(self, bill_id, user):
+        bill = self.selector.get_bill(
+            bill_id=bill_id,
+            user=user,
+        )
+
+        if not bill:
+            raise ValidationError(
+                {"bill": "Bill not found."}
+            )
+
+        return bill
+
+
+    def update_bill(self, bill_id, user, validated_data):
+        bill = self.get_bill(
+            bill_id=bill_id,
+            user=user,
+        )
+
+        if "category" in validated_data:
+            bill.category = BillCategory.objects.get(
+                id=validated_data["category"]
+            )
+
+        if "payment_method" in validated_data:
+            payment_method_id = validated_data["payment_method"]
+
+            if payment_method_id is None:
+                bill.payment_method = None
+            else:
+                payment_method = VendorPaymentMethod.objects.filter(
+                    id=payment_method_id,
+                    vendor=bill.vendor,
+                ).first()
+
+                if not payment_method:
+                    raise ValidationError(
+                        {
+                            "payment_method": "Invalid payment method."
+                        }
+                    )
+
+                bill.payment_method = payment_method
+
+        for field in (
+            "bill_type",
+            "amount",
+            "frequency",
+            "anchor_date",
+            "autopay_mode",
+            "source",
+            "notes",
+        ):
+            if field in validated_data:
+                setattr(
+                    bill,
+                    field,
+                    validated_data[field],
+                )
+
+        bill.full_clean()
+        bill.save()
+
+        return bill
+
+    def delete_bill(self, bill_id, user):
+        bill = self.get_bill(bill_id=bill_id,user=user)
+
+        bill.delete()
+
+        return True

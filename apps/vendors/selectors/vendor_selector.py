@@ -195,6 +195,25 @@ class VendorSelector:
         )
 
     @staticmethod
+    def recent_occurrences(vendor, limit=5):
+        """The vendor's bills as occurrences with a read-time status chip.
+
+        Powers the embedded bills list on the vendor detail (829:3866) —
+        nearest due first, computed status (Overdue/Due/Upcoming/Paid…).
+        """
+        from apps.bills.models.bill_occurrence import BillOccurrence
+        from apps.bills.selectors.occurrence_status import annotate_status
+
+        queryset = annotate_status(
+            BillOccurrence.objects.filter(
+                bill__vendor=vendor,
+                bill__deleted_at__isnull=True,
+            ).select_related("bill", "bill__category")
+        ).order_by("due_date")
+
+        return list(queryset[:limit])
+
+    @staticmethod
     def next_bill(vendor, today=None):
         """The vendor's nearest unsettled occurrence, or None."""
         from apps.bills.models.bill_occurrence import BillOccurrence

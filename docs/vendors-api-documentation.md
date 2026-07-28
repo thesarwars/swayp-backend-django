@@ -1,4 +1,4 @@
-# Vendors API Documentation
+ # Vendors API Documentation
 
 This document covers the vendor-related APIs under the vendors module.
 

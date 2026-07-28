@@ -9,6 +9,13 @@ class OTPPurpose(models.TextChoices):
     RESET_PASSWORD = "RESET_PASSWORD", "Reset Password"
 
 
+class OTPChannel(models.TextChoices):
+    # Reserved. The SMS OTP screens are designed, but SMS delivery is deferred
+    # this release (BRD §1.2) — requesting it is rejected, never a silent no-op.
+    SMS = "SMS", "SMS"
+    EMAIL = "EMAIL", "Email"
+
+
 class OTP(BaseModel):
 
     user = models.ForeignKey(
@@ -35,6 +42,12 @@ class OTP(BaseModel):
 
     attempts = models.PositiveSmallIntegerField(
         default=0,
+    )
+
+    channel = models.CharField(
+        max_length=10,
+        choices=OTPChannel.choices,
+        default=OTPChannel.EMAIL,
     )
 
     class Meta:

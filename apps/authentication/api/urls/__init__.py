@@ -1,5 +1,6 @@
 from .otp import urlpatterns as otp_urls
 from .password_reset import urlpatterns as password_reset_urls
+from .phone_login import urlpatterns as phone_login_urls
 from .token import urlpatterns as token_urls
 from .user_login import urlpatterns as user_login_urls
 from .user_registration import urlpatterns as user_registration_urls
@@ -7,6 +8,7 @@ from .user_registration import urlpatterns as user_registration_urls
 urlpatterns = [
     *user_registration_urls,
     *user_login_urls,
+    *phone_login_urls,
     *otp_urls,
     *token_urls,
     *password_reset_urls,

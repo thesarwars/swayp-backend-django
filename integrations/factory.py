@@ -11,6 +11,8 @@ from integrations.bank_data.mock import MockBankDataProvider
 from integrations.check_mail.mock import MockCheckMailProvider
 from integrations.directory.mock import MockDirectoryProvider
 from integrations.llm.mock import MockLLMProvider
+from integrations.messaging.django_email import DjangoEmailMessagingProvider
+from integrations.messaging.mock import MockMessagingProvider
 from integrations.money_movement.mock import MockMoneyMovementProvider
 
 _REGISTRY = {
@@ -19,6 +21,10 @@ _REGISTRY = {
     "directory": {"mock": MockDirectoryProvider},
     "check_mail": {"mock": MockCheckMailProvider},
     "llm": {"mock": MockLLMProvider},
+    "messaging": {
+        "mock": MockMessagingProvider,
+        "django_email": DjangoEmailMessagingProvider,
+    },
 }
 
 _SETTING = {
@@ -27,6 +33,7 @@ _SETTING = {
     "directory": "DIRECTORY_PROVIDER",
     "check_mail": "CHECK_MAIL_PROVIDER",
     "llm": "LLM_PROVIDER",
+    "messaging": "MESSAGING_PROVIDER",
 }
 
 
@@ -60,3 +67,7 @@ def get_check_mail_provider():
 
 def get_llm_provider():
     return _resolve("llm")
+
+
+def get_messaging_provider():
+    return _resolve("messaging")

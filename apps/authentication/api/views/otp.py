@@ -4,9 +4,8 @@ from drf_spectacular.utils import (
     extend_schema,
 )
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.otp import (
     ResendOTPSerializer,
@@ -35,8 +34,7 @@ from apps.authentication.services.resend_otp_service import (
         )
     ],
 )
-class ResendOTPView(APIView):
-    permission_classes = [AllowAny]
+class ResendOTPView(PublicAPIView):
 
     def post(self, request):
         serializer = ResendOTPSerializer(
@@ -48,6 +46,7 @@ class ResendOTPView(APIView):
         ResendOTPService.resend(
             serializer.validated_data["user"],
             serializer.validated_data["purpose"],
+            channel=serializer.validated_data.get("channel"),
         )
 
         return Response(

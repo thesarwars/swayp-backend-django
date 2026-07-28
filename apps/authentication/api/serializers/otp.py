@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from apps.authentication.models import OTPPurpose
+from apps.authentication.models import OTPChannel, OTPPurpose
 
 User = get_user_model()
 
@@ -11,6 +11,14 @@ class ResendOTPSerializer(serializers.Serializer):
 
     purpose = serializers.ChoiceField(
         choices=OTPPurpose.choices
+    )
+
+    # Accepted so the SMS screens can be built, but validated to EMAIL by the
+    # service — SMS is deferred this release (E2-S1).
+    channel = serializers.ChoiceField(
+        choices=OTPChannel.choices,
+        required=False,
+        default=OTPChannel.EMAIL,
     )
 
     def validate(self, attrs):

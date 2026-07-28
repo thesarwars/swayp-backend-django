@@ -2,6 +2,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authentication.models import OTP, OTPPurpose
+from apps.authentication.services.password_history_service import (
+    PasswordHistoryService,
+)
 
 
 class ResetPasswordService:
@@ -37,10 +40,18 @@ class ResetPasswordService:
         ):
             raise Exception("Invalid OTP.")
 
+        account = otp_obj.user
+
+        # Reject reuse before the OTP is consumed, so a rejected attempt does
+        # not force the user to request a fresh code (E2-S4).
+        history = PasswordHistoryService()
+        history.assert_not_reused(user=account, raw_password=password)
+
         otp_obj.used_at = timezone.now()
         otp_obj.save(update_fields=["used_at"])
 
-        account = otp_obj.user
+        # Record the outgoing hash before overwriting it.
+        history.record(user=account)
 
         account.set_password(password)
         account.save(update_fields=["password"])

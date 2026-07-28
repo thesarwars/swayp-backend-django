@@ -25,6 +25,24 @@ class ForbiddenException(APIException):
     default_detail = "Permission denied."
     default_code = "forbidden"
 
+
+class OTPThrottledException(APIException):
+    """OTP resend rate limit (E2-S2). Carries a Retry-After header."""
+
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    default_detail = "Too many OTP requests. Please wait before retrying."
+    default_code = "otp_throttled"
+
+    def __init__(self, detail=None, retry_after=None):
+        self.retry_after = retry_after
+
+        if detail is None and retry_after:
+            detail = (
+                f"Too many OTP requests. Try again in {retry_after} seconds."
+            )
+
+        super().__init__(detail)
+
 class InsufficientBalanceException(BadRequestException):
 
     default_detail = "Insufficient wallet balance."

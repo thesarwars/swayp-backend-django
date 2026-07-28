@@ -1,4 +1,4 @@
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
 
 class AuthenticatedAPIViewMixin:
@@ -8,6 +8,20 @@ class AuthenticatedAPIViewMixin:
     """
 
     permission_classes = [IsAuthenticated]
+
+
+class PublicAPIViewMixin:
+    """
+    Unauthenticated entry points (register, login, password reset).
+
+    authentication_classes is emptied as well as opening permissions: leaving
+    JWT authentication on would reject a request carrying a stale token before
+    the view ever ran, which is wrong for endpoints meant to be reachable
+    without one.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
 
 class ServiceMixin:

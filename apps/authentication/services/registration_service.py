@@ -1,12 +1,10 @@
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from django.utils import timezone
 
-from apps.authentication.models import OTP, OTPPurpose
-from apps.authentication.services.email_services import EmailService
-from apps.authentication.utils.otp import OTPService
+from apps.authentication.models import OTPPurpose
+from apps.authentication.services.otp_delivery_service import (
+    OTPDeliveryService,
+)
 from apps.users.models import (
     AccountType,
     BusinessProfile,
@@ -59,18 +57,9 @@ class RegistrationService:
                 billing_address=billing_address,
             )
 
-        otp = OTPService.generate_otp()
-
-        OTP.objects.create(
+        OTPDeliveryService().issue(
             user=user,
-            code_hash=OTPService.hash_otp(otp),
             purpose=OTPPurpose.REGISTRATION,
-            expires_at=timezone.now() + timedelta(minutes=5),
         )
-
-        try:
-            EmailService.send_registration_otp(email, otp)
-        except Exception:
-            print(f"Registration OTP: {otp}")
 
         return user

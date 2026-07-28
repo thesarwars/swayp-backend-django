@@ -4,9 +4,8 @@ from drf_spectacular.utils import (
     extend_schema,
 )
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.token import (
     LogoutSerializer,
@@ -38,8 +37,7 @@ from apps.authentication.services.refresh_token_service import (
         )
     ],
 )
-class RefreshView(APIView):
-    permission_classes = [AllowAny]
+class RefreshView(PublicAPIView):
 
     def post(self, request):
         serializer = RefreshSerializer(
@@ -78,8 +76,7 @@ class RefreshView(APIView):
         )
     ],
 )
-class LogoutView(APIView):
-    permission_classes = [AllowAny]
+class LogoutView(PublicAPIView):
 
     def post(self, request):
         serializer = LogoutSerializer(

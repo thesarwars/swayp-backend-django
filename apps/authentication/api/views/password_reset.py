@@ -3,9 +3,8 @@ from drf_spectacular.utils import (
     OpenApiResponse,
     extend_schema,
 )
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.password_reset import (
     ForgotPasswordSerializer,
@@ -37,8 +36,7 @@ from apps.authentication.services.reset_password_service import (
         )
     ],
 )
-class ForgotPasswordView(APIView):
-    permission_classes = [AllowAny]
+class ForgotPasswordView(PublicAPIView):
 
     def post(self, request):
         serializer = ForgotPasswordSerializer(
@@ -80,8 +78,7 @@ class ForgotPasswordView(APIView):
         )
     ],
 )
-class ResetPasswordView(APIView):
-    permission_classes = [AllowAny]
+class ResetPasswordView(PublicAPIView):
 
     def post(self, request):
         serializer = ResetPasswordSerializer(

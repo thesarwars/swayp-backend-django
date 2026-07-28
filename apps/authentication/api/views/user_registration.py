@@ -4,9 +4,8 @@ from drf_spectacular.utils import (
     extend_schema,
 )
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.user_registration import (
     RegisterSerializer,
@@ -45,8 +44,7 @@ from apps.authentication.services.verify_otp_service import (
 )
 
 
-class RegisterView(APIView):
-    permission_classes = [AllowAny]
+class RegisterView(PublicAPIView):
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)
@@ -83,8 +81,7 @@ class RegisterView(APIView):
         )
     ],
 )
-class VerifyOTPView(APIView):
-    permission_classes = [AllowAny]
+class VerifyOTPView(PublicAPIView):
 
     def post(self, request):
         serializer = VerifyOTPSerializer(data=request.data)

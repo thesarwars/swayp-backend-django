@@ -89,15 +89,14 @@ LOCAL_APPS = [
     "apps.common",
     "apps.notifications",
     "apps.audit",
-    "apps.wallet",
     "apps.bill_categories",
     "apps.banking",
     "apps.bills",
     "apps.providers",
     "apps.payments",
     "apps.dashboard",
-    "apps.payment_tracking",
     "apps.vendors",
+    "apps.webhooks",
 ]
 
 INSTALLED_APPS = (
@@ -287,6 +286,32 @@ CELERY_BEAT_SCHEDULE = {
         "task": "bills.generate_occurrences",
         "schedule": crontab(hour=3, minute=0),
     },
+    # E6-S9. Runs after occurrences exist so today's bills are visible,
+    # and early enough that an ACH lead time still lands on the due date.
+    "payments-autopay-scheduler": {
+        "task": "payments.autopay_scheduler",
+        "schedule": crontab(hour=4, minute=0),
+    },
+    # E6-S2: future-dated sends whose date has arrived.
+    "payments-release-scheduled": {
+        "task": "payments.release_scheduled_payments",
+        "schedule": crontab(hour=4, minute=30),
+    },
+    # E6-S7: hourly sweep for payments the processor never reported on.
+    "payments-reconcile": {
+        "task": "payments.reconcile_payments",
+        "schedule": crontab(minute=15),
+    },
+}
+
+# Per-processor webhook signing secrets (E6-S8). A processor with no
+# secret configured is refused rather than trusted.
+WEBHOOK_SECRETS = {
+    "MOOV": env("MOOV_WEBHOOK_SECRET", default=""),
+    "STRIPE": env("STRIPE_WEBHOOK_SECRET", default=""),
+    "LOB": env("LOB_WEBHOOK_SECRET", default=""),
+    "PLAID": env("PLAID_WEBHOOK_SECRET", default=""),
+    "MOCK": env("MOCK_WEBHOOK_SECRET", default="mock-webhook-secret"),
 }
 
 

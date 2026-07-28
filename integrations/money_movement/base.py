@@ -55,6 +55,11 @@ class ProcessorResult:
     status: str
     stages: tuple[StageEvent, ...] = field(default_factory=tuple)
     estimated_arrival: Optional[date] = None
+    # Populated on failure. failure_detail carries whatever the processor can
+    # tell us — for NSF that includes the balance at the time of the attempt,
+    # which the resolution screen shows the user (E6-S6).
+    failure_reason: str = ""
+    failure_detail: dict = field(default_factory=dict)
 
 
 class MoneyMovementProvider(ABC):
@@ -73,3 +78,17 @@ class MoneyMovementProvider(ABC):
     @abstractmethod
     def execute(self, transfer: TransferRequest) -> ProcessorResult:
         """Move money; emit ordered stage events."""
+
+    def lookup(self, *, idempotency_key: str) -> Optional[ProcessorResult]:
+        """Outcome of a previous attempt, or None if the key is unknown.
+
+        The recovery path for an ambiguous failure: a worker that died after
+        submitting must be able to learn what happened instead of re-sending.
+        Providers that cannot support this return None, and the payment is
+        left for a human.
+        """
+        return None
+
+    def void(self, *, reference: str) -> bool:
+        """Cancel a submitted transfer, if the processor still can."""
+        return False

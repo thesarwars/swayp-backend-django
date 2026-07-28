@@ -6,8 +6,6 @@ urlpatterns = [
         include("apps.authentication.api.urls"),
     ),
 
-    path("wallet/", include("apps.wallet.urls")),
-
     path(
         "bill-categories/",
         include("apps.bill_categories.urls"),
@@ -38,12 +36,8 @@ urlpatterns = [
 
     path(
         "payments/",
-        include("apps.payments.urls"),
+        include("apps.payments.api.urls"),
         
-    ),
-    path(
-        "payment-tracking/",
-        include("apps.payment_tracking.urls"),
     ),
     path(
         "vendors/",include("apps.vendors.urls")

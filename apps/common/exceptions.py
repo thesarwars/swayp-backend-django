@@ -43,12 +43,6 @@ class OTPThrottledException(APIException):
 
         super().__init__(detail)
 
-class InsufficientBalanceException(BadRequestException):
-
-    default_detail = "Insufficient wallet balance."
-    default_code = "insufficient_balance"
-
-
 class InvalidPaymentStateException(BadRequestException):
     default_message = "Invalid payment state transition."
 
@@ -101,12 +95,4 @@ class ProviderUnavailableException(
 ):
     default_message = (
         "Payment provider is unavailable."
-    )
-
-
-class WalletFrozenException(
-    BadRequestException
-):
-    default_message = (
-        "Wallet is frozen."
     )

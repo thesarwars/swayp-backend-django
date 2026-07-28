@@ -33,6 +33,14 @@ class Notification(BaseModel):
         blank=True,
     )
 
+    # Deep-link payload. A REMIND notification carries bill_id and
+    # occurrence_id so tapping it opens the right approval screen (E6-S9),
+    # rather than making the client parse the message text.
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+    )
+
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]

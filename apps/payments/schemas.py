@@ -53,6 +53,7 @@ create_payment_schema = extend_schema(
 
 
 payment_success_schema = extend_schema(
+    deprecated=True,
     tags=["Payments"],
     summary="Mark Payment Successful",
     description="Marks a payment as successful.",
@@ -68,6 +69,7 @@ payment_success_schema = extend_schema(
 
 
 payment_processing_schema = extend_schema(
+    deprecated=True,
     tags=["Payments"],
     summary="Mark Payment Processing",
     description="Marks a payment as processing.",
@@ -80,9 +82,10 @@ payment_processing_schema = extend_schema(
 )
 
 payment_failed_schema = extend_schema(
+    deprecated=True,
     tags=["Payments"],
     summary="Mark Payment Failed",
-    description="Marks a payment as failed and refunds the deducted wallet balance.",
+    description="Marks a payment as failed. Staff only.",
     responses={
         200: PaymentStatusUpdateResponseSerializer,
         400: BAD_REQUEST_RESPONSE,

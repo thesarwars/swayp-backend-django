@@ -1,5 +1,7 @@
 import traceback
 
+from rest_framework.permissions import IsAdminUser
+
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 
@@ -102,6 +104,13 @@ class CreatePaymentAPIView(BaseAPIView):
 class PaymentProcessingAPIView(
     BaseAPIView,
 ):
+    """Deprecated (E6-S10): status is driven by the processor.
+
+    Staff-only. These predate the execution engine, and a client that
+    can declare its own payment successful is a hole, not a feature.
+    """
+
+    permission_classes = [IsAdminUser]
     service_class = PaymentService
 
     @payment_processing_schema
@@ -124,6 +133,13 @@ class PaymentProcessingAPIView(
 class PaymentSuccessAPIView(
     BaseAPIView,
 ):
+    """Deprecated (E6-S10): status is driven by the processor.
+
+    Staff-only. These predate the execution engine, and a client that
+    can declare its own payment successful is a hole, not a feature.
+    """
+
+    permission_classes = [IsAdminUser]
     service_class = PaymentService
 
     @payment_success_schema
@@ -145,6 +161,13 @@ class PaymentSuccessAPIView(
 class PaymentFailedAPIView(
     BaseAPIView,
 ):
+    """Deprecated (E6-S10): status is driven by the processor.
+
+    Staff-only. These predate the execution engine, and a client that
+    can declare its own payment successful is a hole, not a feature.
+    """
+
+    permission_classes = [IsAdminUser]
     service_class = PaymentService
 
     @payment_failed_schema

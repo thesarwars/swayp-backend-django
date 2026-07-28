@@ -1,12 +1,6 @@
 from django.db import models
 
 
-class WalletStatus(models.TextChoices):
-    ACTIVE = "ACTIVE", "Active"
-    FROZEN = "FROZEN", "Frozen"
-    SUSPENDED = "SUSPENDED", "Suspended"
-
-
 class PaymentStatus(models.TextChoices):
     SCHEDULED = "SCHEDULED", "Scheduled"
     PENDING = "PENDING", "Pending"

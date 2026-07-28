@@ -17,7 +17,6 @@ class DashboardRepository:
     def get_user(self, user_id):
         return (
             User.objects
-            .select_related("wallet")
             .filter(id=user_id)
             .first()
         )

@@ -1,46 +1,24 @@
-from apps.payments.selectors.payment_selector import (
-    PaymentSelector,
-)
-from decimal import Decimal
-from uuid import uuid4
-from django.utils import timezone
-from apps.payment_tracking.repositories import (
-    PaymentTrackingRepository,
-)
+"""Legacy payment status transitions and history (E6-S10 / E6-S11).
 
-from apps.common.enums import TransactionType
+What this used to do: debit ``Wallet.balance`` on create and credit it back on
+failure. That is a custodial flow — funds resting in a Swayp-controlled
+balance — and BRD §4 forbids it. The wallet is gone; money now moves at the
+licensed provider and never through Swayp.
 
-from apps.payments.services.payment_state_service import (
-    PaymentStateService,
-)
+What remains: payment history, and the manual status transitions that predate
+the execution engine. Those are now **staff-only** (E6-S10) — status is driven
+by the processor and its webhooks, not by a client call.
+"""
 
 from django.db import transaction
-from apps.common.exceptions import(
-    InsufficientBalanceException,
-    BadRequestException,
-)
+from django.utils import timezone
 
-from apps.common.enums import( 
-    PaymentStatus,
-    ProviderStatus,
-    WalletStatus,
-)
-from apps.providers.repositories import (
-    ProviderRepository,
-)
-from apps.wallet.repositories import (
-    WalletRepository,
-    WalletTransactionRepository,
-)
-from apps.payment_tracking.models import (
-    PaymentTracking,
-)
-from apps.payments.repositories import(
-    PaymentRepository
-)
-
+from apps.common.enums import PaymentStatus
 from apps.notifications.models import Notification
-from apps.payment_tracking.models import PaymentTracking
+from apps.payments.repositories import PaymentRepository
+from apps.payments.selectors.payment_selector import PaymentSelector
+from apps.payments.services.payment_state_service import PaymentStateService
+from apps.payments.services.stage_service import StageService
 
 
 class PaymentService:
@@ -48,6 +26,7 @@ class PaymentService:
     def __init__(self):
         self.selector = PaymentSelector()
         self.repository = PaymentRepository()
+        self.stages = StageService()
 
     def payment_history(
         self,
@@ -73,278 +52,108 @@ class PaymentService:
             to_date=to_date,
             search=search,
         )
-    
-    @transaction.atomic
-    def create_payment(
-        self,
-        *,
-        user,
-        provider_id,
-        category_id,
-        amount,
-        payment_method,
-):
-        provider = self.repository.get_provider(
-            provider_id,
-        )
 
-        category = self.repository.get_category(
-            category_id,
-        )
-
-        if provider.category_id != category.id:
-            raise BadRequestException(
-                "Provider does not belong to this category."
-            )
-
-        wallet = WalletRepository.get_by_user(
-            user,
-            for_update=True,
-        )
-
-        if wallet.status != WalletStatus.ACTIVE:
-            raise BadRequestException(
-                "Wallet is not active."
-            )
-
-        amount = Decimal(amount)
-
-        if wallet.balance < amount:
-            raise InsufficientBalanceException()
-
-        reference = uuid4().hex.upper()
-
-        payment = self.repository.create(
-            user=user,
-            provider=provider,
-            category=category,
-            amount=amount,
-            fee=Decimal("0.00"),
-            total=amount,
-            currency=wallet.currency,
-            payment_method=payment_method,
-            status=PaymentStatus.PENDING,
-            transaction_reference=reference,
-        )
-
-        PaymentTracking.objects.create(
-            payment=payment,
-            status=PaymentStatus.PENDING,
-        )
-
-        before = wallet.balance
-        wallet.balance -= amount
-        WalletRepository.save(wallet)
-
-        WalletTransactionRepository.create(
-            wallet=wallet,
-            payment=payment,
-            amount=amount,
-            balance_before=before,
-            balance_after=wallet.balance,
-            transaction_type="PAYMENT",
-            status=PaymentStatus.PENDING,
-            reference=reference,
-            description=f"Payment to {provider.provider_name}",
-        )
-
-        Notification.objects.create(
-            user=user,
-            title="Payment Initiated",
-            message=f"Your payment to {provider.provider_name} has been initiated.",
-            type="PAYMENT",
-        )
-
-        return payment
-    
+    # --- manual transitions, staff-only (E6-S10) --------------------------
 
     @transaction.atomic
-    def mark_processing(
-        self,
-        *,
-        user,
-        payment_id,
-    ):
+    def mark_processing(self, *, user, payment_id):
         payment = self.repository.get_for_update(
-            payment_id=payment_id,
-            user=user,
+            payment_id=payment_id, user=user
         )
 
-        PaymentStateService.to_processing(
-        payment,
-
-        )
+        PaymentStateService.to_processing(payment)
 
         PaymentRepository.update_status(
-        payment=payment,
-        status=PaymentStatus.PROCESSING,
+            payment=payment, status=PaymentStatus.PROCESSING
         )
 
-        tracking = (
-            PaymentTrackingRepository()
-            .get_by_payment_for_update(
-                payment=payment,
-            )
-        )
-
-        PaymentTrackingRepository.update_status(
-            tracking=tracking,
-            status=PaymentStatus.PROCESSING,
-            estimated_completion=timezone.now(),
-        )
-
-        Notification.objects.create(
-            user=user,
-            title="Payment Processing",
-            message=f"Payment {payment.transaction_reference} is being processed.",
-            type="PAYMENT",
-        )
-
-        return payment
-    
-
-    @transaction.atomic
-    def mark_successful(
-        self,
-        *,
-        user,
-        payment_id,
-    ):
-        payment = self.repository.get_for_update(
-            payment_id=payment_id,
-            user=user,
-        )
-
-        PaymentStateService.to_success(
+        self._notify(
             payment,
-        )
-
-        PaymentRepository.update_status(
-            payment=payment,
-            status=PaymentStatus.SUCCESSFUL,
-            provider_reference=uuid4().hex.upper(),
-        )
-        tracking = (
-            PaymentTrackingRepository()
-            .get_by_payment_for_update(
-                payment=payment,
-            )
-        )
-
-        PaymentTrackingRepository.update_status(
-            tracking=tracking,
-            status=PaymentStatus.SUCCESSFUL,
-        )
-
-        wallet_transaction = (
-            WalletTransactionRepository.get_by_payment(
-                payment
-            )
-        )   
-
-        wallet_transaction.status = (
-            PaymentStatus.SUCCESSFUL
-        )
-
-        wallet_transaction.save(
-            update_fields=[
-                "status",
-                "updated_at",
-            ]
-        )
-
-        Notification.objects.create(
-            user=user,
-            title="Payment Successful",
-            message=(
-                f"Payment "
-                f"{payment.transaction_reference} "
-                f"completed successfully."
-            ),
-            type="PAYMENT",
+            "Payment processing",
+            f"Payment {payment.transaction_reference} is being processed.",
         )
 
         return payment
-    
 
     @transaction.atomic
-    def mark_failed(
-        self,
-        *,
-        user,
-        payment_id,
-    ):
+    def mark_successful(self, *, user, payment_id):
+        from apps.bills.models.bill_occurrence import BillOccurrence
+        from apps.common.enums import BillOccurrenceStatus, PaymentStageStatus
+        from apps.payments.models import PaymentStageName
+
         payment = self.repository.get_for_update(
-            payment_id=payment_id,
-            user=user,
+            payment_id=payment_id, user=user
         )
 
-        PaymentStateService.to_failed(
-            payment,
-        )
-
-        wallet = WalletRepository.get_by_user(
-            user,
-            for_update=True,
-        )
-
-        wallet_transaction = (
-            WalletTransactionRepository.get_by_payment(
-                payment,
-            )
-        )
-
-        balance_before = wallet.balance
-
-        WalletRepository.update_balance(
-            wallet,
-            wallet.balance + payment.total,
-        )
+        PaymentStateService.to_success(payment)
 
         PaymentRepository.update_status(
-            payment=payment,
-            status=PaymentStatus.FAILED,
+            payment=payment, status=PaymentStatus.SUCCESSFUL
         )
 
-        tracking = (
-            PaymentTrackingRepository
-            .get_by_payment_for_update(
-                payment=payment,
+        self.stages.seed(payment)
+        self.stages.mark(
+            payment, PaymentStageName.COMPLETED, PaymentStageStatus.DONE
+        )
+
+        if payment.bill_occurrence_id:
+            BillOccurrence.objects.filter(
+                pk=payment.bill_occurrence_id
+            ).update(
+                status=BillOccurrenceStatus.PAID,
+                paid_at=timezone.now(),
+                payment_reference=payment.transaction_reference,
             )
-        )
 
-        PaymentTrackingRepository.update_status(
-            tracking=tracking,
-            status=PaymentStatus.FAILED,
-        )
-
-        wallet_transaction.status = (
-            PaymentStatus.FAILED
-        )
-
-        wallet_transaction.balance_after = (
-            wallet.balance
-        )
-
-        wallet_transaction.save(
-            update_fields=[
-                "status",
-                "balance_after",
-                "updated_at",
-            ]
-        )
-
-        Notification.objects.create(
-            user=user,
-            title="Payment Failed",
-            message=(
-                f"Payment "
-                f"{payment.transaction_reference} "
-                f"failed. "
-                f"The deducted amount has been returned "
-                f"to your wallet."
-            ),
-            type="PAYMENT",
+        self._notify(
+            payment,
+            "Payment successful",
+            f"Payment {payment.transaction_reference} completed successfully.",
         )
 
         return payment
+
+    @transaction.atomic
+    def mark_failed(self, *, user, payment_id):
+        from apps.bills.models.bill_occurrence import BillOccurrence
+        from apps.common.enums import BillOccurrenceStatus
+
+        payment = self.repository.get_for_update(
+            payment_id=payment_id, user=user
+        )
+
+        PaymentStateService.to_failed(payment)
+
+        PaymentRepository.update_status(
+            payment=payment, status=PaymentStatus.FAILED
+        )
+
+        self.stages.fail(payment, detail="Marked failed")
+
+        # Nothing to refund: no money ever sat in a Swayp balance. The bill
+        # simply becomes owed again.
+        if payment.bill_occurrence_id:
+            BillOccurrence.objects.filter(
+                pk=payment.bill_occurrence_id,
+                status=BillOccurrenceStatus.SCHEDULED,
+            ).update(status=BillOccurrenceStatus.UPCOMING)
+
+        self._notify(
+            payment,
+            "Payment failed",
+            (
+                f"Payment {payment.transaction_reference} failed. "
+                "The bill is outstanding again."
+            ),
+        )
+
+        return payment
+
+    def _notify(self, payment, title, message):
+        Notification.objects.create(
+            user=payment.user,
+            title=title,
+            message=message,
+            type="PAYMENT",
+            metadata={"payment_id": str(payment.id)},
+        )

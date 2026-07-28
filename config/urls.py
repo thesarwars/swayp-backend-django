@@ -34,4 +34,7 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/v1/", include("api.v1.urls")),
+    # Versionless: a processor-registered URL must never move with an
+    # API version (E6-S8).
+    path("webhooks/", include("apps.webhooks.api.urls")),
 ]

@@ -95,7 +95,11 @@ class PaymentRepository:
         try:
             return (
                 cls.get_queryset()
-                .select_for_update()
+                # of=("self",) locks only the payment row. provider and
+                # category became nullable in E6-S1, so select_related now
+                # emits outer joins and Postgres refuses FOR UPDATE on their
+                # nullable side.
+                .select_for_update(of=("self",))
                 .get(
                     id=payment_id,
                     user=user,

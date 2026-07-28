@@ -10,6 +10,7 @@ from django.conf import settings
 from integrations.bank_data.mock import MockBankDataProvider
 from integrations.check_mail.mock import MockCheckMailProvider
 from integrations.directory.mock import MockDirectoryProvider
+from integrations.llm.anthropic import AnthropicLLMProvider
 from integrations.llm.mock import MockLLMProvider
 from integrations.messaging.django_email import DjangoEmailMessagingProvider
 from integrations.messaging.mock import MockMessagingProvider
@@ -20,7 +21,7 @@ _REGISTRY = {
     "money_movement": {"mock": MockMoneyMovementProvider},
     "directory": {"mock": MockDirectoryProvider},
     "check_mail": {"mock": MockCheckMailProvider},
-    "llm": {"mock": MockLLMProvider},
+    "llm": {"mock": MockLLMProvider, "anthropic": AnthropicLLMProvider},
     "messaging": {
         "mock": MockMessagingProvider,
         "django_email": DjangoEmailMessagingProvider,

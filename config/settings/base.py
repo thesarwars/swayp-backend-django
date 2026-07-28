@@ -339,6 +339,13 @@ LLM_PROVIDER = env("LLM_PROVIDER", default="mock")
 # serves a deterministic Python template sentence and makes no LLM calls.
 FLO_LLM_ENABLED = env.bool("FLO_LLM_ENABLED", default=False)
 
+# Anthropic Claude phrasing (E7-S4), used only when LLM_PROVIDER=anthropic
+# and FLO_LLM_ENABLED is on. Requires the `anthropic` package in prod.
+ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
+LLM_MODEL = env("LLM_MODEL", default="claude-haiku-4-5")
+# Per-user cap on LLM calls per day (soft guard; shared cache in prod).
+FLO_LLM_DAILY_CAP = env.int("FLO_LLM_DAILY_CAP", default=50)
+
 
 # --- Authentication tuning (E2-S1, S2, S4) -------------------------------
 

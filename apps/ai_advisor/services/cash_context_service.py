@@ -13,6 +13,8 @@ import re
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.ai_advisor.services.consent_service import ConsentService
@@ -116,6 +118,10 @@ class CashContextService:
         if not ConsentService.has_live_consent(user):
             return template
 
+        if not self._under_daily_cap(user):
+            logger.info("Flo LLM daily cap reached for user; using template")
+            return template
+
         try:
             result = self._llm.complete(
                 prompt=template, system=_SYSTEM, max_tokens=120
@@ -127,6 +133,22 @@ class CashContextService:
             logger.warning("Flo LLM call failed; using template", exc_info=True)
 
         return template
+
+    @staticmethod
+    def _under_daily_cap(user):
+        """Per-user daily LLM-call cap (E7-S4).
+
+        Soft guard via the cache — a shared cache backend makes it a hard cap
+        across workers in prod; LocMem is per-process in dev. Increments only
+        when we're about to actually call the LLM.
+        """
+        cap = getattr(settings, "FLO_LLM_DAILY_CAP", 50)
+        key = f"flo:llm:{user.id}:{timezone.localdate():%Y%m%d}"
+        used = cache.get(key, 0)
+        if used >= cap:
+            return False
+        cache.set(key, used + 1, 60 * 60 * 24)
+        return True
 
     @staticmethod
     def _numbers_safe(text, figures):

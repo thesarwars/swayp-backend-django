@@ -1,17 +1,37 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.vendors.models import VendorPaymentMethod
+from apps.vendors.services.payment_method_schedule import schedule_for_method
 from apps.common.enums import (
     VendorPaymentMethodType,
 )
 
 
+class PaymentMethodScheduleQuerySerializer(serializers.Serializer):
+    """Query params for the method-step lead-time computation (E3-S6)."""
+
+    due_date = serializers.DateField(required=False)
+    amount = serializers.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        required=False,
+    )
+
+
 class VendorPaymentMethodSerializer(serializers.ModelSerializer):
     """
     Used for GET Payment Methods.
+
+    When the caller supplies ``?due_date=``, each row also carries a
+    ``schedule`` block with the rail, lead time, initiation date and whether
+    the method can still land by the due date.
     """
 
     account_ref = serializers.SerializerMethodField()
+    schedule = serializers.SerializerMethodField()
 
     class Meta:
         model = VendorPaymentMethod
@@ -33,6 +53,7 @@ class VendorPaymentMethodSerializer(serializers.ModelSerializer):
             "state",
             "zip_code",
             "check_memo",
+            "schedule",
         )
 
     def get_account_ref(self, obj):
@@ -41,6 +62,14 @@ class VendorPaymentMethodSerializer(serializers.ModelSerializer):
             return f"****{obj.account_last4}"
 
         return None
+
+    def get_schedule(self, obj):
+        due_date = self.context.get("due_date")
+
+        if not due_date:
+            return None
+
+        return schedule_for_method(obj, due_date)
 
 
 class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):

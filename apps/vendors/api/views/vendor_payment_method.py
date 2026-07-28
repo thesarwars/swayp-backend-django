@@ -13,6 +13,7 @@ from rest_framework.permissions import (
 from apps.vendors.models import Vendor
 from apps.common.enums import VendorSource, VendorStatus
 from apps.vendors.api.serializers.vendor_payment_method import (
+    PaymentMethodScheduleQuerySerializer,
     VendorPaymentMethodSerializer,
     VendorPaymentMethodCreateSerializer,
 )
@@ -33,8 +34,13 @@ from apps.vendors.selectors.vendor_selector import (
 
 class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
     """
-    GET  /vendors/{vendor_id}/payment-methods/
+    GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
+
+    ``due_date`` turns on the per-method schedule block that the bill wizard's
+    method step reads (E3-S6 → E4-S3). ``amount`` is validated and accepted for
+    forward compatibility but does not yet change the schedule — per-payment
+    fees and same-day limits arrive with E9.
     """
 
     permission_classes = [IsAuthenticated]
@@ -50,6 +56,22 @@ class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
             return VendorPaymentMethodCreateSerializer
 
         return VendorPaymentMethodSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+
+        if self.request.method != "GET":
+            return context
+
+        query = PaymentMethodScheduleQuerySerializer(
+            data=self.request.query_params
+        )
+        query.is_valid(raise_exception=True)
+
+        context["due_date"] = query.validated_data.get("due_date")
+        context["amount"] = query.validated_data.get("amount")
+
+        return context
 
     def create(self, request, *args, **kwargs):
 

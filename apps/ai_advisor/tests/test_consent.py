@@ -17,6 +17,7 @@ from apps.banking.factories import BankAccountFactory, UserFactory
 from apps.common.exceptions import BadRequestException
 
 CONSENT_URL = "/api/v1/ai/consent/"
+CONSENT_TEXT = "I allow Flo to use my balances and bills for guidance."
 
 _PROVIDER = "apps.ai_advisor.services.cash_context_service.get_llm_provider"
 
@@ -70,6 +71,36 @@ class ConsentServiceTests(TestCase):
         self.assertTrue(ConsentService.has_live_consent(self.user))
         self.assertEqual(AdvisorConsent.objects.count(), 1)
 
+    def test_re_granting_live_consent_preserves_the_original_opt_in(self):
+        first = ConsentService.record(user=self.user, ip="203.0.113.9")
+
+        again = ConsentService.record(user=self.user, ip="203.0.113.9")
+
+        self.assertEqual(again.consented_at, first.consented_at)
+        self.assertEqual(
+            AuditLog.objects.filter(
+                action="ai_advisor.consent_granted"
+            ).count(),
+            1,
+        )
+
+    def test_state_reports_never_consented_without_a_row(self):
+        state = ConsentService.state(self.user)
+
+        self.assertFalse(state["is_live"])
+        self.assertIsNone(state["consented_at"])
+        self.assertIsNone(state["consent_text"])
+
+    def test_state_reports_the_accepted_language(self):
+        ConsentService.record(
+            user=self.user, consent_text=CONSENT_TEXT, ip="203.0.113.9"
+        )
+
+        state = ConsentService.state(self.user)
+
+        self.assertTrue(state["is_live"])
+        self.assertEqual(state["consent_text"], CONSENT_TEXT)
+
 
 @override_settings(FLO_LLM_ENABLED=True)
 class RevokeStopsLLMCallsTests(TestCase):
@@ -118,31 +149,36 @@ class ConsentAPITests(TestCase):
     def test_post_records_the_forwarded_client_not_the_proxy(self):
         response = self.client.post(
             CONSENT_URL,
-            {},
+            {"consent_text": CONSENT_TEXT},
             format="json",
             HTTP_X_FORWARDED_FOR="203.0.113.9, 10.0.0.7",
             REMOTE_ADDR="10.0.0.7",
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data["is_live"])
+        self.assertTrue(response.data["data"]["is_live"])
 
         row = AuditLog.objects.get(action="ai_advisor.consent_granted")
         self.assertEqual(row.ip, "203.0.113.9")
 
     def test_post_falls_back_to_remote_addr_without_a_proxy(self):
-        self.client.post(CONSENT_URL, {}, format="json", REMOTE_ADDR="198.51.100.4")
+        self.client.post(
+            CONSENT_URL,
+            {"consent_text": CONSENT_TEXT},
+            format="json",
+            REMOTE_ADDR="198.51.100.4",
+        )
 
         row = AuditLog.objects.get(action="ai_advisor.consent_granted")
         self.assertEqual(row.ip, "198.51.100.4")
 
     def test_delete_revokes_and_returns_the_record(self):
-        self.client.post(CONSENT_URL, {}, format="json")
+        self.client.post(CONSENT_URL, {"consent_text": CONSENT_TEXT}, format="json")
 
         response = self.client.delete(CONSENT_URL)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data["is_live"])
+        self.assertFalse(response.data["data"]["is_live"])
 
     def test_delete_with_nothing_live_returns_204(self):
         response = self.client.delete(CONSENT_URL)
@@ -150,6 +186,45 @@ class ConsentAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
     def test_requires_authentication(self):
-        response = APIClient().post(CONSENT_URL, {}, format="json")
+        response = APIClient().post(
+            CONSENT_URL, {"consent_text": CONSENT_TEXT}, format="json"
+        )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_blank_or_missing_consent_text_is_rejected(self):
+        """The column is 'exact language shown' — a default is not that."""
+        for payload in ({}, {"consent_text": ""}, {"consent_text": "   "}):
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    CONSENT_URL, payload, format="json"
+                )
+                self.assertEqual(
+                    response.status_code, status.HTTP_400_BAD_REQUEST
+                )
+
+        self.assertFalse(AdvisorConsent.objects.exists())
+
+    def test_get_reads_state_without_granting_anything(self):
+        response = self.client.get(CONSENT_URL)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["data"]["is_live"])
+        self.assertFalse(AdvisorConsent.objects.exists())
+
+        self.client.post(
+            CONSENT_URL, {"consent_text": CONSENT_TEXT}, format="json"
+        )
+        state = self.client.get(CONSENT_URL).data["data"]
+
+        self.assertTrue(state["is_live"])
+        self.assertEqual(state["consent_text"], CONSENT_TEXT)
+
+    def test_responses_use_the_project_envelope(self):
+        response = self.client.post(
+            CONSENT_URL, {"consent_text": CONSENT_TEXT}, format="json"
+        )
+
+        self.assertTrue(response.data["success"])
+        self.assertIn("message", response.data)
+        self.assertIn("data", response.data)

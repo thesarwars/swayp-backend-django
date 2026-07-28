@@ -53,7 +53,7 @@ grep-gate violation that was simply invisible while the suite could not run).
 
 ## P2 — AC violations and correctness gaps
 
-**#7–#9 fixed 2026-07-29** (the LLM guard rails). #10–#16 remain.
+**All of #7–#16 fixed 2026-07-29.**
 
 7. **No 2.5 s timeout.** `anthropic.py:18` hardcodes 8 s, and the SDK retries twice by default → worst case ~25 s against an AC of **p95 ≤ 2.5 s (timeout → template)**. Not env-tunable. **Fix:** timeout ≈ 2 s, `max_retries=0`, budget enforced by the caller.
 8. **`integrations/llm/template.py` does not exist** (spec line 36 names it as the default). The template lives inside `CashContextService._template`, and the registered default is `MockLLMProvider`, whose output is `"[mock-llm] " + prompt` (`mock.py:11`). Flipping `FLO_LLM_ENABLED=true` on a default install therefore serves literal `"[mock-llm] Balance $41,200.00…"` to real users — it passes echo-validation, since the numbers match.
@@ -67,6 +67,11 @@ grep-gate violation that was simply invisible while the suite could not run).
 16. **`apps/audit` is a write-only sink.** `admin.py` and `views.py` are untouched stubs, there is no audit URL module, and `AuditLog.Meta` declares only `db_table` — no index on `user`, `action`, or `created_at`. Rows are inserted and cannot be retrieved by anyone. For a GLBA opt-in artifact, "recorded in the audit trail" means producible on demand.
 
 ## P3 — completeness / polish
+
+**All fixed 2026-07-29** except #26's redundant-query half, which dissolved:
+once `upcoming_total` is windowed, `get_next_due` is genuinely a different
+question (the next bill may fall outside the window), so the second query is
+correct rather than redundant.
 
 17. Unknown account returns **404 where E7-S3 AC2 specifies 422** (`projection_service.py:47`). The code deliberately merges unknown-vs-foreign to prevent enumeration — a reasonable call, but it contradicts the AC. **Decide: fix the code or amend the spec.**
 18. `anthropic` is **not in `requirements.txt`**, so the flagged path cannot run in any built image; nothing validates the flag/key pairing at boot.
@@ -122,6 +127,27 @@ backend changes nothing else, and an outage degrades Flo to the template.
 E7's five env flags — plus `CACHE_URL` and `BALANCE_MAX_AGE_SECONDS` — are now
 documented in `.env.example` (was P3 #19).
 
+## The rest of P2 and all of P3 (fixed 2026-07-29)
+
+| # | Fix | Files |
+|---|---|---|
+| 10 | New `apps.common.dates.today_eastern()`; both E7 services and the daily-cap key use it instead of `timezone.localdate()`. Scoped to E7 by decision — `TIME_ZONE` stays UTC, so the same inconsistency remains in bills/payments/banking and is **still open** as a cross-epic issue. | `apps/common/dates.py`, both E7 services |
+| 11 | The projection counts overdue unpaid occurrences. "Upcoming" still excludes them (E7-S2's count is forward-looking), but money owed since last week still has to leave the account. | `projection_service.py` |
+| 12 | `upcoming_count` / `upcoming_total` are bounded by `FLO_UPCOMING_WINDOW_DAYS` (default 30) and the window is returned as `upcoming_window_days`, so the client can label it. | `cash_context_service.py`, settings, serializer |
+| 13 | `POST ai/cash-context/` accepts `bill_occurrence_id`; that occurrence is excluded from the upcoming set, so the bill being paid is not deducted via `amount` *and* counted in the total. | `cash_context_service.py`, serializer, view |
+| 14 | All three endpoints return the `{success, message, data}` envelope via `ApiResponse.success`, matching the error path and the other 13 modules. **Breaking for clients** — payloads move under `data`. | all three E7 views |
+| 15 | `GET ai/consent/` returns `{is_live, consented_at, revoked_at, consent_text}`, including the never-consented case, so a settings screen can render the toggle without POSTing. | `consent_service.py`, view, serializer |
+| 16 | `AuditLog` gets `(user, -created_at)`, `(action, -created_at)`, `(-created_at)` indexes plus a read-only admin. The trail is now producible on demand instead of write-only. | `apps/audit/` + migration `0003` |
+| 17 | Unknown account → **422**, foreign account → **404**, per AC2 (your call). Note this lets a caller distinguish "no such account" from "not yours" by status code. | `projection_service.py` |
+| 18 | `anthropic==0.120.2` in `requirements.txt`, with a comment that it is only needed for `LLM_PROVIDER=anthropic`. | `requirements.txt` |
+| 20 | `@extend_schema` on all three views; the OpenAPI schema builds with no `ai_advisor` errors. | E7 views |
+| 21 | Re-granting live consent is a no-op — the original `consented_at` survives and no duplicate audit row is written (E4's precedent). | `consent_service.py` |
+| 22 | `consent_text` is required and non-blank. **Breaking for clients** that posted `{}`. | `serializers/consent.py` |
+| 23 | Admin cannot add or delete consent rows or audit rows. | `ai_advisor/admin.py`, `audit/admin.py` |
+| 25 | `ai/cash-context/` is throttled at `20/min` per user via `ScopedRateThrottle`. | view, settings |
+| 26 | Template copy pluralises and degrades cleanly at zero bills (no `"0 upcoming bill(s) totaling $0.00"`). | `cash_context_service.py` |
+
 ## Suggested order for what remains
-1. **P2 #10–#16**, then **P3**.
+1. **Cross-epic:** `TIME_ZONE = "UTC"` still makes `timezone.localdate()` roll at 19:00/20:00 ET everywhere outside E7 (bills, payments, banking). Decide whether to switch globally.
 2. Fix the pre-existing processor-name leak that the now-runnable suite exposes.
+3. Consider a read API for the audit trail if compliance needs it outside Django admin.

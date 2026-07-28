@@ -32,6 +32,30 @@ class ConsentService:
         ).exists()
 
     @staticmethod
+    def state(user):
+        """Current consent state, including "never consented" (E7-S1).
+
+        The settings surface has to render the toggle before anything exists,
+        and POSTing to find out would itself grant consent.
+        """
+        consent = AdvisorConsent.objects.filter(user=user).first()
+
+        if consent is None:
+            return {
+                "is_live": False,
+                "consented_at": None,
+                "revoked_at": None,
+                "consent_text": None,
+            }
+
+        return {
+            "is_live": consent.is_live,
+            "consented_at": consent.consented_at,
+            "revoked_at": consent.revoked_at,
+            "consent_text": consent.consent_text,
+        }
+
+    @staticmethod
     @transaction.atomic
     def record(*, user, consent_text=None, ip=None, user_agent=""):
         if not ip:
@@ -39,6 +63,16 @@ class ConsentService:
                 "Consent could not be recorded because the client address "
                 "could not be determined."
             )
+
+        existing = AdvisorConsent.objects.filter(user=user).first()
+
+        # Re-POSTing while consent is already live is a no-op, not a re-grant.
+        # Overwriting consented_at would erase the timestamp of the opt-in
+        # that actually happened, and each call would append another
+        # "granted" row to a trail that records one event. E4's
+        # standing-authorization capture short-circuits the same way.
+        if existing is not None and existing.is_live:
+            return existing
 
         consent, _ = AdvisorConsent.objects.update_or_create(
             user=user,

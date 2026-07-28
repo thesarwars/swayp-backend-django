@@ -11,6 +11,7 @@ from django.utils import timezone
 from apps.ai_advisor.services.cash_context_service import CashContextService
 from apps.ai_advisor.services.consent_service import ConsentService
 from apps.ai_advisor.tests.support import ExplodingLLM, FailingLLM, SpyLLM
+from apps.common.dates import today_eastern
 from apps.banking.factories import BankAccountFactory, UserFactory
 from apps.bills.factories import BillFactory, BillOccurrenceFactory
 
@@ -27,7 +28,7 @@ class FloProviderTests(TestCase):
             available_balance=Decimal("10000.00"),
             balance_as_of=timezone.now(),
         )
-        today = timezone.localdate()
+        today = today_eastern()
 
         bill = BillFactory(
             user=self.user,

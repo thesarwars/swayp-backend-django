@@ -18,6 +18,7 @@ from apps.ai_advisor.services.projection_service import ProjectionService
 from apps.banking.factories import BankAccountFactory, UserFactory
 from apps.bills.factories import BillFactory, BillOccurrenceFactory
 from apps.bills.services.bill_occurrence_service import BillOccurrenceService
+from apps.common.dates import today_eastern
 from apps.common.enums import (
     BillFrequency,
     BillOccurrenceStatus,
@@ -32,7 +33,7 @@ class ProjectionServiceTests(TestCase):
 
     def setUp(self):
         self.user = UserFactory()
-        self.today = timezone.localdate()
+        self.today = today_eastern()
         self.account = BankAccountFactory(
             connection__user=self.user,
             available_balance=Decimal("10000.00"),
@@ -233,6 +234,22 @@ class ProjectionServiceTests(TestCase):
 
         self.assertEqual(self._project(10)["outflow_total"], Decimal("0.00"))
 
+    def test_overdue_bills_are_still_owed(self):
+        """"Upcoming" excludes them; a projection cannot."""
+        bill = self._bill(
+            amount="750.00", frequency=BillFrequency.ONE_TIME, in_days=-9
+        )
+        BillOccurrenceFactory(
+            bill=bill,
+            due_date=self.today - dt.timedelta(days=9),
+            amount=Decimal("750.00"),
+        )
+
+        result = self._project(10)
+
+        self.assertEqual(result["outflow_total"], Decimal("750.00"))
+        self.assertEqual(result["projected_balance"], Decimal("9250.00"))
+
     def test_insufficient_funds_are_reported(self):
         bill = self._bill(
             amount="12000.00", frequency=BillFrequency.ONE_TIME, in_days=2
@@ -253,7 +270,7 @@ class ProjectionAPITests(TestCase):
 
     def setUp(self):
         self.user = UserFactory()
-        self.today = timezone.localdate()
+        self.today = today_eastern()
         self.account = BankAccountFactory(
             connection__user=self.user,
             available_balance=Decimal("10000.00"),
@@ -271,8 +288,8 @@ class ProjectionAPITests(TestCase):
         response = self._get(self.account.id, self.today + dt.timedelta(days=5))
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["projected_balance"], "10000.00")
-        self.assertIsNotNone(response.data["balance_as_of"])
+        self.assertEqual(response.data["data"]["projected_balance"], "10000.00")
+        self.assertIsNotNone(response.data["data"]["balance_as_of"])
 
     def test_past_date_is_unprocessable(self):
         response = self._get(self.account.id, self.today - dt.timedelta(days=1))
@@ -283,6 +300,15 @@ class ProjectionAPITests(TestCase):
 
     def test_date_beyond_the_cap_is_unprocessable(self):
         response = self._get(self.account.id, self.today + dt.timedelta(days=1000))
+
+        self.assertEqual(
+            response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY
+        )
+
+    def test_unknown_account_is_unprocessable(self):
+        import uuid
+
+        response = self._get(uuid.uuid4(), self.today + dt.timedelta(days=5))
 
         self.assertEqual(
             response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY

@@ -30,13 +30,13 @@ Purely arithmetic, so it is exact to the cent and testable.
 from decimal import Decimal
 
 from django.db.models import Q
-from django.utils import timezone
 
 from apps.banking.models import BankAccount, BankConnectionStatus
 from apps.banking.services.balance_service import BalanceService
 from apps.bills.models.bill import Bill
 from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.bills.services.bill_occurrence_service import BillOccurrenceService
+from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus, PaymentStatus
 from apps.common.exceptions import (
     NotFoundException,
@@ -61,23 +61,14 @@ class ProjectionService:
         self._balances = BalanceService()
 
     def project(self, *, user, account_id, target_date):
-        today = timezone.localdate()
+        today = today_eastern()
 
         if target_date < today:
             raise UnprocessableEntityException(
                 "Projection date cannot be in the past."
             )
 
-        account = BankAccount.objects.filter(
-            id=account_id,
-            connection__user=user,
-            connection__status=BankConnectionStatus.ACTIVE,
-        ).select_related("connection").first()
-
-        if account is None:
-            # Covers both a foreign account and an unknown id — never reveal
-            # which.
-            raise NotFoundException("Funding account not found.")
+        account = self._account(user=user, account_id=account_id)
 
         self._balances.refresh(account)
 
@@ -113,6 +104,37 @@ class ProjectionService:
             "sufficient": projected >= Decimal("0.00"),
         }
 
+    # --- lookup -----------------------------------------------------------
+
+    @staticmethod
+    def _account(*, user, account_id):
+        """Resolve the funding account, per E7-S3 AC2.
+
+        The AC distinguishes the two misses: an id that matches nothing is a
+        nonsensical request (422), while an id that exists but belongs to
+        someone else is simply not found (404). That does mean the status code
+        tells a caller whether an account id exists — the spec accepts that
+        trade for a clearer client error.
+        """
+        account = (
+            BankAccount.objects.filter(id=account_id)
+            .select_related("connection")
+            .first()
+        )
+
+        if account is None:
+            raise UnprocessableEntityException("Unknown account.")
+
+        if account.connection.user_id != user.id:
+            raise NotFoundException("Funding account not found.")
+
+        if account.connection.status != BankConnectionStatus.ACTIVE:
+            raise UnprocessableEntityException(
+                "This account's bank connection is not active."
+            )
+
+        return account
+
     # --- terms ------------------------------------------------------------
 
     def _committed(self, *, user, account, target_date):
@@ -147,7 +169,13 @@ class ProjectionService:
         return total, occurrence_ids
 
     def _outflow(self, *, user, today, target_date, skip_occurrence_ids):
-        """Bills coming due in ``[today, target_date]`` that are still owed."""
+        """Everything still owed on or before ``target_date``.
+
+        Overdue occurrences are included deliberately. "Upcoming" excludes
+        them (E7-S2's count is a forward-looking figure), but a projection
+        asks what the balance will be — and money owed since last week still
+        has to leave the account.
+        """
         bills = list(
             Bill.objects.filter(user=user, deleted_at__isnull=True)
         )
@@ -157,7 +185,6 @@ class ProjectionService:
 
         rows = BillOccurrence.objects.filter(
             bill__in=bills,
-            due_date__gte=today,
             due_date__lte=target_date,
         )
 

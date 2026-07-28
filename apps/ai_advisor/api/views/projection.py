@@ -1,5 +1,4 @@
-from rest_framework import status
-from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 
 from apps.ai_advisor.api.serializers.projection import (
     BalanceProjectionQuerySerializer,
@@ -7,8 +6,22 @@ from apps.ai_advisor.api.serializers.projection import (
 )
 from apps.ai_advisor.services.projection_service import ProjectionService
 from apps.common.base_views import BaseAPIView
+from apps.common.responses import ApiResponse
 
 
+@extend_schema(
+    tags=["Flo (AI advisor)"],
+    summary="Projected balance on a future date",
+    description=(
+        "Deterministic, no LLM: current balance, minus everything still owed "
+        "on or before the date, minus money already committed out of this "
+        "account. Bills come from each recurrence rule rather than only from "
+        "materialised rows, so the answer stays exact past the point where "
+        "occurrences have been pre-created."
+    ),
+    parameters=[BalanceProjectionQuerySerializer],
+    responses=BalanceProjectionSerializer,
+)
 class BalanceProjectionAPIView(BaseAPIView):
     """Deterministic balance projection for a future date (E7-S3)."""
 
@@ -22,7 +35,7 @@ class BalanceProjectionAPIView(BaseAPIView):
             target_date=query.validated_data["date"],
         )
 
-        return Response(
-            BalanceProjectionSerializer(result).data,
-            status=status.HTTP_200_OK,
+        return ApiResponse.success(
+            data=BalanceProjectionSerializer(result).data,
+            message="Projection computed.",
         )

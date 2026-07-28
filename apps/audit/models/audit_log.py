@@ -29,3 +29,14 @@ class AuditLog(BaseModel):
 
     class Meta:
         db_table = "audit_logs"
+        ordering = ["-created_at"]
+
+        # The three ways anyone ever asks this table a question: what did this
+        # user do, who did X, and what happened in this window. Without them
+        # producing a consent record on demand means a full scan of every
+        # audit row ever written.
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["action", "-created_at"]),
+            models.Index(fields=["-created_at"]),
+        ]

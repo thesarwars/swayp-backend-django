@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.ai_advisor.services.cash_context_service import CashContextService
 from apps.ai_advisor.services.consent_service import ConsentService
 from apps.ai_advisor.tests.support import SpyLLM
+from apps.common.dates import today_eastern
 from apps.banking.factories import BankAccountFactory, UserFactory
 from apps.bills.factories import BillFactory, BillOccurrenceFactory
 
@@ -93,7 +94,7 @@ class CashContextFigureTests(TestCase):
             available_balance=Decimal("41200.00"),
             balance_as_of=timezone.now(),
         )
-        self.today = timezone.localdate()
+        self.today = today_eastern()
 
         bill = BillFactory(
             user=self.user,
@@ -133,6 +134,49 @@ class CashContextFigureTests(TestCase):
         self.assertIn("Balance $41,200.00", result["text"])
         self.assertIn("Verizon", result["text"])
 
+    def test_copy_agrees_with_itself_on_number(self):
+        result, _ = self._build()
+
+        self.assertIn("1 upcoming bill ", result["text"])
+        self.assertNotIn("bill(s)", result["text"])
+
+    @override_settings(FLO_UPCOMING_WINDOW_DAYS=30)
+    def test_upcoming_is_bounded_by_the_window(self):
+        """Unbounded, the total was a function of cadence, not of a period."""
+        far = BillFactory(
+            user=self.user,
+            amount=Decimal("5000.00"),
+            anchor_date=self.today + dt.timedelta(days=90),
+        )
+        BillOccurrenceFactory(
+            bill=far,
+            due_date=self.today + dt.timedelta(days=90),
+            amount=Decimal("5000.00"),
+        )
+
+        figures = self._build()[0]["figures"]
+
+        self.assertEqual(figures["upcoming_count"], 1)
+        self.assertEqual(figures["upcoming_total"], Decimal("389.00"))
+        self.assertEqual(figures["upcoming_window_days"], 30)
+
+    def test_the_bill_being_paid_is_not_counted_twice(self):
+        """`amount` already removes it from the balance."""
+        occurrence = self.user.bills.first().occurrences.first()
+
+        with mock.patch(_PROVIDER, return_value=SpyLLM()):
+            result = CashContextService().build(
+                user=self.user,
+                amount=Decimal("389.00"),
+                bill_occurrence_id=occurrence.id,
+            )
+
+        figures = result["figures"]
+        self.assertEqual(figures["upcoming_count"], 0)
+        self.assertEqual(figures["upcoming_total"], Decimal("0.00"))
+        self.assertIsNone(figures["next_bill"])
+        self.assertIn("nothing else due", result["text"])
+
 
 @override_settings(FLO_LLM_ENABLED=True)
 class PromptInjectionTests(TestCase):
@@ -149,7 +193,7 @@ class PromptInjectionTests(TestCase):
             available_balance=Decimal("41200.00"),
             balance_as_of=timezone.now(),
         )
-        self.today = timezone.localdate()
+        self.today = today_eastern()
 
         bill = BillFactory(
             user=self.user,

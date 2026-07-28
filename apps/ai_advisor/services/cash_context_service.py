@@ -14,24 +14,28 @@ matters is the one between a balance and a shortfall. Falling back to the
 template is cheap and is the designed default, so the check errs strict.
 """
 
+import datetime as dt
 import logging
 import re
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.core.cache import cache
-from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.ai_advisor.services.consent_service import ConsentService
 from apps.banking.models import BankAccount, BankConnectionStatus
 from apps.banking.services.balance_service import BalanceService
 from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.common.dates import today_eastern
 from integrations.factory import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
 _DAY_SECONDS = 60 * 60 * 24
+
+#: How far ahead "upcoming" reaches when nothing is configured.
+DEFAULT_UPCOMING_WINDOW_DAYS = 30
 
 #: Any numeral, with the sign attached however it is written. `$-1,000.00` and
 #: `-$1,000.00` both mean minus a thousand; a regex anchored on `$` sees
@@ -66,14 +70,23 @@ class CashContextService:
         self._occurrences = BillOccurrenceSelector()
         self._balances = BalanceService()
 
-    def build(self, *, user, amount, funding_account_id=None):
+    def build(
+        self,
+        *,
+        user,
+        amount,
+        funding_account_id=None,
+        bill_occurrence_id=None,
+    ):
         account = self._funding_account(user, funding_account_id)
 
         # The stored balance is written at link time and would otherwise be
         # quoted as fact however old it is.
         self._balances.refresh(account)
 
-        figures = self._figures(user, amount, account)
+        figures = self._figures(
+            user, amount, account, bill_occurrence_id=bill_occurrence_id
+        )
 
         return {"text": self._phrase(user, figures), "figures": figures}
 
@@ -100,17 +113,37 @@ class CashContextService:
             )
         return account
 
-    def _figures(self, user, amount, account):
+    def _figures(self, user, amount, account, *, bill_occurrence_id=None):
         balance_now = account.available_balance or Decimal("0.00")
 
-        upcoming = list(self._occurrences.get_upcoming_occurrences(user))
+        today = today_eastern()
+        window_days = self._upcoming_window_days()
+
+        # Unbounded, "upcoming" meant every open occurrence ever generated, so
+        # the total was really a function of each bill's cadence — a weekly
+        # bill contributed a fortnight of obligations, a quarterly one half a
+        # year. The screen copy ("enough to cover all 4 upcoming bills")
+        # presumes a defined near-term set, so the window defines it.
+        upcoming = self._occurrences.get_upcoming_occurrences(
+            user, today
+        ).filter(due_date__lte=today + dt.timedelta(days=window_days))
+
+        if bill_occurrence_id:
+            # The occurrence this payment settles is already subtracted via
+            # `amount`; leaving it in the total would charge the user twice
+            # and understate their headroom.
+            upcoming = upcoming.exclude(id=bill_occurrence_id)
+
+        upcoming = list(upcoming)
         upcoming_total = sum(
             (occ.amount for occ in upcoming), Decimal("0.00")
         )
 
-        next_due = self._occurrences.get_next_due(user)
+        # A separate query, not `upcoming[0]`: the next bill due may fall
+        # outside the window, and the user still wants to know about it.
+        next_due = self._occurrences.get_next_due(user, today)
         next_bill = None
-        if next_due is not None:
+        if next_due is not None and next_due.id != bill_occurrence_id:
             next_bill = {
                 "vendor": next_due.bill.vendor.name,
                 "amount": next_due.amount,
@@ -123,8 +156,15 @@ class CashContextService:
             "balance_as_of": account.balance_as_of,
             "upcoming_count": len(upcoming),
             "upcoming_total": upcoming_total,
+            "upcoming_window_days": window_days,
             "next_bill": next_bill,
         }
+
+    @staticmethod
+    def _upcoming_window_days():
+        return getattr(
+            settings, "FLO_UPCOMING_WINDOW_DAYS", DEFAULT_UPCOMING_WINDOW_DAYS
+        )
 
     # --- phrasing --------------------------------------------------------
 
@@ -165,17 +205,30 @@ class CashContextService:
         return f"${value:,.2f}"
 
     def _template(self, f):
-        enough = (
-            "enough to cover"
-            if f["balance_after"] >= f["upcoming_total"]
-            else "short of"
-        )
-        parts = [
-            f"Balance {self._money(f['balance_now'])}. After this payment "
-            f"you'll have {self._money(f['balance_after'])} — {enough} your "
-            f"{f['upcoming_count']} upcoming bill(s) totaling "
-            f"{self._money(f['upcoming_total'])}."
-        ]
+        count = f["upcoming_count"]
+        window = f["upcoming_window_days"]
+
+        if count == 0:
+            # "0 upcoming bill(s) totaling $0.00" is a sentence no one wants
+            # to read, and the $0.00 is a figure the guard then has to police.
+            parts = [
+                f"Balance {self._money(f['balance_now'])}. After this "
+                f"payment you'll have {self._money(f['balance_after'])}, "
+                f"with nothing else due in the next {window} days."
+            ]
+        else:
+            enough = (
+                "enough to cover"
+                if f["balance_after"] >= f["upcoming_total"]
+                else "short of"
+            )
+            noun = "bill" if count == 1 else "bills"
+            parts = [
+                f"Balance {self._money(f['balance_now'])}. After this "
+                f"payment you'll have {self._money(f['balance_after'])} — "
+                f"{enough} your {count} upcoming {noun} totaling "
+                f"{self._money(f['upcoming_total'])}."
+            ]
         nb = f["next_bill"]
         if nb:
             parts.append(
@@ -222,7 +275,9 @@ class CashContextService:
 
     @staticmethod
     def _cap_key(user):
-        return f"flo:llm:{user.id}:{timezone.localdate():%Y%m%d}"
+        # Eastern, so "today" rolls at midnight for the user rather than at
+        # 19:00 their time.
+        return f"flo:llm:{user.id}:{today_eastern():%Y%m%d}"
 
     @classmethod
     def _reserve_call(cls, user):

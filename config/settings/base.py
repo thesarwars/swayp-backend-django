@@ -194,6 +194,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         # E3-S9: cheap to call and enumerable, so it is capped per user.
         "routing_validate": "30/min",
+        # E7-S2: the only advisor endpoint that can reach a paid provider.
+        "ai_cash_context": "20/min",
     },
 
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",
@@ -377,6 +379,10 @@ FLO_LLM_DAILY_CAP = env.int("FLO_LLM_DAILY_CAP", default=50)
 # timeout falling back to the template, so this is the whole budget: SDK
 # retries are disabled, because the template fallback *is* the retry.
 FLO_LLM_TIMEOUT_SECONDS = env.float("FLO_LLM_TIMEOUT_SECONDS", default=2.0)
+# How far ahead "upcoming bills" reaches in the cash-context figures. Without
+# a window the total is a function of each bill's cadence rather than of a
+# period the user recognises.
+FLO_UPCOMING_WINDOW_DAYS = env.int("FLO_UPCOMING_WINDOW_DAYS", default=30)
 
 # How long a stored bank balance may be served before it is re-read from the
 # provider (E5 -> E7). Flo quotes balances as fact, so this is the ceiling on

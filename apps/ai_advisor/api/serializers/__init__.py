@@ -2,7 +2,11 @@ from .cash_context import (
     CashContextInputSerializer,
     CashContextSerializer,
 )
-from .consent import ConsentInputSerializer, ConsentSerializer
+from .consent import (
+    ConsentInputSerializer,
+    ConsentSerializer,
+    ConsentStateSerializer,
+)
 from .projection import (
     BalanceProjectionQuerySerializer,
     BalanceProjectionSerializer,
@@ -15,4 +19,5 @@ __all__ = [
     "CashContextSerializer",
     "ConsentInputSerializer",
     "ConsentSerializer",
+    "ConsentStateSerializer",
 ]

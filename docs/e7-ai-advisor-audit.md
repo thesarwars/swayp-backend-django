@@ -53,6 +53,8 @@ grep-gate violation that was simply invisible while the suite could not run).
 
 ## P2 — AC violations and correctness gaps
 
+**#7–#9 fixed 2026-07-29** (the LLM guard rails). #10–#16 remain.
+
 7. **No 2.5 s timeout.** `anthropic.py:18` hardcodes 8 s, and the SDK retries twice by default → worst case ~25 s against an AC of **p95 ≤ 2.5 s (timeout → template)**. Not env-tunable. **Fix:** timeout ≈ 2 s, `max_retries=0`, budget enforced by the caller.
 8. **`integrations/llm/template.py` does not exist** (spec line 36 names it as the default). The template lives inside `CashContextService._template`, and the registered default is `MockLLMProvider`, whose output is `"[mock-llm] " + prompt` (`mock.py:11`). Flipping `FLO_LLM_ENABLED=true` on a default install therefore serves literal `"[mock-llm] Balance $41,200.00…"` to real users — it passes echo-validation, since the numbers match.
 9. **Daily cap is per-process and non-atomic.** No `CACHES` is configured in any settings module, so Django falls back to per-process LocMemCache: the real ceiling is `N_workers × cap`. `get`/`set` is racy (`cash_context_service.py:147-151`), and quota is consumed even when the call later fails.
@@ -106,7 +108,20 @@ payment-tracking tables used Postgres-only `DROP … CASCADE`. They are now
 no-ops on any other backend — the Postgres path is byte-identical, and those
 tables never existed on a fresh test database.
 
+## The LLM guard rails (P2 #7–#9, fixed 2026-07-29)
+
+| # | Fix | Files |
+|---|---|---|
+| 7 | Timeout is `FLO_LLM_TIMEOUT_SECONDS` (default **2.0 s**, was a hardcoded 8 s) and SDK retries are **off** — the template fallback is the retry, so the timeout is the whole budget rather than a per-attempt one the SDK multiplied by three. | `integrations/llm/anthropic.py`, `config/settings/base.py` |
+| 8 | `integrations/llm/template.py` exists and is the **default** provider. Flipping the kill switch on an unconfigured install now serves the deterministic sentence instead of `"[mock-llm] …"`. `mock` stays registered for tests that need to prove the provider was reached. | `integrations/llm/template.py` (new), `integrations/factory.py`, settings |
+| 9 | `CACHES` is configured — Redis when `CACHE_URL`/`REDIS_URL` is set, LocMem otherwise — so the per-user cap is a real cap rather than `N_workers × cap`. The counter is `add`+`incr` (atomic, and the 24 h TTL is written once instead of being re-armed on every call), fails **closed** when the cache is unreachable, and refunds the slot when a call produces nothing. | `cash_context_service.py`, `config/settings/base.py` |
+
+The Flo cap is the only cache consumer in the codebase, so introducing a Redis
+backend changes nothing else, and an outage degrades Flo to the template.
+
+E7's five env flags — plus `CACHE_URL` and `BALANCE_MAX_AGE_SECONDS` — are now
+documented in `.env.example` (was P3 #19).
+
 ## Suggested order for what remains
-1. **P2 #7–#9** — the LLM guard rails, before `LLM_PROVIDER=anthropic` is ever switched on.
-2. **P2 #10–#16**, then **P3**.
-3. Fix the pre-existing processor-name leak that the now-runnable suite exposes.
+1. **P2 #10–#16**, then **P3**.
+2. Fix the pre-existing processor-name leak that the now-runnable suite exposes.

@@ -31,6 +31,8 @@ from integrations.factory import get_llm_provider
 
 logger = logging.getLogger(__name__)
 
+_DAY_SECONDS = 60 * 60 * 24
+
 #: Any numeral, with the sign attached however it is written. `$-1,000.00` and
 #: `-$1,000.00` both mean minus a thousand; a regex anchored on `$` sees
 #: neither sign and reads both as +1000, which is exactly the confusion between
@@ -191,7 +193,7 @@ class CashContextService:
         if not ConsentService.has_live_consent(user):
             return template
 
-        if not self._under_daily_cap(user):
+        if not self._reserve_call(user):
             logger.info("Flo LLM daily cap reached for user; using template")
             return template
 
@@ -210,25 +212,64 @@ class CashContextService:
                     "Flo LLM altered the figures; using template"
                 )
         except Exception:  # noqa: BLE001 - advisor must never 500
+            # The call produced nothing, so it should not have cost the user a
+            # slot — a missing API key would otherwise burn the whole daily
+            # budget without a packet leaving the process.
+            self._release_call(user)
             logger.warning("Flo LLM call failed; using template", exc_info=True)
 
         return template
 
     @staticmethod
-    def _under_daily_cap(user):
-        """Per-user daily LLM-call cap (E7-S4).
+    def _cap_key(user):
+        return f"flo:llm:{user.id}:{timezone.localdate():%Y%m%d}"
 
-        Soft guard via the cache — a shared cache backend makes it a hard cap
-        across workers in prod; LocMem is per-process in dev. Increments only
-        when we're about to actually call the LLM.
+    @classmethod
+    def _reserve_call(cls, user):
+        """Claim one slot from the user's daily budget (E7-S4).
+
+        ``add`` then ``incr``, not ``get`` then ``set``: the read-modify-write
+        pair let two workers both read 49 and both call, and re-``set``ting
+        pushed the 24-hour expiry out on every call, so a steady trickle kept
+        one day's window open indefinitely. ``add`` sets the TTL exactly once;
+        ``incr`` is atomic on Redis and under LocMem's lock.
+
+        Fails closed. If the cache is unreachable we cannot count, so we do not
+        spend — and the template we serve instead is the designed default.
         """
         cap = getattr(settings, "FLO_LLM_DAILY_CAP", 50)
-        key = f"flo:llm:{user.id}:{timezone.localdate():%Y%m%d}"
-        used = cache.get(key, 0)
-        if used >= cap:
+
+        if cap <= 0:
             return False
-        cache.set(key, used + 1, 60 * 60 * 24)
-        return True
+
+        key = cls._cap_key(user)
+
+        try:
+            if cache.add(key, 1, _DAY_SECONDS):
+                return True
+
+            try:
+                used = cache.incr(key)
+            except ValueError:
+                # Expired between the add and the incr; this is the day's
+                # first call after all.
+                cache.add(key, 1, _DAY_SECONDS)
+                return True
+        except Exception:  # noqa: BLE001 - cannot count, so do not spend
+            logger.warning(
+                "Flo daily cap unavailable; using template", exc_info=True
+            )
+            return False
+
+        return used <= cap
+
+    @classmethod
+    def _release_call(cls, user):
+        """Hand a reserved slot back after a call that produced nothing."""
+        try:
+            cache.decr(cls._cap_key(user))
+        except Exception:  # noqa: BLE001 - a lost refund is not worth a 500
+            pass
 
     @staticmethod
     def _numeric_fingerprint(text):

@@ -273,6 +273,27 @@ CELERY_RESULT_BACKEND = env(
 )
 
 CELERY_ACCEPT_CONTENT = ["json"]
+
+# Cache. Django's unconfigured default is a per-process LocMemCache, which
+# silently turns the Flo per-user daily call cap into N_workers x cap. Redis
+# when one is configured (the same instance Celery uses unless CACHE_URL says
+# otherwise); LocMem when none is, so a dev box still needs nothing running.
+CACHE_URL = env("CACHE_URL", default=env("REDIS_URL", default=""))
+
+if CACHE_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": CACHE_URL,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "swayp-local",
+        }
+    }
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 
@@ -336,7 +357,10 @@ BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
 MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
-LLM_PROVIDER = env("LLM_PROVIDER", default="mock")
+# "template" rather than "mock": if the kill switch is ever flipped on before
+# a real provider is configured, the mock's "[mock-llm] ..." echo would go
+# straight to a user. The template provider is the deterministic sentence.
+LLM_PROVIDER = env("LLM_PROVIDER", default="template")
 
 # Kill switch for Flo's LLM phrasing (E7-S2). Off by default: the advisor
 # serves a deterministic Python template sentence and makes no LLM calls.
@@ -346,8 +370,13 @@ FLO_LLM_ENABLED = env.bool("FLO_LLM_ENABLED", default=False)
 # and FLO_LLM_ENABLED is on. Requires the `anthropic` package in prod.
 ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 LLM_MODEL = env("LLM_MODEL", default="claude-haiku-4-5")
-# Per-user cap on LLM calls per day (soft guard; shared cache in prod).
+# Per-user cap on LLM calls per day. Counted in the cache, so it is only a
+# real cap when that cache is shared across workers — see CACHES below.
 FLO_LLM_DAILY_CAP = env.int("FLO_LLM_DAILY_CAP", default=50)
+# Wall-clock budget for the phrasing call. E7-S2 AC3 is p95 <= 2.5 s with a
+# timeout falling back to the template, so this is the whole budget: SDK
+# retries are disabled, because the template fallback *is* the retry.
+FLO_LLM_TIMEOUT_SECONDS = env.float("FLO_LLM_TIMEOUT_SECONDS", default=2.0)
 
 # How long a stored bank balance may be served before it is re-read from the
 # provider (E5 -> E7). Flo quotes balances as fact, so this is the ceiling on

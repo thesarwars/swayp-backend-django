@@ -26,9 +26,12 @@ class FactoryTests(SimpleTestCase):
             get_bank_data_provider,
             get_directory_provider,
             get_check_mail_provider,
-            get_llm_provider,
         ):
             self.assertEqual(getter().name, "mock")
+
+    def test_llm_defaults_to_the_template_provider(self):
+        """Not "mock" — its "[mock-llm] " echo is user-visible (E7-S2)."""
+        self.assertEqual(get_llm_provider().name, "template")
 
 
 class MockMoneyMovementTests(SimpleTestCase):

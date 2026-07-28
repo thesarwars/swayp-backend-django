@@ -12,10 +12,13 @@ class EmailServiceTests(TestCase):
         EmailService.send_otp_email("user@example.com", "123456", purpose="registration")
 
         self.assertEqual(mock_send_mail.call_count, 1)
-        subject, message, from_email, recipient_list, kwargs = mock_send_mail.call_args.args
 
-        self.assertIn("Verify Your Swayp Account", subject)
-        self.assertIn("123456", message)
-        self.assertEqual(from_email, "noreply@getswayp.com")
-        self.assertEqual(recipient_list, ["user@example.com"])
-        self.assertFalse(kwargs.get("fail_silently"))
+        # send_mail is called with keyword arguments, so the call is carried
+        # on .kwargs — .args is empty.
+        call = mock_send_mail.call_args.kwargs
+
+        self.assertIn("Verify Your Swayp Account", call["subject"])
+        self.assertIn("123456", call["message"])
+        self.assertEqual(call["from_email"], "noreply@getswayp.com")
+        self.assertEqual(call["recipient_list"], ["user@example.com"])
+        self.assertFalse(call["fail_silently"])

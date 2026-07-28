@@ -1,4 +1,36 @@
 from django.core.paginator import EmptyPage, Paginator
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    """DRF pagination for generic views.
+
+    Emits the same envelope as ``PaginationService`` below, which the
+    selector-layer paths already return, so both styles agree on the wire.
+    """
+
+    page_query_param = "page"
+    page_size_query_param = "pageSize"
+    page_size = 20
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        paginator = self.page.paginator
+
+        return Response(
+            {
+                "items": data,
+                "pagination": {
+                    "page": self.page.number,
+                    "pageSize": self.get_page_size(self.request),
+                    "totalPages": paginator.num_pages,
+                    "totalItems": paginator.count,
+                    "hasNext": self.page.has_next(),
+                    "hasPrevious": self.page.has_previous(),
+                },
+            }
+        )
 
 
 class PaginationService:

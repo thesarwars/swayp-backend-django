@@ -29,7 +29,10 @@ class VendorListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
 
-        return VendorSelector.list(self.request.user)
+        return VendorSelector.list(
+            self.request.user,
+            filters=self.request.query_params,
+        )
 
     def get_serializer_class(self):
 
@@ -81,7 +84,10 @@ class VendorSummaryAPIView(APIView):
 
     def get(self, request):
 
-        data = VendorSelector.summary(request.user)
+        data = VendorSelector.summary(
+            request.user,
+            filters=request.query_params,
+        )
         serializer = VendorSummarySerializer(instance=data)
 
         return Response(serializer.data)

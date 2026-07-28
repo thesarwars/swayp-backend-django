@@ -118,6 +118,9 @@ class ScanStatus(models.TextChoices):
 class VendorStatus(models.TextChoices):
     ACTIVE="ACTIVE","Active"
     INACTIVE="INACTIVE","Inactive"
+    # Soft delete (E3-S5). Vendors are never hard-deleted: payment history
+    # references them, so the row survives and drops out of every list.
+    DELETED="DELETED","Deleted"
 
 # new added
 class BillType(models.TextChoices):

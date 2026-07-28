@@ -1,5 +1,5 @@
 from django.db import transaction
-from apps.common.enums import ProviderStatus
+from apps.common.enums import VendorStatus
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
 
@@ -39,7 +39,7 @@ class VendorService:
     @transaction.atomic
     def soft_delete(vendor):
 
-        vendor.status = ProviderStatus.DELETED
+        vendor.status = VendorStatus.DELETED
         vendor.save(update_fields=["status"])
 
 

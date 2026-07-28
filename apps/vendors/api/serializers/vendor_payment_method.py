@@ -56,6 +56,15 @@ class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):
             "updated_at",
         )
 
+        # Provider-determined facts, not client claims. `payee_verified` is
+        # the BRD §3.3 vendor-account verification that drives the trust
+        # badge, and `supports_same_day` is a network capability — a client
+        # must not be able to assert either about itself.
+        read_only_fields = (
+            "payee_verified",
+            "supports_same_day",
+        )
+
     def validate(self, attrs):
 
         method = attrs.get("method_type")

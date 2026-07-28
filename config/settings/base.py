@@ -335,6 +335,10 @@ DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 LLM_PROVIDER = env("LLM_PROVIDER", default="mock")
 
+# Kill switch for Flo's LLM phrasing (E7-S2). Off by default: the advisor
+# serves a deterministic Python template sentence and makes no LLM calls.
+FLO_LLM_ENABLED = env.bool("FLO_LLM_ENABLED", default=False)
+
 
 # --- Authentication tuning (E2-S1, S2, S4) -------------------------------
 

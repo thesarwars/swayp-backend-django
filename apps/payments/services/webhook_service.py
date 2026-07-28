@@ -237,7 +237,7 @@ class WebhookService:
 
         # The bill is owed again — DUE rather than PAID.
         self._set_occurrence(
-            payment, BillOccurrenceStatus.UPCOMING, clear_payment=True
+            payment, BillOccurrenceStatus.DUE, clear_payment=True
         )
 
         self._notify(

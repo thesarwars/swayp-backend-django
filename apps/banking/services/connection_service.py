@@ -81,6 +81,15 @@ class ConnectionService:
         if connection.status == BankConnectionStatus.DISCONNECTED:
             return connection
 
+        # Revoke at the provider first so the link is actually dead upstream,
+        # not merely flagged locally. If revocation fails the atomic block
+        # rolls back and the connection stays ACTIVE for a clean retry.
+        from integrations.factory import get_bank_data_provider
+
+        get_bank_data_provider().remove_item(
+            access_token=connection.access_token
+        )
+
         connection.status = BankConnectionStatus.DISCONNECTED
         connection.save(update_fields=["status", "updated_at"])
 

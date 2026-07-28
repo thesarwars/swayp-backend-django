@@ -81,3 +81,12 @@ class BankDataProvider(ABC):
         self, *, access_token: str, account_id: str, processor: str
     ) -> str:
         ...
+
+    @abstractmethod
+    def remove_item(self, *, access_token: str) -> None:
+        """Revoke the linked item at the provider (Plaid ``/item/remove``).
+
+        Called on disconnect so a 'disconnected' connection is actually dead
+        at the provider, not just locally flagged.
+        """
+        ...

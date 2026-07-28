@@ -166,6 +166,10 @@ class PaymentExecutionService:
             ]
         )
 
+        # BRD §4 invariant, enforced at runtime rather than assumed: a settled
+        # payment must name the licensed provider that moved the money.
+        self.assert_non_custodial(payment)
+
         self.stages.mark(
             payment, PaymentStageName.COMPLETED, PaymentStageStatus.DONE
         )

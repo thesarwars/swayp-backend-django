@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.vendors.models import VendorPaymentMethod
 from apps.vendors.services.payment_method_schedule import schedule_for_method
+from apps.common.crypto import reject_masked_value
 from apps.common.enums import (
     VendorPaymentMethodType,
 )
@@ -93,6 +94,18 @@ class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):
             "payee_verified",
             "supports_same_day",
         )
+
+    # Raw routing/account numbers never reach the backend — the client
+    # tokenizes at Moov (Moov.js) and sends {provider_token, account_last4}.
+    # Changing an account is therefore just sending a fresh token. What the
+    # server must refuse is a masked echo (e.g. "****4821") being stored as a
+    # real value (E1-S6 / BRD §3.4). On PATCH, an omitted field stays
+    # unchanged (it never enters validated_data).
+    def validate_provider_token(self, value):
+        return reject_masked_value(value)
+
+    def validate_account_last4(self, value):
+        return reject_masked_value(value)
 
     def validate(self, attrs):
 

@@ -42,4 +42,8 @@ urlpatterns = [
     path(
         "vendors/",include("apps.vendors.urls")
     ),
+    path(
+        "ai/",
+        include("apps.ai_advisor.api.urls"),
+    ),
 ]

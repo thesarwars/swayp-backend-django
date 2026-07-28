@@ -10,6 +10,21 @@ and Django no longer has model state to delete.
 
 from django.db import migrations
 
+#: See 0006 — Postgres syntax, and a no-op on a backend where the table never
+#: existed.
+_POSTGRES = "postgresql"
+
+
+def _run(sql):
+    def operation(apps, schema_editor):
+        if schema_editor.connection.vendor != _POSTGRES:
+            return
+
+        schema_editor.execute(sql)
+
+    return operation
+
+
 DROP = """
 DROP TABLE IF EXISTS payment_tracking CASCADE;
 DELETE FROM django_migrations WHERE app = 'payment_tracking';
@@ -34,5 +49,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(sql=DROP, reverse_sql=RECREATE),
+        migrations.RunPython(_run(DROP), _run(RECREATE)),
     ]

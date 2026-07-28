@@ -22,6 +22,11 @@ class BillOccurrenceService:
     #: Safety valve for a bill anchored implausibly far in the past.
     MAX_CATCHUP_CYCLES = 1200
 
+    #: Safety valve for forecasting forward (see ``due_dates_through``). A
+    #: weekly bill needs ~52 steps per year; the projection endpoint caps the
+    #: requested date long before this is reached.
+    MAX_FORECAST_CYCLES = 1200
+
     def __init__(self):
         self.selector = BillOccurrenceSelector()
 
@@ -89,6 +94,50 @@ class BillOccurrenceService:
         for _ in range(self.HORIZON_CYCLES):
             cursor = next_occurrence(anchor, bill.frequency, after=cursor)
             due_dates.append(cursor)
+
+        return due_dates
+
+    def due_dates_through(self, bill, through, today=None):
+        """Due dates this bill's rule produces in ``[today, through]``.
+
+        ``horizon_due_dates`` answers "what rows should exist right now" and
+        stops two cycles out (E4-S6). A forecast asks a different question —
+        "what comes due by date X" — and X is routinely past that horizon: a
+        weekly bill is only materialised ~13 days ahead, so a 90-day balance
+        projection built from rows alone silently subtracts nothing for it.
+
+        This walks the recurrence rule instead, read-only: nothing is created,
+        so a GET stays a GET and the answer is exact past the horizon. Cadence
+        maths stays delegated to ``apps.common.dates.next_occurrence``, so
+        month-end clamping and weekday-preserving weeklies behave identically
+        to the rows the beat job will eventually write.
+        """
+        today = today or timezone.localdate()
+
+        if through < today:
+            return []
+
+        anchor = bill.anchor_date
+
+        # A one-time bill has exactly one due date, ever.
+        if bill.frequency == BillFrequency.ONE_TIME:
+            return [anchor] if today <= anchor <= through else []
+
+        cursor = self._current_period_start(anchor, bill.frequency, today)
+
+        due_dates = []
+
+        if today <= cursor <= through:
+            due_dates.append(cursor)
+
+        for _ in range(self.MAX_FORECAST_CYCLES):
+            cursor = next_occurrence(anchor, bill.frequency, after=cursor)
+
+            if cursor > through:
+                break
+
+            if cursor >= today:
+                due_dates.append(cursor)
 
         return due_dates
 

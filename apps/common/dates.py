@@ -20,6 +20,21 @@ from apps.common.enums import BillFrequency, PaymentRail
 
 EASTERN = ZoneInfo("America/New_York")
 
+
+def today_eastern(now: dt.datetime | None = None) -> dt.date:
+    """Today on the wall clock the product actually runs on.
+
+    ``django.utils.timezone.localdate()`` follows ``TIME_ZONE``, which is UTC,
+    so it rolls over at 19:00/20:00 Eastern. Anything that answers "is this
+    date in the past" or "what is due today" from a user's point of view has to
+    ask Eastern instead, or an evening request gets tomorrow's answer — the
+    same reason ``CELERY_BEAT_SCHEDULE`` is pinned to Eastern.
+    """
+    from django.utils import timezone
+
+    return (now or timezone.now()).astimezone(EASTERN).date()
+
+
 # date.weekday(): Monday=0 ... Sunday=6
 _MONDAY = 0
 _THURSDAY = 3

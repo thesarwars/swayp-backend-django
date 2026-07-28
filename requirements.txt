@@ -1,5 +1,9 @@
 amqp==5.3.1
 annotated-types==0.7.0
+# Flo phrasing, only when LLM_PROVIDER=anthropic (E7-S4). Imported lazily, so
+# the app runs without it; declared so a built image can actually enable the
+# flag.
+anthropic==0.120.2
 anyio==4.14.1
 argon2-cffi==25.1.0
 argon2-cffi-bindings==25.1.0

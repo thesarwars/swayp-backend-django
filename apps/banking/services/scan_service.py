@@ -91,9 +91,18 @@ class ScanService:
 
         return scan
 
-    @transaction.atomic
     def run(self, scan):
-        """Fetch history, detect patterns, write candidates."""
+        """Fetch history, detect patterns, write candidates.
+
+        Deliberately NOT wrapped in a single transaction. The progress screen
+        polls this scan row while the work runs, and inside one atomic block
+        every intermediate save stays invisible until commit — the poller
+        would see 0 and then jump straight to the final count.
+
+        Each candidate write is individually atomic and idempotent
+        (get_or_create against the unique constraint), so a partial run leaves
+        valid rows and a retry simply completes it.
+        """
         try:
             transactions = self.provider.get_transactions(
                 access_token=scan.connection.access_token,
@@ -107,19 +116,20 @@ class ScanService:
 
             seen = 0
             for row in detected:
-                BillDetectionCandidate.objects.get_or_create(
-                    scan=scan,
-                    vendor_name=row["vendor_name"],
-                    amount=row["amount"],
-                    cadence=row["cadence"],
-                    defaults={
-                        "due_day": row["due_day"],
-                        "occurrences": row["occurrences"],
-                        "category_guess": self.guess_category(
-                            row["vendor_name"]
-                        ),
-                    },
-                )
+                with transaction.atomic():
+                    BillDetectionCandidate.objects.get_or_create(
+                        scan=scan,
+                        vendor_name=row["vendor_name"],
+                        amount=row["amount"],
+                        cadence=row["cadence"],
+                        defaults={
+                            "due_day": row["due_day"],
+                            "occurrences": row["occurrences"],
+                            "category_guess": self.guess_category(
+                                row["vendor_name"]
+                            ),
+                        },
+                    )
 
                 # Counts every candidate the scan has, not just the ones this
                 # pass inserted — otherwise re-running a scan finds everything

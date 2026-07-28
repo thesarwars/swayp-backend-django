@@ -179,7 +179,35 @@ Note the extra level of nesting — `errors.payment_method.<field>`, not
 GET /api/v1/vendors/<vendor_id>/
 ```
 
-Returns the same bare object as §3's 201, including `payment_methods`.
+Returns the same bare object as §3's 201, including `payment_methods`, plus a
+spend panel:
+
+```json
+{
+  "id": "07e76ac5-...", "name": "WeWork", "payment_methods": [ ],
+  "total_paid": "3200.00",
+  "monthly_spend": [
+    { "month": "2025-08", "total": "0.00" },
+    { "month": "2025-09", "total": "0.00" },
+    { "month": "2026-07", "total": "3200.00" }
+  ],
+  "next_bill": {
+    "occurrence_id": "ee477d57-...", "bill_id": "f510433b-...",
+    "due_date": "2026-08-15", "amount": "3200.00"
+  }
+}
+```
+
+`monthly_spend` is always **exactly 12 buckets**, oldest first, ending on the
+current month. Empty months are present with `"0.00"` rather than omitted, so
+the bars line up without client-side gap filling. Every total is a decimal
+string.
+
+`total_paid` is the sum of those 12 buckets — successful payments only.
+`next_bill` is the vendor's nearest unsettled occurrence, or `null`.
+
+These are computed per request, so use §2 for lists rather than fetching
+detail per row.
 
 ### 4.2 Update
 
@@ -292,6 +320,10 @@ GET|PUT|PATCH|DELETE /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/
 
 `GET` returns the bare method. `DELETE` returns **204** with an empty body.
 
+Deleting the **primary** method automatically promotes the oldest remaining
+one, so a vendor never ends up with methods but no primary. Deleting the
+last method leaves none, and `payment_rail` in §2 becomes `null`.
+
 ### 5.4 Set primary
 
 ```
@@ -369,12 +401,47 @@ finalised, so expect `guessed` results for unfamiliar codes.
 
 | Gap | Impact |
 |---|---|
-| **Deleting the primary method leaves no primary** | The vendor keeps its other methods but `payment_rail` becomes `null` and the rail chip disappears. Call §5.4 on a remaining method after deleting a primary. |
-| `summary.check_total` is always `"0.00"` | Do not display it; it needs payment amounts that do not exist yet. |
-| Vendor detail has no spend history | No 12-month series, total-paid, or next-bill. Not available. |
+| Spend figures are zero in practice | §4.4's `monthly_spend` / `total_paid` are wired and tested, but no payments have run yet, so every bucket is `"0.00"` until they do. |
+| `payee_verified` is always `false` | It is set by provider-run account verification, which lands with the banking epic. Never settable by the client. |
+| Directory search is mock-backed (§6) | Results are canned until PRD §10-Q1 resolves how Swayp discovers configured-account vendors. |
 | `PATCH` returns only the editable fields (§4.2) | Re-fetch for the full record. |
-| No ABA routing validation | `POST /banking/routing/validate/` does not exist. The "Valid – Chase Bank (ABA verified)" indicator cannot be built yet; `aba_bank_name` is whatever the client supplies. |
+| QR payload format is provisional (§7) | PRD §10-Q6 is open; expect `guessed` provenance for unfamiliar codes. |
 | Three response envelopes (§1.1) | Unwrap defensively. |
+
+---
+
+## 8b. ABA routing validation
+
+```
+POST /api/v1/banking/routing/validate/   { "routing_number": "021000021" }
+```
+
+```json
+{ "success": true, "message": "Valid – JPMorgan Chase Bank (ABA verified)",
+  "data": { "valid": true, "bank_name": "JPMorgan Chase Bank",
+    "aba_verified": true, "bank_known": true,
+    "message": "Valid – JPMorgan Chase Bank (ABA verified)" } }
+```
+
+Powers the live indicator on the ACH form. Formatting is tolerated
+(`026-009-593` works).
+
+> ⚠️ **An invalid number still returns HTTP 200** with `success: true` and
+> `data.valid: false` — the request succeeded, the number didn't. **Branch on
+> `data.valid`, not the status code.**
+
+`valid` and `bank_known` are separate. A number can pass the checksum but be
+absent from the bank directory; that is still valid, just without a name:
+
+```json
+{ "valid": true, "bank_name": null, "aba_verified": true,
+  "bank_known": false,
+  "message": "Valid – ABA verified (bank not in directory)" }
+```
+
+The routing number is write-only and never echoed back, a masked value is
+rejected, and the endpoint is rate-limited to 30/min. Passing the checksum
+proves the number is well-formed — **not** that the account exists.
 
 ---
 
@@ -430,8 +497,11 @@ GET /api/v1/vendors/summary/
 ```
 
 ```json
-{ "total": 3, "network": 1, "ach": 1, "check": 1, "check_total": "0.00" }
+{ "total": 1, "network": 0, "ach": 0, "check": 1, "check_total": "3200.00" }
 ```
 
 Counts respect the same filters as §2, so `?rail=ACH` makes the summary and the
 list agree.
+
+`check_total` is the summed per-cycle amount of every bill routed over CHECK —
+recurring value, not money already spent. Soft-deleted bills are excluded.

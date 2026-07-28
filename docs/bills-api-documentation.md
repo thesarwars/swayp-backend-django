@@ -309,26 +309,56 @@ GET /api/v1/bills/
 > filtered yet.** For the due-date rows your list screen actually shows, use
 > §4.3. See §7.
 
-### 4.3 Upcoming occurrences — the rows for the list screen
+### 4.3 Occurrences — the rows for the list screen ⭐
+
+```
+GET /api/v1/bills/occurrences/?status=&vendor=&date_from=&date_to=&page=&pageSize=
+```
+
+**This is the endpoint the bills list screen is built on.** Each row is one due
+date.
+
+```json
+{
+  "success": true,
+  "message": "Bill occurrences fetched successfully.",
+  "data": [
+    { "id": "7491b811-...", "bill_id": "2dd75375-...",
+      "vendor_id": "38250c28-...", "vendor_name": "WeWork",
+      "vendor_logo": "https://cdn.swayp.com/logos/wework.png",
+      "category_name": "Commercial Rent", "due_date": "2026-07-15",
+      "amount": "3200.00", "status": "OVERDUE", "autopay_mode": "REMIND" },
+    { "id": "0d71c184-...", "bill_id": "2dd75375-...",
+      "vendor_id": "38250c28-...", "vendor_name": "WeWork",
+      "vendor_logo": "https://cdn.swayp.com/logos/wework.png",
+      "category_name": "Commercial Rent", "due_date": "2026-08-15",
+      "amount": "3200.00", "status": "UPCOMING", "autopay_mode": "REMIND" }
+  ],
+  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
+    "totalItems": 2, "hasNext": false, "hasPrevious": false }
+}
+```
+
+| Query param | Effect |
+|---|---|
+| `status` | `UPCOMING` · `DUE` · `OVERDUE` · `SCHEDULED` · `PAID` — filters on the **computed** status, so it matches the chip |
+| `vendor` | vendor id |
+| `date_from` / `date_to` | `YYYY-MM-DD`, inclusive |
+| `page` / `pageSize` | default 20, max 100 |
+
+`id` is the **occurrence** id — that is what you pass to the pay endpoint.
+`bill_id` is what you pass to detail, invoice and payment history.
+
+Soft-deleted bills drop out automatically.
+
+### 4.3b Upcoming occurrences (narrow convenience view)
 
 ```
 GET /api/v1/bills/occurrences/upcoming/
 ```
 
-```json
-{ "success": true, "message": "Upcoming bills fetched successfully.",
-  "data": [
-    { "id": "52684969-...", "due_date": "2026-08-01", "amount": "3200.00",
-      "status": "UPCOMING", "vendor_name": "WeWork",
-      "category_name": "Commercial Rent" },
-    { "id": "3708200d-...", "due_date": "2026-09-01", "amount": "3200.00",
-      "status": "UPCOMING", "vendor_name": "WeWork",
-      "category_name": "Commercial Rent" }
-  ] }
-```
-
-`id` here is the **occurrence** id — that is what you pass to the pay endpoint.
-`status` is the computed value from §1.2; render it as the status chip.
+Unsettled occurrences due today or later, unpaginated, with fewer fields.
+Fine for a small "what's next" widget; use §4.3 for the list screen.
 
 ### 4.4 Summary — the tab counts
 
@@ -447,34 +477,113 @@ already-paid occurrence returns an error.
 > This is a stopgap until the payments epic ships. Real payment execution will
 > replace it.
 
-### 4.10 QR decode
+### 4.10 Payment history
 
 ```
-POST /api/v1/vendors/qr/decode/
+GET /api/v1/bills/<bill_id>/payments/
 ```
-
-Accepts JSON `{"payload": "..."}` or a multipart `image` upload. Returns a
-**bare object**, no envelope:
 
 ```json
-{ "vendor_name": "WeWork", "category": null, "payment_ref": "WW-88",
-  "amount": "3200", "due_date": "2026-09-01",
-  "provenance": { "vendor_name": "detected", "amount": "detected",
-    "due_date": "detected", "payment_ref": "detected" },
-  "directory_match": null }
+{
+  "success": true,
+  "message": "Payment history fetched successfully.",
+  "data": [
+    { "id": "dc3f5110-...", "occurrence_id": "7491b811-...",
+      "due_date": "2026-07-15", "amount": "3200.00", "fee": "0.00",
+      "total": "3200.00", "currency": "USD",
+      "payment_status": "SUCCESSFUL", "payment_method": "CHECK",
+      "transaction_reference": "TX-OK-1",
+      "created_at": "2026-07-28T11:21:40.238237Z" },
+    { "id": "664ca3f8-...", "occurrence_id": "7491b811-...",
+      "due_date": "2026-07-15", "amount": "3200.00", "fee": "0.00",
+      "total": "3200.00", "currency": "USD",
+      "payment_status": "FAILED", "payment_method": "CHECK",
+      "transaction_reference": "TX-FAIL-1",
+      "created_at": "2026-07-28T11:21:40.214237Z" }
+  ],
+  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
+    "totalItems": 2, "hasNext": false, "hasPrevious": false }
+}
+```
+
+Newest first, paginated. Note both rows above share one `occurrence_id`: a
+**retry is a separate payment against the same due date**, so group by
+`occurrence_id` if you want to collapse attempts.
+
+`payment_status` is the payment's own lifecycle (`SCHEDULED`, `PENDING`,
+`PROCESSING`, `SUCCESSFUL`, `FAILED`, `CANCELLED`, `REFUNDED`, `RETURNED`) —
+not the occurrence status from §1.2.
+
+### 4.11 Invoice
+
+```
+GET /api/v1/bills/<bill_id>/invoice/
+```
+
+```json
+{
+  "success": true,
+  "message": "Invoice fetched successfully.",
+  "data": {
+    "bill_id": "2dd75375-...", "occurrence_id": "7491b811-...",
+    "vendor_name": "WeWork",
+    "vendor_logo": "https://cdn.swayp.com/logos/wework.png",
+    "category": "Commercial Rent", "bill_type": "FIXED",
+    "frequency": "MONTHLY", "amount": "3200.00",
+    "due_date": "2026-07-15", "status": "OVERDUE",
+    "autopay_mode": "REMIND", "payment_method": "CHECK", "notes": "",
+    "payment_reference": "SWAYP-2DD75375-20260715",
+    "qr_payload": "SWAYP:vendor=WeWork;ref=SWAYP-2DD75375-20260715;amount=3200.00;due=2026-07-15"
+  }
+}
+```
+
+Defaults to the bill's next open occurrence. `qr_payload` is the string to
+render as the invoice QR — it round-trips through §4.12, so scanning a Swayp
+invoice prefills the wizard.
+
+Rendered from bill data only; there is no OCR in v1.
+
+### 4.12 Bill QR decode
+
+```
+POST /api/v1/bills/qr/decode/
+```
+
+Accepts JSON `{"payload": "..."}` or a multipart `image` upload. Fields are
+coerced for the wizard — `amount` to a decimal, `due_date` to a date:
+
+```json
+{
+  "success": true,
+  "message": "QR decoded successfully.",
+  "data": {
+    "vendor_name": "WeWork", "category": null, "amount": "3200.00",
+    "due_date": "2026-09-01", "payment_ref": "WW-88",
+    "provenance": { "vendor_name": "detected", "amount": "detected",
+      "due_date": "detected", "payment_ref": "detected" }
+  }
+}
 ```
 
 `provenance` drives the per-field chips: `detected` means it was genuinely read
-out of the payload, `guessed` means it was inferred. Show `guessed` fields as
-needing confirmation.
+out of the payload, `guessed` means it was inferred — show those as needing
+confirmation. **A value that fails to coerce loses its provenance entry
+entirely** rather than being reported as successfully read, so a field present
+in `data` but absent from `provenance` should be treated as unknown.
 
 **422 on anything unreadable:**
 
 ```json
-{ "detail": "QR payload is not readable — no recognisable content." }
+{ "success": false,
+  "message": "QR payload is not readable — no recognisable content." }
 ```
 
 Treat 422 as "scan again", not as a server error.
+
+> There is also `POST /api/v1/vendors/qr/decode/` for the add-vendor flow. It
+> shares the same parser but returns a **bare object** (no envelope) and adds
+> `directory_match`. Use the bills one in the bill wizard.
 
 ---
 
@@ -519,11 +628,9 @@ A bill belonging to another user returns **404**, not 403.
 
 | Gap | Impact |
 |---|---|
-| `GET /bills/` returns rules, not occurrences; no filters, no pagination | Build the list screen on §4.3 for now. When this is fixed it will gain `status`/`vendor`/`date_from`/`date_to` filters and change to the paginated shape. |
-| No payment history endpoint | `GET /bills/<id>/payments/` does not exist. `total_paid` in §4.6 is the only figure available. |
-| No bill QR or invoice endpoint | `POST /bills/qr/decode/` and `GET /bills/<id>/invoice/` are not built. Use §4.10 for vendor QR. |
-| `vendors/summary/` `check_total` is always `0` | Do not display it. |
-| Vendor detail has no spend history | No 12-month series or total-paid yet. |
+| `GET /bills/` returns bill **rules**, unpaginated and unfiltered | Not a bug, but not the list screen. Use §4.3. This endpoint is for "how many bills do I have", not "what's due". |
+| Payment figures are zero until payments run | The payment-history endpoint (§4.10) and the vendor spend series are wired and tested, but nothing has actually paid anything yet, so they return empty/zero in practice. |
+| QR payload format is provisional | PRD §10-Q6 is open. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
 | Two response envelopes (§1.3) | Unwrap defensively. |
 
 ---
@@ -535,13 +642,40 @@ A bill belonging to another user returns **404**, not 403.
 | `GET` | `/bill-categories/` | envelope · category list |
 | `GET` | `/vendors/` | paginated · vendor list |
 | `GET` | `/vendors/<id>/payment-methods/?due_date=&amount=` | paginated · methods + `schedule` |
-| `POST` | `/vendors/qr/decode/` | bare object |
+| `POST` | `/banking/routing/validate/` | envelope · ABA check (see note) |
 | `POST` | `/bills/create/` | envelope · review summary |
 | `GET` | `/bills/` | envelope · bill rules |
+| `GET` | `/bills/occurrences/` | envelope + pagination · **the list screen** |
 | `GET` | `/bills/summary/` | envelope · tab counts |
 | `GET` | `/bills/next-due/` | envelope · one occurrence or `null` |
-| `GET` | `/bills/occurrences/upcoming/` | envelope · occurrence rows |
+| `GET` | `/bills/occurrences/upcoming/` | envelope · narrow convenience view |
+| `POST` | `/bills/qr/decode/` | envelope · prefill fields · 422 if unreadable |
 | `GET` | `/bills/<id>/details/` | envelope · bill detail |
 | `PATCH` | `/bills/<id>/update/` | envelope · review summary |
 | `DELETE` | `/bills/<id>/details/` | envelope · confirmation |
+| `GET` | `/bills/<id>/payments/` | envelope + pagination · payment history |
+| `GET` | `/bills/<id>/invoice/` | envelope · invoice + `qr_payload` |
 | `PATCH` | `/bills/occurrences/<id>/pay/` | envelope · `data: null` |
+
+### ABA routing validation
+
+Used by the vendor ACH form, not the bill wizard, but worth knowing:
+
+```
+POST /api/v1/banking/routing/validate/   { "routing_number": "021000021" }
+```
+
+```json
+{ "success": true, "message": "Valid – JPMorgan Chase Bank (ABA verified)",
+  "data": { "valid": true, "bank_name": "JPMorgan Chase Bank",
+    "aba_verified": true, "bank_known": true,
+    "message": "Valid – JPMorgan Chase Bank (ABA verified)" } }
+```
+
+> ⚠️ **An invalid routing number is still HTTP 200** with `success: true` and
+> `data.valid: false`. The request succeeded; the number didn't. **Branch on
+> `data.valid`, not the status code.**
+>
+> `valid` and `bank_known` are separate: a number can pass the checksum while
+> being absent from the bank directory. That is still valid — just show it
+> without a bank name.

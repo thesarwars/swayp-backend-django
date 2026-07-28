@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from django.db.models import Prefetch, Sum
 from django.db.models.functions import TruncMonth
@@ -124,7 +125,7 @@ class VendorSelector:
             payment_method__method_type=VendorPaymentMethodType.CHECK,
         ).aggregate(total=Sum("amount"))["total"]
 
-        return total or 0
+        return total or Decimal("0.00")
 
     @staticmethod
     def monthly_spend(vendor, months=12, today=None):
@@ -156,7 +157,8 @@ class VendorSelector:
         )
 
         by_month = {
-            row["month"].strftime("%Y-%m"): row["total"] or 0 for row in rows
+            row["month"].strftime("%Y-%m"): row["total"] or Decimal("0.00")
+            for row in rows
         }
 
         series = []
@@ -164,7 +166,14 @@ class VendorSelector:
 
         for _ in range(months):
             key = f"{year:04d}-{month:02d}"
-            series.append({"month": key, "total": by_month.get(key, 0)})
+            # Decimal for every bucket, including empty ones — mixing int 0
+            # with Decimal totals makes the series awkward to consume.
+            series.append(
+                {
+                    "month": key,
+                    "total": by_month.get(key, Decimal("0.00")),
+                }
+            )
             month += 1
             if month > 12:
                 month = 1
@@ -176,8 +185,13 @@ class VendorSelector:
     def total_paid(vendor, months=12, today=None):
         """Sum of successful payments to this vendor over the window."""
         return sum(
-            bucket["total"]
-            for bucket in VendorSelector.monthly_spend(vendor, months, today)
+            (
+                bucket["total"]
+                for bucket in VendorSelector.monthly_spend(
+                    vendor, months, today
+                )
+            ),
+            Decimal("0.00"),
         )
 
     @staticmethod

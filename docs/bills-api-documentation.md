@@ -474,8 +474,11 @@ Takes an **occurrence** id, not a bill id. The occurrence leaves the summary
 counts immediately (in the captured run `upcoming_count` went 3 → 2). Paying an
 already-paid occurrence returns an error.
 
-> This is a stopgap until the payments epic ships. Real payment execution will
-> replace it.
+> **Superseded.** Real payment execution now exists — see the
+> [Payments API](payments-api-documentation.md). Use `POST /payments/` with
+> this occurrence id instead; it moves money and keeps the occurrence in
+> step. This endpoint remains only for reconciling a payment made outside
+> Swayp.
 
 ### 4.10 Payment history
 

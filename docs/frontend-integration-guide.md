@@ -10,6 +10,7 @@ Per-domain reference lives in:
 |---|---|
 | [Banking API](banking-api-documentation.md) | bank link, scan, bill detection, import, onboarding, ABA validation |
 | [Bills API](bills-api-documentation.md) | bill wizard, occurrence list, summary, invoice, QR |
+| [Payments API](payments-api-documentation.md) | the pay flow, batches, cancel, failure recovery, autopay |
 | [Vendors API](vendors-api-documentation.md) | payees, payment methods, lead times, directory, QR |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
 
@@ -203,6 +204,7 @@ has real data by the time you reach it.
 3. Bills           list occurrences, detail, summary
 4. Vendors         list, detail, payment methods
 5. Bill wizard     vendor → category → amount → method → autopay
+6. Pay             select → authorize once → poll stages → receipt
 ```
 
 **Start with onboarding.** One bank link produces four vendors and four bills
@@ -335,8 +337,8 @@ or the database.
 
 | Gap | Impact |
 |---|---|
-| **Payments do not execute** | `PATCH bills/occurrences/<id>/pay/` marks an occurrence paid **without moving money**. It is a stopgap. |
-| Spend figures are zero | `total_paid` and `monthly_spend` are wired and tested, but nothing has paid anything yet. Build the chart; expect flat data. |
+| Real rails are not wired | Payments execute end to end against the **mock** processor. Moov, Stripe and Lob are a config swap gated on the provider application, so the flow and every response shape are final. |
+| Spend figures fill in as payments run | `total_paid` and `monthly_spend` read real payments now; they are zero only until payments exist. |
 | `payee_verified` always `false` | Set by provider-run verification, which isn't wired. The trust badge will never light up yet. |
 | SMS OTP | Rejected explicitly. Don't offer the channel. |
 | QR payload format | Provisional. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
@@ -353,6 +355,11 @@ or the database.
 `connections/<id>/` · `accounts/` · `scans/` · `scans/<id>/` ·
 `scans/<id>/candidates/` · `scans/<id>/import/` · `onboarding-summary/` ·
 `routing/validate/`
+
+**Payments** — `payments/` · `payments/<id>/` · `payments/<id>/confirm/` ·
+`payments/<id>/status/` · `payments/<id>/cancel/` · `payments/<id>/failure/` ·
+`payments/<id>/resolve/` · `payments/history/` ·
+`payments/batches/<id>/confirm|status|cancel/` · `webhooks/<processor>/`
 
 **Bills** — `bills/` · `bills/create/` · `bills/occurrences/` ·
 `bills/occurrences/upcoming/` · `bills/occurrences/<id>/pay/` ·

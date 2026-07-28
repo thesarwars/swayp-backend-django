@@ -42,6 +42,17 @@ def _date(value):
     return f"{value.strftime('%B')} {value.day}, {value.year}"
 
 
+def _sentence(text):
+    """End a sentence without doubling a period.
+
+    Provider legal names end in "Inc." and this text is stored verbatim on a
+    consent record, so "Moov Financial, Inc.." would be preserved forever.
+    """
+    text = text.rstrip()
+
+    return text if text.endswith(".") else f"{text}."
+
+
 def for_single(*, amount, vendor_name, funding_display, rail, processor,
                initiated_date=None, deadline_text=None):
     """Consent wording for one payment."""
@@ -50,8 +61,10 @@ def for_single(*, amount, vendor_name, funding_display, rail, processor,
     lines = [
         f"I authorize Swayp to debit {funding_display} for "
         f"{_money(amount)} and to pay {vendor_name}.",
-        f"This transfer will be executed by {party} over "
-        f"{RAIL_LABEL.get(rail, rail)}.",
+        _sentence(
+            f"This transfer will be executed by {party} over "
+            f"{RAIL_LABEL.get(rail, rail)}"
+        ),
     ]
 
     if initiated_date:
@@ -79,7 +92,7 @@ def for_batch(*, total, count, funding_display, processors):
         f"I authorize Swayp to debit {funding_display} for a total of "
         f"{_money(total)} covering {count} bill"
         f"{'s' if count != 1 else ''}. "
-        f"These transfers will be executed by {party_text}. "
+        f"{_sentence(f'These transfers will be executed by {party_text}')} "
         "I understand this authorization covers every payment listed above "
         "and remains in effect until they complete or I cancel them."
     )

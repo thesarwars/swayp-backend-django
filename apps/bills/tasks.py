@@ -25,7 +25,11 @@ def generate_occurrences():
     created = 0
     failed = 0
 
-    queryset = Bill.objects.select_related("vendor").order_by("created_at")
+    queryset = (
+        Bill.objects.filter(deleted_at__isnull=True)
+        .select_related("vendor")
+        .order_by("created_at")
+    )
 
     for bill in queryset.iterator():
         try:

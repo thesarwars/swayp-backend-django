@@ -8,24 +8,15 @@ Legend — **Broken:** built, but wrong. **Missing:** never built. **Debt:** wor
 
 ---
 
-## P0 — Blocks other work
+## P0 — ✅ Done
 
-### 1. `GET vendors/<id>/payment-methods/?due_date=&amount=` ignores its params
-**Missing · E3-S6 · [apps/vendors/api/views/vendor_payment_method.py](../apps/vendors/api/views/vendor_payment_method.py)**
+Items 1–3 are shipped; see the commit table at the bottom.
 
-The endpoint accepts `due_date` and `amount` and drops them. It should return per-method **lead time** and **initiation date**, computed with `initiation_date()` / `estimated_arrival()` from [apps/common/dates.py](../apps/common/dates.py) (already written, currently unused for this).
+1. ~~`payment-methods/?due_date=&amount=` ignored its params~~ — `43dc119`
+2. ~~Editing a bill did not regenerate occurrences~~ — `0f4a2e1`
+3. ~~Deleting a bill destroyed paid history~~ — `0f4a2e1`
 
-> **This blocks E4-S3.** The bill wizard's method step is specified to call exactly this endpoint (834:3867, 840:11573). E4 Phase 2 hits this wall immediately.
-
-### 2. Editing a bill does not regenerate its occurrences
-**Broken · E4-S5 · [apps/bills/services/bill_service.py](../apps/bills/services/bill_service.py)**
-
-`update_bill` writes `frequency` / `anchor_date` straight to the row. Existing future occurrences keep the old schedule, so the bill silently disagrees with itself. Needs: drop unsettled future occurrences, re-run `generate_occurrences`, leave paid/scheduled history alone.
-
-### 3. Deleting a bill destroys paid history
-**Broken · E4-S5 · [apps/bills/services/bill_service.py](../apps/bills/services/bill_service.py)**
-
-`delete_bill` calls `bill.delete()`, and `Bill → BillOccurrence` is `CASCADE`, so paid occurrences go with it. The AC requires cascading **future unpaid** occurrences only and preserving paid history.
+**E4-S3 is unblocked.** The wizard method step now has a schedule to render.
 
 ---
 
@@ -119,6 +110,8 @@ manage.py test apps.bills.tests.test_recurrence
 | `0a23b37` | **E4 Phase 0** — extracted `apps/bills`; created the missing migration; registered `StandingAuthorization` (nothing imported it, so Django never saw it); fixed the `ImportError` in `bill_selector`, the missing `__init__` on both services, the missing `get_user_bills`, the missing `get_days_overdue`, and the clobbered `bill-categories/` route |
 | `a66937f` | **E4 Phase 1** — occurrence engine + Celery beat; **fixed month-end drift in `next_occurrence`** (Jan 31 → Feb 28 → Mar 28, quarterly → Jul 30); read-time computed status; create-time seeding |
 | `2bb4ee7` | **E1–E3 audit** — vendor soft-delete 500 (`ProviderStatus.DELETED` exists on no enum); `payee_verified` was client-writable; vendor filters silently ignored; no pagination anywhere; malformed QR returned 200; 110 lines of shadowed duplicate views; broken auth test |
+| `43dc119` | **E3-S6** — per-method rail, lead time, initiation date, estimated arrival and `can_meet_due_date`; query params validated instead of dropped |
+| `0f4a2e1` | **E4-S5** — schedule rebuild on `frequency`/`anchor_date` change; repricing on amount change (FIXED only); soft delete via `Bill.deleted_at` so paid history survives |
 
 **E1 audited clean.** Celery, USD defaults, enums + state machine, `integrations/` (five providers with mocks + factory), `crypto.py` and `IdempotencyKey` are all correct.
 

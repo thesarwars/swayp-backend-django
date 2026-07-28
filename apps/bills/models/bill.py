@@ -33,6 +33,12 @@ class Bill(BaseModel):
     payment_method = models.ForeignKey(VendorPaymentMethod,on_delete=models.SET_NULL,related_name="bills",null=True,blank=True)
     source = models.CharField(max_length=20,choices=BillSource.choices,default=BillSource.MANUAL)
 
+    # Soft delete (E4-S5). Bill -> BillOccurrence is CASCADE, so a real delete
+    # would take settled occurrences with it and the AC requires paid history
+    # to survive. Deleting drops future unpaid occurrences and stamps this
+    # instead; every selector filters on it.
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "bills"
         ordering = ["-created_at"]
@@ -41,6 +47,7 @@ class Bill(BaseModel):
             models.Index(fields=["user"]),
             models.Index(fields=["vendor"]),
             models.Index(fields=["category"]),
+            models.Index(fields=["deleted_at"]),
         ]
 
         constraints = [

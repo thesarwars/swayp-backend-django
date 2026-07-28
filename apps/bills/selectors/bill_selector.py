@@ -8,7 +8,7 @@ class BillSelector:
 
     def get_user_bills(self, user):
         return (
-            Bill.objects.filter(user=user)
+            Bill.objects.filter(user=user, deleted_at__isnull=True)
             .select_related(
                 "vendor",
                 "category",
@@ -22,6 +22,7 @@ class BillSelector:
             Bill.objects.filter(
                 id=bill_id,
                 user=user,
+                deleted_at__isnull=True,
             )
             .select_related(
                 "vendor",
@@ -36,6 +37,7 @@ class BillSelector:
             Bill.objects.filter(
                 id=bill_id,
                 user=user,
+                deleted_at__isnull=True,
             )
             .select_related(
                 "vendor",

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.bill_categories.models import BillCategory
@@ -89,10 +90,26 @@ class BillService:
 
         return bill
 
+    #: Editing any of these changes the recurrence, so the unsettled part of
+    #: the schedule has to be rebuilt rather than left disagreeing with it.
+    SCHEDULE_FIELDS = ("frequency", "anchor_date")
+
+    @transaction.atomic
     def update_bill(self, bill_id, user, validated_data):
         bill = self.get_bill(
             bill_id=bill_id,
             user=user,
+        )
+
+        schedule_changed = any(
+            field in validated_data
+            and validated_data[field] != getattr(bill, field)
+            for field in self.SCHEDULE_FIELDS
+        )
+
+        amount_changed = (
+            "amount" in validated_data
+            and validated_data["amount"] != bill.amount
         )
 
         if "category" in validated_data:
@@ -140,11 +157,25 @@ class BillService:
         bill.full_clean()
         bill.save()
 
+        if schedule_changed:
+            self.occurrence_service.rebuild_schedule(bill)
+        elif amount_changed:
+            self.occurrence_service.reprice_open_occurrences(bill)
+
         return bill
 
+    @transaction.atomic
     def delete_bill(self, bill_id, user):
+        """Soft delete (E4-S5).
+
+        Future unpaid occurrences go; anything settled stays, along with the
+        bill row itself, because the payment history references it.
+        """
         bill = self.get_bill(bill_id=bill_id, user=user)
 
-        bill.delete()
+        self.occurrence_service.drop_open_occurrences(bill)
+
+        bill.deleted_at = timezone.now()
+        bill.save(update_fields=["deleted_at", "updated_at"])
 
         return True

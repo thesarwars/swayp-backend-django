@@ -18,7 +18,10 @@ _RELATED = (
 class BillOccurrenceSelector:
 
     def _for_user(self, user):
-        return BillOccurrence.objects.filter(bill__user=user)
+        return BillOccurrence.objects.filter(
+            bill__user=user,
+            bill__deleted_at__isnull=True,
+        )
 
     def get_upcoming_occurrences(self, user, today=None):
         today = today or timezone.localdate()

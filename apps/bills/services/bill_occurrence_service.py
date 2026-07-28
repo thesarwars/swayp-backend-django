@@ -4,8 +4,13 @@ from django.utils import timezone
 
 from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.bills.selectors.occurrence_status import open_occurrences
 from apps.common.dates import next_occurrence
-from apps.common.enums import BillFrequency, BillOccurrenceStatus
+from apps.common.enums import (
+    BillFrequency,
+    BillOccurrenceStatus,
+    BillType,
+)
 
 
 class BillOccurrenceService:
@@ -105,6 +110,54 @@ class BillOccurrenceService:
             current = candidate
 
         return current
+
+    # --- schedule maintenance (E4-S5) -------------------------------------
+
+    def open_occurrences(self, bill, today=None):
+        """This bill's unsettled occurrences from today onward.
+
+        Settled rows (SCHEDULED / PAID) and anything already in the past are
+        excluded — a due date that has come and gone is history, whatever the
+        user later edits.
+        """
+        today = today or timezone.localdate()
+
+        return open_occurrences(
+            bill.occurrences.filter(due_date__gte=today)
+        )
+
+    @transaction.atomic
+    def rebuild_schedule(self, bill, today=None):
+        """Drop the unsettled forward schedule and regenerate it.
+
+        Used when ``frequency`` or ``anchor_date`` changes: the old due dates
+        no longer follow from the rule, but settled ones must survive.
+        """
+        today = today or timezone.localdate()
+
+        removed, _ = self.open_occurrences(bill, today).delete()
+        created = self.generate_occurrences(bill, today=today)
+
+        return removed, len(created)
+
+    @transaction.atomic
+    def reprice_open_occurrences(self, bill, today=None):
+        """Push a new bill amount onto unsettled occurrences.
+
+        FIXED bills only. A VARIABLE bill's amount is a per-cycle default that
+        each occurrence may already have overridden, so it is left alone.
+        """
+        if bill.bill_type == BillType.VARIABLE:
+            return 0
+
+        return self.open_occurrences(bill, today).update(amount=bill.amount)
+
+    @transaction.atomic
+    def drop_open_occurrences(self, bill, today=None):
+        """Remove the unsettled forward schedule, keeping settled history."""
+        removed, _ = self.open_occurrences(bill, today).delete()
+
+        return removed
 
     # --- reads ------------------------------------------------------------
 

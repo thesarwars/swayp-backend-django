@@ -26,6 +26,17 @@ class ForbiddenException(APIException):
     default_code = "forbidden"
 
 
+class UnprocessableEntityException(APIException):
+    """Well-formed request that asks for something nonsensical (422).
+
+    E.g. a balance projection for a date in the past (E7-S3).
+    """
+
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    default_detail = "The request could not be processed."
+    default_code = "unprocessable_entity"
+
+
 class ChannelNotAvailableException(APIException):
     """OTP delivery channel not available this release (E2-S1).
 

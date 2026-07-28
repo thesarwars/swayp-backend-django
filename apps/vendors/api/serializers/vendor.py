@@ -43,6 +43,12 @@ class VendorDetailSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    # E3-S4 spend panel. Computed on demand so the list endpoint, which does
+    # not need them, is not slowed down.
+    total_paid = serializers.SerializerMethodField()
+    monthly_spend = serializers.SerializerMethodField()
+    next_bill = serializers.SerializerMethodField()
+
     class Meta:
 
         model = Vendor
@@ -59,7 +65,35 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "late_fee_amount",
             "late_fee_grace_days",
             "payment_methods",
+            "total_paid",
+            "monthly_spend",
+            "next_bill",
         )
+
+    def get_total_paid(self, obj):
+        from apps.vendors.selectors.vendor_selector import VendorSelector
+
+        return VendorSelector.total_paid(obj)
+
+    def get_monthly_spend(self, obj):
+        from apps.vendors.selectors.vendor_selector import VendorSelector
+
+        return VendorSelector.monthly_spend(obj)
+
+    def get_next_bill(self, obj):
+        from apps.vendors.selectors.vendor_selector import VendorSelector
+
+        occurrence = VendorSelector.next_bill(obj)
+
+        if occurrence is None:
+            return None
+
+        return {
+            "occurrence_id": occurrence.id,
+            "bill_id": occurrence.bill_id,
+            "due_date": occurrence.due_date,
+            "amount": occurrence.amount,
+        }
 
 
 class VendorUpdateSerializer(serializers.ModelSerializer):

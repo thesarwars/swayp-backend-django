@@ -3,12 +3,18 @@
 The single source of truth for whether Flo may use a user's financial data.
 ``has_live_consent`` gates every LLM call (E7-S2/S3); revoking takes effect
 immediately because the gate is checked per request, not cached.
+
+Consent is a GLBA/CA/VT opt-in artifact, so the audit row it produces has to be
+truthful about who granted it and from where. ``record`` refuses rather than
+file a placeholder IP. ``revoke`` never refuses — a user must always be able to
+opt out — and records a null IP honestly if the client address is unknowable.
 """
 
 from django.db import transaction
 from django.utils import timezone
 
 from apps.ai_advisor.models import AdvisorConsent
+from apps.common.exceptions import BadRequestException
 
 DEFAULT_CONSENT_TEXT = (
     "I allow Flo to use my account balances and upcoming bills to give me "
@@ -28,6 +34,12 @@ class ConsentService:
     @staticmethod
     @transaction.atomic
     def record(*, user, consent_text=None, ip=None, user_agent=""):
+        if not ip:
+            raise BadRequestException(
+                "Consent could not be recorded because the client address "
+                "could not be determined."
+            )
+
         consent, _ = AdvisorConsent.objects.update_or_create(
             user=user,
             defaults={
@@ -65,7 +77,7 @@ class ConsentService:
         AuditLog.objects.create(
             user=user,
             action=action,
-            ip=ip or "0.0.0.0",
+            ip=ip or None,
             user_agent=user_agent or "",
             metadata={},
         )

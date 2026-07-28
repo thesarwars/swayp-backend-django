@@ -13,6 +13,13 @@ class BillOccurrenceSerializer(serializers.ModelSerializer):
         read_only=True,
     )
 
+    # Effective status, not the stored column: UPCOMING/DUE/OVERDUE are
+    # derived from due_date by the selector annotation.
+    status = serializers.SerializerMethodField()
+
+    def get_status(self, obj):
+        return getattr(obj, "computed_status", obj.status)
+
     class Meta:
         model = BillOccurrence
         fields = (

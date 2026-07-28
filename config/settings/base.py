@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import environ
 from datetime import timedelta
+
+from celery.schedules import crontab
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -264,9 +266,18 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "America/New_York"
 CELERY_ENABLE_UTC = True
 
-# Beat schedule scaffold — later epics register jobs here
-# (send_otp, sync_transactions, autopay_scheduler, bill_status_refresher…).
-CELERY_BEAT_SCHEDULE = {}
+# Beat schedule — later epics register jobs here
+# (send_otp, sync_transactions, autopay_scheduler…).
+CELERY_BEAT_SCHEDULE = {
+    # E4-S6. Runs before the business day in ET so a bill due today already
+    # has its occurrence row when the user opens the app. Occurrence status
+    # is computed at read time, so this job only ever creates rows — it never
+    # stamps DUE/OVERDUE, and a missed run cannot make a bill read stale.
+    "bills-generate-occurrences": {
+        "task": "bills.generate_occurrences",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
 
 
 # Field-level encryption (E1-S6) — provider secrets ONLY (never bank numbers).

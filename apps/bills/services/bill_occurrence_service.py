@@ -1,79 +1,125 @@
-from dateutil.relativedelta import relativedelta
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.common.dates import next_occurrence
 from apps.common.enums import BillFrequency, BillOccurrenceStatus
 
 
 class BillOccurrenceService:
+    """Materialises a Bill's recurrence rule into concrete occurrences."""
 
-    DEFAULT_OCCURRENCES = 12
+    #: How far past the current period to keep occurrences pre-created (E4-S6).
+    HORIZON_CYCLES = 2
+
+    #: Safety valve for a bill anchored implausibly far in the past.
+    MAX_CATCHUP_CYCLES = 1200
 
     def __init__(self):
         self.selector = BillOccurrenceSelector()
 
+    # --- generation -------------------------------------------------------
+
     @transaction.atomic
-    def generate_occurrences(self, bill):
+    def generate_occurrences(self, bill, today=None):
+        """Create any missing occurrences for ``bill`` within the horizon.
+
+        Idempotent: existing due dates are skipped, and the unique constraint
+        on (bill, due_date) absorbs anything a concurrent run slips in.
         """
-        Generate upcoming occurrences for a bill.
-        """
-        occurrences = []
+        today = today or timezone.localdate()
 
-        due_date = bill.anchor_date
+        due_dates = self.horizon_due_dates(bill, today)
 
-        for _ in range(self.DEFAULT_OCCURRENCES):
-
-            occurrences.append(
-                BillOccurrence(
-                    bill=bill,
-                    due_date=due_date,
-                    amount=bill.amount,
-                    status=BillOccurrenceStatus.UPCOMING,
-                )
-            )
-
-            due_date = self._get_next_due_date(
-                due_date,
-                bill.frequency,
-            )
-
-        BillOccurrence.objects.bulk_create(
-            occurrences,
-            ignore_conflicts=True,
+        existing = set(
+            BillOccurrence.objects.filter(
+                bill=bill,
+                due_date__in=due_dates,
+            ).values_list("due_date", flat=True)
         )
 
-        return occurrences
+        missing = [
+            BillOccurrence(
+                bill=bill,
+                due_date=due_date,
+                amount=bill.amount,
+                status=BillOccurrenceStatus.UPCOMING,
+            )
+            for due_date in due_dates
+            if due_date not in existing
+        ]
 
-
-    def _get_next_due_date(self,current_date,frequency):
-            if frequency == BillFrequency.DAILY:
-                return current_date + relativedelta(days=1)
-
-            if frequency == BillFrequency.WEEKLY:
-                return current_date + relativedelta(weeks=1)
-
-            if frequency == BillFrequency.MONTHLY:
-                return current_date + relativedelta(months=1)
-
-            if frequency == BillFrequency.QUARTERLY:
-                return current_date + relativedelta(months=3)
-
-            if frequency == BillFrequency.YEARLY:
-                return current_date + relativedelta(years=1)
-
-            raise ValueError(
-                f"Unsupported frequency: {frequency}"
+        if missing:
+            BillOccurrence.objects.bulk_create(
+                missing,
+                ignore_conflicts=True,
             )
 
-    
+        return missing
+
+    def horizon_due_dates(self, bill, today=None):
+        """Due dates that should exist right now for ``bill``.
+
+        The current period plus ``HORIZON_CYCLES`` ahead. Recurrence maths is
+        delegated to ``apps.common.dates.next_occurrence`` so month-end
+        clamping (Jan 31 -> Feb 28 -> Mar 31, not Mar 28), weekday-preserving
+        weeklies and quarterly anchor cadence stay in one place.
+        """
+        today = today or timezone.localdate()
+        anchor = bill.anchor_date
+
+        # A one-time bill has exactly one occurrence, ever. next_occurrence
+        # returns the anchor unconditionally for ONE_TIME, so walking it would
+        # spin forever on the same date.
+        if bill.frequency == BillFrequency.ONE_TIME:
+            return [anchor]
+
+        current = self._current_period_start(anchor, bill.frequency, today)
+
+        due_dates = [current]
+        cursor = current
+
+        for _ in range(self.HORIZON_CYCLES):
+            cursor = next_occurrence(anchor, bill.frequency, after=cursor)
+            due_dates.append(cursor)
+
+        return due_dates
+
+    def _current_period_start(self, anchor, frequency, today):
+        """Latest due date on or before ``today``; the anchor if it is future.
+
+        Bills anchored in the past land on their current unpaid period rather
+        than backfilling every cycle since the anchor — the daily beat keeps
+        the horizon stocked, so nothing legitimately due ever goes missing.
+        """
+        current = anchor
+
+        for _ in range(self.MAX_CATCHUP_CYCLES):
+            candidate = next_occurrence(anchor, frequency, after=current)
+
+            if candidate > today:
+                break
+
+            current = candidate
+
+        return current
+
+    # --- reads ------------------------------------------------------------
+
     def get_upcoming_occurrences(self, user):
         return self.selector.get_upcoming_occurrences(user)
 
-    
-    def mark_as_paid(self,occurrence,payment_reference):
+    def get_summary(self, user):
+        return self.selector.get_summary(user)
+
+    def get_next_due(self, user):
+        return self.selector.get_next_due(user)
+
+    # --- writes -----------------------------------------------------------
+
+    def mark_as_paid(self, occurrence, payment_reference):
         if occurrence.status == BillOccurrenceStatus.PAID:
             raise ValidationError(
                 {
@@ -94,9 +140,3 @@ class BillOccurrenceService:
         )
 
         return occurrence
-    
-    def get_summary(self, user):
-        return self.selector.get_summary(user)
-
-    def get_next_due(self, user):
-        return self.selector.get_next_due(user)

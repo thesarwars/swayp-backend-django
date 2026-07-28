@@ -153,9 +153,15 @@ def next_occurrence(
         BillFrequency.QUARTERLY: 3,
     }[frequency]
 
+    # Always measure from the anchor. Compounding (add_months(occ, step)) would
+    # let a clamped month poison every later cycle: Jan 31 -> Feb 28 -> Mar 28,
+    # losing the 31st permanently. Offsetting from the anchor re-expands it,
+    # so Jan 31 -> Feb 28 -> Mar 31.
+    months = 0
     occ = anchor
     while occ <= after:
-        occ = add_months(occ, step)
+        months += step
+        occ = add_months(anchor, months)
     return occ
 
 

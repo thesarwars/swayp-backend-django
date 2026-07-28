@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 from apps.bill_categories.models import BillCategory
 from apps.bills.models.bill import Bill
 from apps.bills.selectors.bill_selector import BillSelector
+from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
 
@@ -12,6 +13,7 @@ class BillService:
 
     def __init__(self):
         self.selector = BillSelector()
+        self.occurrence_service = BillOccurrenceService()
 
     @transaction.atomic
     def create_bill(self, *, user, validated_data):
@@ -49,6 +51,10 @@ class BillService:
             source=validated_data["source"],
             notes=validated_data.get("notes", ""),
         )
+
+        # Seed the first occurrences now rather than waiting for the nightly
+        # beat, so the bill has rows the moment the wizard closes.
+        self.occurrence_service.generate_occurrences(bill)
 
         return bill
 

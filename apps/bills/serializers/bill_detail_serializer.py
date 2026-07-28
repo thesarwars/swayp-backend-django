@@ -1,7 +1,8 @@
-from rest_framework import serializers
-from apps.bills.models.bill import Bill
 from django.utils import timezone
-from apps.bills.models.bill_occurrence import BillOccurrence
+from rest_framework import serializers
+
+from apps.bills.models.bill import Bill
+from apps.bills.selectors.occurrence_status import open_occurrences
 from apps.common.enums import BillOccurrenceStatus
 
 
@@ -51,10 +52,8 @@ class BillDetailSerializer(serializers.ModelSerializer):
     
     def get_next_due(self, obj):
         occurrence = (
-            obj.occurrences.filter(
-                due_date__gte=timezone.localdate(),
-                status=BillOccurrenceStatus.UPCOMING,
-            )
+            open_occurrences(obj.occurrences)
+            .filter(due_date__gte=timezone.localdate())
             .order_by("due_date")
             .first()
         )
@@ -65,9 +64,8 @@ class BillDetailSerializer(serializers.ModelSerializer):
         return None
 
     def get_overdue_amount(self, obj):
-        overdue = obj.occurrences.filter(
+        overdue = open_occurrences(obj.occurrences).filter(
             due_date__lt=timezone.localdate(),
-            status=BillOccurrenceStatus.UPCOMING,
         )
 
         return sum(item.amount for item in overdue)
@@ -76,10 +74,8 @@ class BillDetailSerializer(serializers.ModelSerializer):
         today = timezone.localdate()
 
         oldest = (
-            obj.occurrences.filter(
-                due_date__lt=today,
-                status=BillOccurrenceStatus.UPCOMING,
-            )
+            open_occurrences(obj.occurrences)
+            .filter(due_date__lt=today)
             .order_by("due_date")
             .first()
         )

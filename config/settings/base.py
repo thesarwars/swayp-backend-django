@@ -91,6 +91,7 @@ LOCAL_APPS = [
     "apps.audit",
     "apps.wallet",
     "apps.bill_categories",
+    "apps.banking",
     "apps.bills",
     "apps.providers",
     "apps.payments",
@@ -185,6 +186,12 @@ REST_FRAMEWORK = {
 
     "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.StandardPagination",
     "PAGE_SIZE": 20,
+
+    "DEFAULT_THROTTLE_CLASSES": (),
+    "DEFAULT_THROTTLE_RATES": {
+        # E3-S9: cheap to call and enumerable, so it is capped per user.
+        "routing_validate": "30/min",
+    },
 
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",
 }
@@ -298,3 +305,20 @@ MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 LLM_PROVIDER = env("LLM_PROVIDER", default="mock")
+
+
+# --- Authentication tuning (E2-S1, S2, S4) -------------------------------
+
+# Messaging provider for OTP delivery. "mock" logs and never sends (dev/CI);
+# "django_email" goes through EMAIL_BACKEND.
+MESSAGING_PROVIDER = env("MESSAGING_PROVIDER", default="django_email")
+
+# OTP resend throttle (E2-S2), per user + purpose.
+OTP_RESEND_MIN_GAP_SECONDS = env.int("OTP_RESEND_MIN_GAP_SECONDS", default=60)
+OTP_RESEND_HOURLY_LIMIT = env.int("OTP_RESEND_HOURLY_LIMIT", default=5)
+
+# Password reuse (E2-S4). Compare against the last N; retain the last K.
+PASSWORD_HISTORY_COMPARE_DEPTH = env.int(
+    "PASSWORD_HISTORY_COMPARE_DEPTH", default=1
+)
+PASSWORD_HISTORY_KEEP = env.int("PASSWORD_HISTORY_KEEP", default=5)

@@ -13,6 +13,10 @@ urlpatterns = [
         include("apps.bill_categories.urls"),
     ),
     path(
+        "banking/",
+        include("apps.banking.api.urls"),
+    ),
+    path(
         "bills/",
         include("apps.bills.urls"),
     ),

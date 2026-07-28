@@ -8,10 +8,10 @@ from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 
 from apps.authentication.models import OTP, OTPChannel
 from apps.authentication.utils.otp import OTPService
+from apps.common.exceptions import ChannelNotAvailableException
 
 OTP_TTL_MINUTES = 5
 
@@ -20,15 +20,14 @@ DELIVERABLE_CHANNELS = (OTPChannel.EMAIL,)
 
 
 def validate_channel(channel):
-    """Reject a channel we cannot actually deliver on, rather than no-op."""
+    """Reject a channel we cannot actually deliver on, rather than no-op.
+
+    501 (not 400): the request is well-formed, SMS just isn't implemented
+    this release.
+    """
     if channel and channel not in DELIVERABLE_CHANNELS:
-        raise ValidationError(
-            {
-                "channel": (
-                    f"{channel} delivery is not available in this release. "
-                    "Use EMAIL."
-                )
-            }
+        raise ChannelNotAvailableException(
+            f"{channel} delivery is not available in this release. Use EMAIL."
         )
 
     return channel or OTPChannel.EMAIL

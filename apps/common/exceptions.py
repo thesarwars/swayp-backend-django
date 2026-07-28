@@ -26,6 +26,18 @@ class ForbiddenException(APIException):
     default_code = "forbidden"
 
 
+class ChannelNotAvailableException(APIException):
+    """OTP delivery channel not available this release (E2-S1).
+
+    SMS is deferred (BRD §1.2). 501 rather than 400 — the request is valid,
+    the capability just isn't implemented yet.
+    """
+
+    status_code = status.HTTP_501_NOT_IMPLEMENTED
+    default_detail = "This OTP delivery channel is not available in this release."
+    default_code = "channel_not_available"
+
+
 class OTPThrottledException(APIException):
     """OTP resend rate limit (E2-S2). Carries a Retry-After header."""
 

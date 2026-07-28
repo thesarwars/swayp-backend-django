@@ -5,6 +5,9 @@ from apps.authentication.models import OTPPurpose
 from apps.authentication.services.otp_delivery_service import (
     OTPDeliveryService,
 )
+from apps.authentication.services.password_history_service import (
+    PasswordHistoryService,
+)
 from apps.users.models import (
     AccountType,
     BusinessProfile,
@@ -36,6 +39,9 @@ class RegistrationService:
             phone_number=phone_number,
             password=password,
         )
+
+        # Seed password history so a later reset can't reuse this password.
+        PasswordHistoryService().record(user=user)
 
         profile = Profile.objects.create(
             user=user,

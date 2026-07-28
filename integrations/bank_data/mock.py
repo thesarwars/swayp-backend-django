@@ -175,3 +175,7 @@ class MockBankDataProvider(BankDataProvider):
         self, *, access_token: str, account_id: str, processor: str
     ) -> str:
         return f"processor-{processor}-{account_id}"
+
+    def remove_item(self, *, access_token: str) -> None:
+        # Deterministic mock — no remote item to revoke.
+        return None

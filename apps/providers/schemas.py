@@ -27,7 +27,11 @@ provider_list_schema = extend_schema(
 provider_search_schema = extend_schema(
     tags=["Providers"],
     summary="Search Providers",
-    description="Search providers by keyword.",
+    description=(
+        "Search providers by keyword. Deprecated — superseded by "
+        "GET /vendors/directory-search/ (E3-S7)."
+    ),
+    deprecated=True,
     parameters=[ProviderSearchQuerySerializer],
     responses={
         200: ProviderListResponseSerializer,

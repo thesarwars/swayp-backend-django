@@ -8,6 +8,9 @@ from apps.vendors.models.vendor import Vendor
 class VendorListSerializer(serializers.ModelSerializer):
 
     payment_rail = serializers.SerializerMethodField()
+    recurring_amount = serializers.SerializerMethodField()
+    amount_period = serializers.SerializerMethodField()
+    next_due = serializers.SerializerMethodField()
 
     class Meta:
 
@@ -20,6 +23,9 @@ class VendorListSerializer(serializers.ModelSerializer):
             "business_type",
             "directory_verified",
             "payment_rail",
+            "recurring_amount",
+            "amount_period",
+            "next_due",
         )
 
     def get_payment_rail(self, obj):
@@ -32,6 +38,26 @@ class VendorListSerializer(serializers.ModelSerializer):
             return primary.method_type
 
         return None
+
+    def _next_occurrence(self, obj):
+        # Memoized per row so the three derived fields share one query.
+        if not hasattr(obj, "_next_occ_cache"):
+            from apps.vendors.selectors.vendor_selector import VendorSelector
+
+            obj._next_occ_cache = VendorSelector.next_bill(obj)
+        return obj._next_occ_cache
+
+    def get_recurring_amount(self, obj):
+        occ = self._next_occurrence(obj)
+        return occ.amount if occ else None
+
+    def get_amount_period(self, obj):
+        occ = self._next_occurrence(obj)
+        return occ.bill.frequency if occ else None
+
+    def get_next_due(self, obj):
+        occ = self._next_occurrence(obj)
+        return occ.due_date if occ else None
 
 from .vendor_payment_method import VendorPaymentMethodCreateSerializer, VendorPaymentMethodSerializer
 
@@ -48,6 +74,7 @@ class VendorDetailSerializer(serializers.ModelSerializer):
     total_paid = serializers.SerializerMethodField()
     monthly_spend = serializers.SerializerMethodField()
     next_bill = serializers.SerializerMethodField()
+    bills = serializers.SerializerMethodField()
 
     class Meta:
 
@@ -68,6 +95,7 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "total_paid",
             "monthly_spend",
             "next_bill",
+            "bills",
         )
 
     def get_total_paid(self, obj):
@@ -94,6 +122,24 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "due_date": occurrence.due_date,
             "amount": occurrence.amount,
         }
+
+    def get_bills(self, obj):
+        """Capped list of the vendor's bills with read-time status chips."""
+        from apps.vendors.selectors.vendor_selector import VendorSelector
+
+        return [
+            {
+                "occurrence_id": occ.id,
+                "bill_id": occ.bill_id,
+                "category": (
+                    occ.bill.category.name if occ.bill.category_id else None
+                ),
+                "amount": occ.amount,
+                "due_date": occ.due_date,
+                "status": occ.computed_status,
+            }
+            for occ in VendorSelector.recent_occurrences(obj)
+        ]
 
 
 class VendorUpdateSerializer(serializers.ModelSerializer):

@@ -1,6 +1,15 @@
 from django.db import transaction
-from apps.common.enums import VendorStatus
+from rest_framework.exceptions import ValidationError
+
+from apps.common.enums import PaymentStatus, VendorStatus
 from apps.vendors.models import Vendor, VendorPaymentMethod
+
+#: A payment in one of these states still expects to pay this vendor.
+_LIVE_PAYMENT_STATUSES = (
+    PaymentStatus.SCHEDULED,
+    PaymentStatus.PENDING,
+    PaymentStatus.PROCESSING,
+)
 
 
 class VendorService:
@@ -42,6 +51,23 @@ class VendorService:
     @staticmethod
     @transaction.atomic
     def soft_delete(vendor):
+        # Don't strand money already headed to this vendor.
+        from apps.payments.models import Payment
+
+        live = Payment.objects.filter(
+            vendor=vendor,
+            status__in=_LIVE_PAYMENT_STATUSES,
+        ).count()
+
+        if live:
+            raise ValidationError(
+                {
+                    "vendor": (
+                        f"Cannot delete while {live} payment(s) are scheduled "
+                        "or in flight. Cancel or wait for them to settle first."
+                    )
+                }
+            )
 
         vendor.status = VendorStatus.DELETED
         vendor.save(update_fields=["status"])

@@ -161,11 +161,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB"),
-        "USER": env("POSTGRES_USER"),
-        "PASSWORD": env("POSTGRES_PASSWORD"),
-        "HOST": env("POSTGRES_HOST"),
-        "PORT": env("POSTGRES_PORT"),
+        # Defaults match docker-compose so `manage.py` and `pytest` work on a
+        # fresh checkout with no .env; production.py requires the real values
+        # from the environment.
+        "NAME": env("POSTGRES_DB", default="swayp"),
+        "USER": env("POSTGRES_USER", default="postgres"),
+        "PASSWORD": env("POSTGRES_PASSWORD", default=""),
+        "HOST": env("POSTGRES_HOST", default="localhost"),
+        "PORT": env("POSTGRES_PORT", default="5432"),
     }
 }
 
@@ -345,6 +348,12 @@ ANTHROPIC_API_KEY = env("ANTHROPIC_API_KEY", default="")
 LLM_MODEL = env("LLM_MODEL", default="claude-haiku-4-5")
 # Per-user cap on LLM calls per day (soft guard; shared cache in prod).
 FLO_LLM_DAILY_CAP = env.int("FLO_LLM_DAILY_CAP", default=50)
+
+# How long a stored bank balance may be served before it is re-read from the
+# provider (E5 -> E7). Flo quotes balances as fact, so this is the ceiling on
+# how wrong that fact can be; it is also the floor on provider call volume,
+# since every advisor request inside the window reuses the stored value.
+BALANCE_MAX_AGE_SECONDS = env.int("BALANCE_MAX_AGE_SECONDS", default=300)
 
 
 # --- Authentication tuning (E2-S1, S2, S4) -------------------------------

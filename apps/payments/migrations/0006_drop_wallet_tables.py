@@ -16,6 +16,23 @@ restores the shape, not the data — the balances are gone by design.
 
 from django.db import migrations
 
+#: ``CASCADE`` and the recreate body are Postgres syntax. On any other backend
+#: — a sqlite test database, say — these tables never existed in the first
+#: place, so the drop is a no-op by definition rather than something to
+#: translate. The Postgres path is unchanged.
+_POSTGRES = "postgresql"
+
+
+def _run(sql):
+    def operation(apps, schema_editor):
+        if schema_editor.connection.vendor != _POSTGRES:
+            return
+
+        schema_editor.execute(sql)
+
+    return operation
+
+
 DROP = """
 DROP TABLE IF EXISTS wallet_transactions CASCADE;
 DROP TABLE IF EXISTS wallets CASCADE;
@@ -60,5 +77,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(sql=DROP, reverse_sql=RECREATE),
+        migrations.RunPython(_run(DROP), _run(RECREATE)),
     ]

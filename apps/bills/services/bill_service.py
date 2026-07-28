@@ -10,6 +10,7 @@ from apps.bills.serializers.bill_review_serializer import build_review
 from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from apps.bills.services.consent_service import ConsentService
 from apps.common.enums import AutopayMode
+from apps.payments.models import Payment
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
 
@@ -93,6 +94,22 @@ class BillService:
 
     def get_user_bills(self, user):
         return self.selector.get_user_bills(user)
+
+    def list_occurrences(self, user, filters=None):
+        """Occurrence-backed rows for the list screen (E4-S2)."""
+        return self.occurrence_service.selector.list_occurrences(
+            user, filters=filters
+        )
+
+    def payment_history(self, bill_id, user):
+        """Payments for a bill, joined through its occurrences (E4-S4)."""
+        bill = self.get_bill(bill_id=bill_id, user=user)
+
+        return (
+            Payment.objects.filter(bill_occurrence__bill=bill)
+            .select_related("bill_occurrence")
+            .order_by("-created_at")
+        )
 
     def get_bill(self, bill_id, user):
         bill = self.selector.get_bill(

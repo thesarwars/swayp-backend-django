@@ -56,6 +56,36 @@ class BillOccurrenceSelector:
             "overdue_count": unpaid.filter(due_date__lt=today).count(),
         }
 
+    def list_occurrences(self, user, filters=None, today=None):
+        """Occurrence rows for the bills list screen (E4-S2).
+
+        Filters: ``status`` (the computed one), ``vendor``, ``date_from``,
+        ``date_to``. Status is filtered on the annotation, so "overdue" means
+        what the screen shows rather than what happens to be stored.
+        """
+        today = today or timezone.localdate()
+        filters = filters or {}
+
+        queryset = annotate_status(self._for_user(user), today)
+
+        vendor = (filters.get("vendor") or "").strip()
+        if vendor:
+            queryset = queryset.filter(bill__vendor_id=vendor)
+
+        date_from = (filters.get("date_from") or "").strip()
+        if date_from:
+            queryset = queryset.filter(due_date__gte=date_from)
+
+        date_to = (filters.get("date_to") or "").strip()
+        if date_to:
+            queryset = queryset.filter(due_date__lte=date_to)
+
+        status = (filters.get("status") or "").strip().upper()
+        if status in BillOccurrenceStatus.values:
+            queryset = queryset.filter(computed_status=status)
+
+        return queryset.select_related(*_RELATED).order_by("due_date")
+
     def get_next_due(self, user, today=None):
         """Nearest unsettled occurrence (E4-S8 — excludes SCHEDULED/PAID)."""
         today = today or timezone.localdate()

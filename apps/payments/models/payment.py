@@ -26,6 +26,17 @@ class Payment(BaseModel):
         related_name="payments",
     )
 
+    # The occurrence this payment settles (E4-S1). Nullable because ad-hoc
+    # payments exist outside any bill, and a retry is a new Payment against
+    # the same occurrence.
+    bill_occurrence = models.ForeignKey(
+        "bills.BillOccurrence",
+        on_delete=models.SET_NULL,
+        related_name="payments",
+        null=True,
+        blank=True,
+    )
+
     amount = models.DecimalField(
         max_digits=18,
         decimal_places=2,
@@ -78,6 +89,7 @@ class Payment(BaseModel):
             models.Index(fields=["status"]),
             models.Index(fields=["created_at"]),
             models.Index(fields=["transaction_reference"]),
+            models.Index(fields=["bill_occurrence"]),
         ]
 
     def __str__(self):

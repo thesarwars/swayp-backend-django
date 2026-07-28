@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.db.models.aggregates import Sum
 from django.utils import timezone
 
@@ -44,12 +46,15 @@ class BillOccurrenceSelector:
         return {
             # "Due this month" is what the user still owes, so settled
             # occurrences drop out of the total.
+            # Decimal, not int 0 — this figure is also read raw by the
+            # onboarding summary, which has no serializer to coerce it, so an
+            # empty month would otherwise render as 0 there and "0.00" here.
             "total_due_this_month": unpaid.filter(
                 due_date__year=today.year,
                 due_date__month=today.month,
             ).aggregate(
                 total=Sum("amount")
-            )["total"] or 0,
+            )["total"] or Decimal("0.00"),
 
             "upcoming_count": unpaid.filter(due_date__gt=today).count(),
             "due_count": unpaid.filter(due_date=today).count(),

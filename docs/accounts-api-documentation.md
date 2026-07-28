@@ -12,11 +12,17 @@ These endpoints handle:
 - OTP verification
 - login
 - login OTP verification
-- OTP resend
+- phone-number login
+- OTP resend (rate limited)
 - token refresh and logout
 - password reset flows
 
-All of these endpoints are currently public and do not require a bearer token.
+All of these endpoints are public and do not require a bearer token.
+
+> New in E2, and easy to miss: OTP resend is **rate limited** (§5), phone login
+> exists (§5b), and a password reset **cannot reuse the previous password**
+> (§8). See the [Frontend Integration Guide](frontend-integration-guide.md) §2
+> for the whole auth flow in one place.
 
 ---
 
@@ -48,6 +54,10 @@ Create a new user account.
 - `account_type` can be `BUSINESS` or another supported type from the system.
 - For business accounts, `business_name` and `poc_name` are required.
 - Password must be at least 12 characters and include uppercase, lowercase, number, and special character.
+- `phone_number` is validated properly. Invented numbers such as
+  `+15550002222` are rejected; use real-format numbers in fixtures.
+- The account is **inactive until the OTP is verified** — logging in before
+  that fails.
 
 ### Success response
 ```json
@@ -157,12 +167,16 @@ Resend an OTP for either registration or login.
 ```json
 {
   "email": "john@gmail.com",
-  "purpose": "LOGIN"
+  "purpose": "LOGIN",
+  "channel": "EMAIL"
 }
 ```
 
 ### Notes
-- `purpose` should be one of the supported OTP purposes such as `LOGIN` or `REGISTRATION`.
+- `purpose` is `REGISTRATION`, `LOGIN` or `RESET_PASSWORD`.
+- `channel` is optional and defaults to `EMAIL`. `SMS` is **rejected** this
+  release — the screens exist but no delivery adapter is wired, so do not
+  offer it.
 
 ### Success response
 ```json
@@ -171,6 +185,66 @@ Resend an OTP for either registration or login.
   "message": "OTP sent successfully."
 }
 ```
+
+### Rate limit — 429
+
+Resend is throttled per user **and** purpose: a **60-second minimum gap** and
+**5 per hour**.
+
+```json
+{
+  "success": false,
+  "message": "Too many OTP requests. Try again in 59 seconds."
+}
+```
+
+The response carries a **`Retry-After`** header with the same number of
+seconds. Disable the resend button and count down.
+
+A throttled resend does **not** invalidate the code the user already holds, so
+"wait and use the code you have" remains valid.
+
+---
+
+## 5b. Phone-Number Login
+
+### Endpoints
+- `POST /api/v1/auth/login/phone/request/`
+- `POST /api/v1/auth/login/phone/verify/`
+
+### Purpose
+Sign in with a phone number instead of a password.
+
+### Request — step 1
+```json
+{
+  "phone_number": "+14155552671"
+}
+```
+
+### Success response
+```json
+{
+  "success": true,
+  "message": "If that number is registered, a code has been sent.",
+  "data": null
+}
+```
+
+> This response is **identical whether or not the number is registered**, by
+> design, so the endpoint cannot be used to discover who has an account. Never
+> render "no account found" — you genuinely do not know.
+
+### Request — step 2
+```json
+{
+  "phone_number": "+14155552671",
+  "otp": "123456"
+}
+```
+
+Returns the same `{ access, refresh }` pair as §4. Verify returns one generic
+error for unknown number, wrong code and expired code alike.
 
 ---
 
@@ -272,6 +346,23 @@ Reset the user password using the OTP received via email.
   "message": "Password reset successful."
 }
 ```
+
+### Password reuse is rejected
+
+A new password cannot match the previous one:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed.",
+  "errors": {
+    "password": ["New password must be different from your previous password."]
+  }
+}
+```
+
+A rejected reset **does not consume the OTP**, so the user can retry with a
+different password using the same code.
 
 ---
 

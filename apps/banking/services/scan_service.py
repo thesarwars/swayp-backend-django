@@ -105,9 +105,9 @@ class ScanService:
 
             detected = detect(transactions)
 
-            created = 0
+            seen = 0
             for row in detected:
-                _, was_created = BillDetectionCandidate.objects.get_or_create(
+                BillDetectionCandidate.objects.get_or_create(
                     scan=scan,
                     vendor_name=row["vendor_name"],
                     amount=row["amount"],
@@ -121,16 +121,18 @@ class ScanService:
                     },
                 )
 
-                if was_created:
-                    created += 1
-                    # Written per candidate so the progress screen sees the
-                    # count climb rather than jumping at the end.
-                    scan.detected_count = created
-                    scan.save(
-                        update_fields=["detected_count", "updated_at"]
-                    )
+                # Counts every candidate the scan has, not just the ones this
+                # pass inserted — otherwise re-running a scan finds everything
+                # already present and reports 0 detected.
+                seen += 1
+                # Written as we go so the progress screen sees the count climb
+                # rather than jumping at the end.
+                scan.detected_count = seen
+                scan.save(update_fields=["detected_count", "updated_at"])
 
-            scan.detected_count = created
+            scan.detected_count = BillDetectionCandidate.objects.filter(
+                scan=scan
+            ).count()
             scan.status = ScanStatus.DONE
             scan.completed_at = timezone.now()
             scan.save(

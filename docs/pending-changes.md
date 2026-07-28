@@ -13,8 +13,8 @@ Legend — **Broken:** built, but wrong. **Missing:** never built. **Debt:** wor
 Items 1–3 are shipped; see the commit table at the bottom.
 
 1. ~~`payment-methods/?due_date=&amount=` ignored its params~~ — `43dc119`
-2. ~~Editing a bill did not regenerate occurrences~~ — `0f4a2e1`
-3. ~~Deleting a bill destroyed paid history~~ — `0f4a2e1`
+2. ~~Editing a bill did not regenerate occurrences~~ — `4915885`
+3. ~~Deleting a bill destroyed paid history~~ — `4915885`
 
 **E4-S3 is unblocked.** The wizard method step now has a schedule to render.
 
@@ -111,7 +111,7 @@ manage.py test apps.bills.tests.test_recurrence
 | `a66937f` | **E4 Phase 1** — occurrence engine + Celery beat; **fixed month-end drift in `next_occurrence`** (Jan 31 → Feb 28 → Mar 28, quarterly → Jul 30); read-time computed status; create-time seeding |
 | `2bb4ee7` | **E1–E3 audit** — vendor soft-delete 500 (`ProviderStatus.DELETED` exists on no enum); `payee_verified` was client-writable; vendor filters silently ignored; no pagination anywhere; malformed QR returned 200; 110 lines of shadowed duplicate views; broken auth test |
 | `43dc119` | **E3-S6** — per-method rail, lead time, initiation date, estimated arrival and `can_meet_due_date`; query params validated instead of dropped |
-| `0f4a2e1` | **E4-S5** — schedule rebuild on `frequency`/`anchor_date` change; repricing on amount change (FIXED only); soft delete via `Bill.deleted_at` so paid history survives |
+| `4915885` | **E4-S5** — schedule rebuild on `frequency`/`anchor_date` change; repricing on amount change (FIXED only); soft delete via `Bill.deleted_at` so paid history survives |
 
 **E1 audited clean.** Celery, USD defaults, enums + state machine, `integrations/` (five providers with mocks + factory), `crypto.py` and `IdempotencyKey` are all correct.
 

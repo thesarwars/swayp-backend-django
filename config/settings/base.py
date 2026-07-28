@@ -89,6 +89,7 @@ LOCAL_APPS = [
     "apps.audit",
     "apps.wallet",
     "apps.bill_categories",
+    "apps.bills",
     "apps.providers",
     "apps.payments",
     "apps.dashboard",

@@ -1,6 +1,6 @@
 from django.db.models.aggregates import Sum
 from django.utils import timezone
-from apps.bill_categories.models.bill_occurrence import BillOccurrence
+from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.common.enums import BillOccurrenceStatus
 
 

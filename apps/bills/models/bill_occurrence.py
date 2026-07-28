@@ -1,6 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from apps.bill_categories.models.bill import Bill
+from apps.bills.models.bill import Bill
 from apps.common.enums import BillOccurrenceStatus
 from apps.common.models import BaseModel
 

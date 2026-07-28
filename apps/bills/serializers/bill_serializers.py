@@ -1,8 +1,8 @@
-from rest_framework import serializers
+from decimal import Decimal
 
 from rest_framework import serializers
 
-from apps.bill_categories.models.bill import Bill
+from apps.bills.models.bill import Bill
 from apps.common.enums import (
     AutopayMode,
     BillFrequency,
@@ -15,7 +15,7 @@ class BillCreateSerializer(serializers.Serializer):
     vendor = serializers.UUIDField()
     category = serializers.UUIDField()
     bill_type = serializers.ChoiceField(choices=BillType.choices,default=BillType.FIXED)
-    amount = serializers.DecimalField(max_digits=18,decimal_places=2,min_value=0.01)
+    amount = serializers.DecimalField(max_digits=18,decimal_places=2,min_value=Decimal("0.01"))
     frequency = serializers.ChoiceField(choices=BillFrequency.choices)
     anchor_date = serializers.DateField()
     autopay_mode = serializers.ChoiceField(choices=AutopayMode.choices,default=AutopayMode.REMIND)
@@ -23,19 +23,6 @@ class BillCreateSerializer(serializers.Serializer):
     source = serializers.ChoiceField(choices=BillSource.choices,default=BillSource.MANUAL)
     notes = serializers.CharField(required=False,allow_blank=True,default="")
 
-
-class BillCategorySerializer(serializers.Serializer):
-    id = serializers.UUIDField()
-    name = serializers.CharField()
-    icon = serializers.CharField()
-    color = serializers.CharField()
-    displayOrder = serializers.IntegerField(source="display_order")
-    
-
-class BillCategoryListResponseSerializer(serializers.Serializer):
-    success = serializers.BooleanField()
-    message = serializers.CharField()
-    data = BillCategorySerializer(many=True)
 
 class BillListSerializer(serializers.ModelSerializer):
     vendor = serializers.CharField(source="vendor.name")
@@ -58,40 +45,7 @@ class BillListSerializer(serializers.ModelSerializer):
 
     def get_payment_method(self, obj):
         if obj.payment_method:
-            return obj.payment_method.method_type
-        return None
-
-
-class BillDetailSerializer(serializers.ModelSerializer):
-    vendor = serializers.CharField(source="vendor.name",read_only=True)
-    category = serializers.CharField(source="category.name",read_only=True)
-    payment_method = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Bill
-        fields = (
-            "id",
-            "vendor",
-            "category",
-            "bill_type",
-            "amount",
-            "frequency",
-            "anchor_date",
-            "autopay_mode",
-            "payment_method",
-            "source",
-            "notes",
-            "created_at",
-            "updated_at",
-        )
-
-    def get_payment_method(self, obj):
-        if obj.payment_method:
-            return {
-                "id": str(obj.payment_method.id),
-                "type": obj.payment_method.method_type,
-            }
-
+            return obj.payment_method.method_type 
         return None
 
 
@@ -106,7 +60,7 @@ class BillUpdateSerializer(serializers.Serializer):
     amount = serializers.DecimalField(
         max_digits=18,
         decimal_places=2,
-        min_value=0.01,
+        min_value=Decimal("0.01"),
         required=False,
     )
 

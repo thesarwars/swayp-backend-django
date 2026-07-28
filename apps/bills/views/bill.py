@@ -2,18 +2,22 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from apps.bill_categories.serializers.bill_serializers import BillCreateSerializer, BillDetailSerializer, BillListSerializer, BillUpdateSerializer
-from apps.bill_categories.services.bill_service import BillService
-
+from apps.bills.serializers.bill_serializers import BillCreateSerializer, BillListSerializer, BillUpdateSerializer
+from apps.bills.services.bill_service import BillService
+from apps.bills.serializers.bill_detail_serializer import BillDetailSerializer
 
 class BillCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.service = BillService()
 
     def post(self, request):
         serializer = BillCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        bill = BillService.create_bill(
+        bill = self.service.create_bill(
             user=request.user,
             validated_data=serializer.validated_data,
         )
@@ -61,7 +65,7 @@ class BillDetailAPIView(APIView):
         self.service = BillService()
 
     def get(self, request, bill_id):
-        bill = self.service.get_bill(
+        bill = self.service.get_bill_detail(
             bill_id=bill_id,
             user=request.user,
         )
@@ -71,10 +75,12 @@ class BillDetailAPIView(APIView):
         return Response(
             {
                 "success": True,
-                "message": "Bill retrieved successfully.",
+                "message": "Bill details fetched successfully.",
                 "data": serializer.data,
             }
         )
+
+
     def delete(self, request, bill_id):
         self.service.delete_bill(
             bill_id=bill_id,

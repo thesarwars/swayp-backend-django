@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.bill_categories.models.bill_occurrence import BillOccurrence
+from apps.bills.models.bill_occurrence import BillOccurrence
 
 
 

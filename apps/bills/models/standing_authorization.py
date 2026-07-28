@@ -1,7 +1,7 @@
 from django.db import models
 
 from apps.common.models import BaseModel
-from apps.bill_categories.models.bill import Bill
+from apps.bills.models.bill import Bill
 
 
 class StandingAuthorization(BaseModel):

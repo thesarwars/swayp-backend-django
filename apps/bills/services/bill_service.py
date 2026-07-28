@@ -1,30 +1,20 @@
-from rest_framework.exceptions import ValidationError
-
-from apps.bill_categories.selectors.bill_category_selector import (
-    BillCategorySelector,
-)
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
+
 from apps.bill_categories.models import BillCategory
-from apps.bill_categories.models.bill import Bill
+from apps.bills.models.bill import Bill
+from apps.bills.selectors.bill_selector import BillSelector
 from apps.vendors.models import Vendor, VendorPaymentMethod
-
-
-class BillCategoryService:
-
-    def __init__(self):
-        self.selector = BillCategorySelector()
-
-    def get_dashboard_categories(self):
-        return self.selector.get_dashboard_categories()
-
 
 
 class BillService:
 
-    @staticmethod
+    def __init__(self):
+        self.selector = BillSelector()
+
     @transaction.atomic
-    def create_bill(*, user, validated_data):
+    def create_bill(self, *, user, validated_data):
         vendor = get_object_or_404(
             Vendor,
             id=validated_data["vendor"],
@@ -62,7 +52,9 @@ class BillService:
 
         return bill
 
-    
+    def get_user_bills(self, user):
+        return self.selector.get_user_bills(user)
+
     def get_bill(self, bill_id, user):
         bill = self.selector.get_bill(
             bill_id=bill_id,
@@ -76,6 +68,20 @@ class BillService:
 
         return bill
 
+    def get_bill_detail(self, bill_id, user):
+        bill = self.selector.get_bill_detail(
+            bill_id=bill_id,
+            user=user,
+        )
+
+        if not bill:
+            raise ValidationError(
+                {
+                    "bill": "Bill not found."
+                }
+            )
+
+        return bill
 
     def update_bill(self, bill_id, user, validated_data):
         bill = self.get_bill(
@@ -84,8 +90,9 @@ class BillService:
         )
 
         if "category" in validated_data:
-            bill.category = BillCategory.objects.get(
-                id=validated_data["category"]
+            bill.category = get_object_or_404(
+                BillCategory,
+                id=validated_data["category"],
             )
 
         if "payment_method" in validated_data:
@@ -130,7 +137,7 @@ class BillService:
         return bill
 
     def delete_bill(self, bill_id, user):
-        bill = self.get_bill(bill_id=bill_id,user=user)
+        bill = self.get_bill(bill_id=bill_id, user=user)
 
         bill.delete()
 

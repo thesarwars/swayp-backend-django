@@ -1,17 +1,19 @@
 from dateutil.relativedelta import relativedelta
-from django.db import transaction
 from django.core.exceptions import ValidationError
-from apps.common.enums import BillFrequency, BillOccurrenceStatus
-from apps.bill_categories.models import BillOccurrence
+from django.db import transaction
 from django.utils import timezone
 
-from apps.users.models import user
-
+from apps.bills.models.bill_occurrence import BillOccurrence
+from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.common.enums import BillFrequency, BillOccurrenceStatus
 
 
 class BillOccurrenceService:
 
     DEFAULT_OCCURRENCES = 12
+
+    def __init__(self):
+        self.selector = BillOccurrenceSelector()
 
     @transaction.atomic
     def generate_occurrences(self, bill):

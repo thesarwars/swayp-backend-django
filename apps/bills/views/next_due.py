@@ -3,10 +3,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.bill_categories.serializers.next_due_serializer import (
+from apps.bills.serializers.next_due_serializer import (
     NextDueSerializer,
 )
-from apps.bill_categories.services.bill_occurrence_service import (
+from apps.bills.services.bill_occurrence_service import (
     BillOccurrenceService,
 )
 

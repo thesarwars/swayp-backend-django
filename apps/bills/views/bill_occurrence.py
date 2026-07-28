@@ -1,10 +1,10 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from apps.bill_categories.models.bill_occurrence import BillOccurrence
-from apps.bill_categories.serializers.bill_occurrence_serializer import BillOccurrenceSerializer
-from apps.bill_categories.serializers.bill_payment_serializer import BillPaymentSerializer
-from apps.bill_categories.services.bill_occurrence_service import BillOccurrenceService
+from apps.bills.models.bill_occurrence import BillOccurrence
+from apps.bills.serializers.bill_occurrence_serializer import BillOccurrenceSerializer
+from apps.bills.serializers.bill_payment_serializer import BillPaymentSerializer
+from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 

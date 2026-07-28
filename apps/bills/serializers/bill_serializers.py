@@ -11,6 +11,45 @@ from apps.common.enums import (
 )
 
 
+class AutopayConsentSerializer(serializers.Serializer):
+    """The consent captured when a user switches a bill to autopay.
+
+    ``authorization_text`` is the exact wording shown at the time, not a
+    template id — a standing authorization has to reproduce what the user
+    actually read (E4-S3).
+    """
+
+    accepted = serializers.BooleanField()
+    authorization_text = serializers.CharField(
+        max_length=5000,
+        allow_blank=False,
+        trim_whitespace=True,
+    )
+
+
+def validate_autopay_consent(autopay_mode, consent):
+    """AUTO requires accepted consent; REMIND must not carry one."""
+    if autopay_mode == AutopayMode.AUTO:
+        if not consent or not consent.get("accepted"):
+            raise serializers.ValidationError(
+                {
+                    "autopay_consent": (
+                        "Autopay requires an accepted authorization with the "
+                        "text shown to the user."
+                    )
+                }
+            )
+
+    elif consent:
+        raise serializers.ValidationError(
+            {
+                "autopay_consent": (
+                    "Authorization is only captured when autopay_mode is AUTO."
+                )
+            }
+        )
+
+
 class BillCreateSerializer(serializers.Serializer):
     vendor = serializers.UUIDField()
     category = serializers.UUIDField()
@@ -22,6 +61,15 @@ class BillCreateSerializer(serializers.Serializer):
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,default=BillSource.MANUAL)
     notes = serializers.CharField(required=False,allow_blank=True,default="")
+    autopay_consent = AutopayConsentSerializer(required=False)
+
+    def validate(self, attrs):
+        validate_autopay_consent(
+            attrs.get("autopay_mode"),
+            attrs.get("autopay_consent"),
+        )
+
+        return attrs
 
 
 class BillListSerializer(serializers.ModelSerializer):
@@ -77,3 +125,25 @@ class BillUpdateSerializer(serializers.Serializer):
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,required=False)
     notes = serializers.CharField(required=False,allow_blank=True)
+    autopay_consent = AutopayConsentSerializer(required=False)
+
+    def validate(self, attrs):
+        # Only meaningful when the request actually sets the mode; a PATCH that
+        # leaves autopay_mode alone keeps whatever authorization exists.
+        if "autopay_mode" in attrs:
+            validate_autopay_consent(
+                attrs["autopay_mode"],
+                attrs.get("autopay_consent"),
+            )
+
+        elif attrs.get("autopay_consent"):
+            raise serializers.ValidationError(
+                {
+                    "autopay_consent": (
+                        "Authorization can only be captured alongside "
+                        "autopay_mode."
+                    )
+                }
+            )
+
+        return attrs

@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 from apps.bills.serializers.bill_serializers import BillCreateSerializer, BillListSerializer, BillUpdateSerializer
 from apps.bills.services.bill_service import BillService
 from apps.bills.serializers.bill_detail_serializer import BillDetailSerializer
+from apps.bills.serializers.bill_review_serializer import BillReviewSerializer
+from apps.common.request_meta import request_meta
 
 class BillCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -20,15 +22,16 @@ class BillCreateAPIView(APIView):
         bill = self.service.create_bill(
             user=request.user,
             validated_data=serializer.validated_data,
+            meta=request_meta(request),
         )
+
+        review = BillReviewSerializer(self.service.review(bill))
 
         return Response(
             {
                 "success": True,
                 "message": "Bill created successfully.",
-                "data": {
-                    "id": str(bill.id),
-                },
+                "data": review.data,
             },
             status=status.HTTP_201_CREATED,
         )
@@ -113,14 +116,15 @@ class BillUpdateAPIView(APIView):
             bill_id=bill_id,
             user=request.user,
             validated_data=serializer.validated_data,
+            meta=request_meta(request),
         )
+
+        review = BillReviewSerializer(self.service.review(bill))
 
         return Response(
             {
                 "success": True,
                 "message": "Bill updated successfully.",
-                "data": {
-                    "id": str(bill.id),
-                },
+                "data": review.data,
             }
         )

@@ -17,6 +17,7 @@ click-plugins==1.1.1.2
 click-repl==0.3.0
 colorama==0.4.6
 coverage==7.15.0
+cryptography==46.0.3
 distlib==0.4.3
 Django==6.0.6
 django-cors-headers==4.9.0

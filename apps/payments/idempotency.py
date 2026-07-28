@@ -23,6 +23,16 @@ def request_body_hash(data) -> str:
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+def json_safe(data):
+    """Coerce a response body into something JSONField can store.
+
+    Response payloads routinely carry UUIDs, Decimals and dates, none of which
+    are JSON-native. Without this the stored replay blows up at save time —
+    turning a successful request into a 500.
+    """
+    return json.loads(json.dumps(data, default=str))
+
+
 class IdempotencyMixin:
     """Adds `run_idempotent(request, handler)` to an APIView.
 
@@ -65,10 +75,17 @@ class IdempotencyMixin:
                 "A request with this Idempotency-Key is already in progress."
             )
 
-        response = handler()
+        try:
+            response = handler()
+        except Exception:
+            # Releasing the key matters: leaving it IN_PROGRESS would make
+            # every subsequent retry 409 forever, so one transient failure
+            # would permanently block the operation.
+            IdempotencyKey.objects.filter(pk=record.pk).delete()
+            raise
 
         record.response_status = response.status_code
-        record.response_body = response.data
+        record.response_body = json_safe(response.data)
         record.state = IdempotencyKey.State.COMPLETED
         record.save(
             update_fields=[

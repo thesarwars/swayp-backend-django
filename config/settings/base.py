@@ -294,7 +294,10 @@ CELERY_BEAT_SCHEDULE = {
 # Comma-separated Fernet keys; the first encrypts, all decrypt (rotation).
 FIELD_ENCRYPTION_KEYS = env.list(
     "FIELD_ENCRYPTION_KEYS",
-    default=[],
+    # Dev-only fallback so EncryptedTextField works out of the box, in the
+    # same spirit as the insecure dev SECRET_KEY above. Production must set
+    # this from the environment — config/settings/production.py enforces it.
+    default=["w0W-hAdZz-I2XF7LQxi-P-hkiDVBuSujPPGNxNlpamI="],
 )
 
 

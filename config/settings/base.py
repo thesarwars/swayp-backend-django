@@ -97,6 +97,7 @@ LOCAL_APPS = [
     "apps.dashboard",
     "apps.vendors",
     "apps.webhooks",
+    "apps.ai_advisor",
 ]
 
 INSTALLED_APPS = (

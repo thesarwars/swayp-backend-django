@@ -345,6 +345,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notifications.bill_status_notifier",
         "schedule": crontab(hour=5, minute=0),
     },
+
+    # Rolls subscription cycles (E9-S1), which is what resets the free-check
+    # allowance — the metered counter is keyed on period_start, so without
+    # this a customer's free checks never come back. 00:30 Eastern so a cycle
+    # that ends today is already open before the day's payments run at 04:00.
+    "billing-renew-subscriptions": {
+        "task": "billing.renew_subscriptions",
+        "schedule": crontab(hour=0, minute=30),
+    },
 }
 
 # Per-processor webhook signing secrets (E6-S8). A processor with no

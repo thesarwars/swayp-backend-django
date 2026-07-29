@@ -83,6 +83,9 @@ still connected this month.
 So: **only show "resets on <period_end>" against CHECKS.** Saying it about
 seats or banks would be a lie.
 
+The reset is real: a nightly job rolls the cycle, and the check counter
+comes back to 0 with it.
+
 ---
 
 ## 2. The three plans
@@ -636,7 +639,7 @@ a closed invoice and drops out of the preview.
 |---|---|
 | Stripe is not wired | No card is charged. Subscriptions are created directly and fees accrue in the ledger unsettled. Every shape here is final; a payment-method step is added ahead of `POST /subscription/`. |
 | No proration | A mid-cycle plan change takes effect immediately at the new price with no credit for the unused part. Don't promise "you'll be credited". |
-| Renewal is not scheduled | `renew()` exists and is tested but no periodic task calls it. `period_end` will pass without rolling until the billing rail lands. |
+| Renewal rolls the cycle but collects nothing | A nightly job advances `period_start`/`period_end` and resets the free-check allowance, so entitlements are correct. It does **not** charge — that arrives with Stripe. Treat `period_end` as "when the allowance resets", not "when the card is billed". |
 | Invoice history | Only the **current** cycle preview exists. There is no list of past invoices and no PDF. |
 | Per-rail SLA thresholds | The guarantee compares against the arrival estimate at charge time. Explicit per-rail SLA windows are an open product question. |
 

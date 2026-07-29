@@ -385,6 +385,25 @@ class StripeAdapterTests(TestCase):
 
         self.assertEqual(ref.current_period_end, "1790000000")
 
+    def test_the_customer_create_carries_only_stable_parameters(self):
+        """Stripe scopes an idempotency key to the parameters it was first
+        used with. Sending email or name on the create means an account that
+        renames itself gets IdempotencyError — a 503 it can never get past —
+        and the obvious fallback of creating unkeyed silently makes the
+        duplicate customer the key existed to prevent."""
+        import inspect
+
+        from integrations.subscription_billing import stripe_provider
+
+        source = inspect.getsource(
+            stripe_provider.StripeSubscriptionBillingProvider.ensure_customer
+        )
+        create = source.split("customers.create", 1)[1].split("options", 1)[0]
+
+        self.assertIn("metadata", create)
+        self.assertNotIn('"email"', create)
+        self.assertNotIn('"name"', create)
+
     def test_a_bare_subscription_does_not_explode(self):
         adapter = self.adapter()
 

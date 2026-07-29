@@ -204,6 +204,14 @@ Two things that only surfaced by doing so:
 - **`payment_methods.attach` returns a new id** when given a shared test token,
   so the attach result — not the id that was sent — must become the default
   payment method.
+- **An idempotency key is scoped to its parameters.** Sending email and name
+  on the customer create meant an account that renamed itself hit
+  `IdempotencyError`, surfacing as a 503 it could never get past. The create
+  now carries only the account metadata — byte-identical every time — and the
+  details are set by a follow-up update. The obvious fallback, creating
+  without a key, was worse: it silently produced the duplicate customer the
+  key existed to prevent, and a duplicate customer is an account billed
+  twice.
 
 ---
 

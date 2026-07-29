@@ -91,7 +91,7 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
 
     # --- customers --------------------------------------------------------
 
-    def ensure_customer(self, *, account_id, email, name=""):
+    def _search_customer(self, account_id):
         found = self._call(
             self._client.v1.customers.search,
             params={
@@ -100,22 +100,54 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
             },
         )
 
-        if found.data:
-            return CustomerRef(id=found.data[0].id)
+        return CustomerRef(id=found.data[0].id) if found.data else None
 
-        created = self._call(
-            self._client.v1.customers.create,
-            params={
-                "email": email,
-                "name": name or email,
-                "metadata": {"swayp_account_id": str(account_id)},
-            },
-            # Belt and braces: search is eventually consistent, so two rapid
-            # subscribes could both miss. The key makes the second a no-op.
-            options={"idempotency_key": f"cus:{account_id}"},
-        )
+    def ensure_customer(self, *, account_id, email, name=""):
+        """One Stripe customer per Swayp account, ever.
 
-        return CustomerRef(id=created.id)
+        Two customers for one account means an account billed twice, so the
+        idempotency key is the only thing this really leans on — search is
+        eventually consistent and a customer created seconds ago may not
+        appear in it yet.
+
+        For the key to be reliable the create parameters must never vary,
+        because Stripe scopes a key to the parameters it was first used with.
+        So the create carries **only** the metadata that identifies the
+        account — always byte-identical for a given account — and the email
+        and name are set by a follow-up update.
+
+        Sending them on the create instead looked harmless and was not: an
+        account retrying after changing its name got IdempotencyError, which
+        surfaced as a 503, and the obvious fallback of creating without a key
+        silently produced the duplicate customer the key existed to prevent.
+        """
+        existing = self._search_customer(account_id)
+
+        if existing is None:
+            created = self._call(
+                self._client.v1.customers.create,
+                params={"metadata": {"swayp_account_id": str(account_id)}},
+                options={"idempotency_key": f"cus:{account_id}"},
+            )
+            customer_id = created.id
+        else:
+            customer_id = existing.id
+
+        # Separate call, so changing details can never disturb the create.
+        # Failure here is not worth losing the customer over — it only
+        # affects how the row reads in the Stripe dashboard.
+        try:
+            self._call(
+                self._client.v1.customers.update,
+                customer_id,
+                params={"email": email, "name": name or email},
+            )
+        except BillingProviderError:
+            logger.warning(
+                "could not set details on Stripe customer %s", customer_id
+            )
+
+        return CustomerRef(id=customer_id)
 
     # --- prices -----------------------------------------------------------
 

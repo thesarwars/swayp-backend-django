@@ -30,9 +30,10 @@ from apps.vendors.selectors.vendor_selector import (
     VendorSelector,
 
 )
+from apps.teams.access import AccountScopedMixin
 
 
-class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
+class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
@@ -47,7 +48,7 @@ class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         return VendorSelector.payment_methods(
-            user=self.request.user,
+            user=self.account(self.request),
             vendor_id=self.kwargs["vendor_id"],
         )
 
@@ -81,7 +82,7 @@ class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
         vendor = get_object_or_404(
             Vendor,
             id=self.kwargs["vendor_id"],
-            user=request.user,
+            user=self.account(request),
             status=VendorStatus.ACTIVE,
         )
 
@@ -98,7 +99,7 @@ class VendorPaymentMethodListCreateAPIView(ListCreateAPIView):
         )
 
 
-class VendorPaymentMethodDetailAPIView(RetrieveUpdateDestroyAPIView):
+class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
     """
     GET
     PUT/PATCH
@@ -110,7 +111,7 @@ class VendorPaymentMethodDetailAPIView(RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return VendorSelector.payment_methods(
-            user=self.request.user,
+            user=self.account(self.request),
             vendor_id=self.kwargs["vendor_id"],
         )
 
@@ -132,7 +133,7 @@ class VendorPaymentMethodDetailAPIView(RetrieveUpdateDestroyAPIView):
         VendorPaymentMethodService.delete(instance)
 
 
-class SetPrimaryPaymentMethodAPIView(APIView):
+class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
     """
     POST
     /vendors/{vendor_id}/payment-methods/{method_id}/set-primary/
@@ -146,7 +147,7 @@ class SetPrimaryPaymentMethodAPIView(APIView):
             VendorPaymentMethod,
             id=method_id,
             vendor__id=vendor_id,
-            vendor__user=request.user,
+            vendor__user=self.account(request),
             vendor__status=VendorStatus.ACTIVE,
         )
 

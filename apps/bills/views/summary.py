@@ -9,9 +9,10 @@ from apps.bills.serializers.bill_summary_serializer import (
 from apps.bills.services.bill_occurrence_service import (
     BillOccurrenceService,
 )
+from apps.teams.access import AccountScopedMixin
 
 
-class BillSummaryAPIView(APIView):
+class BillSummaryAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -19,7 +20,7 @@ class BillSummaryAPIView(APIView):
         self.service = BillOccurrenceService()
 
     def get(self, request):
-        summary = self.service.get_summary(request.user)
+        summary = self.service.get_summary(self.account(request))
 
         serializer = BillSummarySerializer(summary)
 

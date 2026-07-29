@@ -7,8 +7,9 @@ from apps.bills.services.bill_service import BillService
 from apps.bills.serializers.bill_detail_serializer import BillDetailSerializer
 from apps.bills.serializers.bill_review_serializer import BillReviewSerializer
 from apps.common.request_meta import request_meta
+from apps.teams.access import AccountScopedMixin
 
-class BillCreateAPIView(APIView):
+class BillCreateAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -20,7 +21,7 @@ class BillCreateAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         bill = self.service.create_bill(
-            user=request.user,
+            user=self.account(request),
             validated_data=serializer.validated_data,
             meta=request_meta(request),
         )
@@ -37,7 +38,7 @@ class BillCreateAPIView(APIView):
         )
 
 
-class BillListAPIView(APIView):
+class BillListAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -45,7 +46,7 @@ class BillListAPIView(APIView):
         self.service = BillService()
 
     def get(self, request):
-        bills = self.service.get_user_bills(request.user)
+        bills = self.service.get_user_bills(self.account(request))
 
         serializer = BillListSerializer(
             bills,
@@ -60,7 +61,7 @@ class BillListAPIView(APIView):
             }
         )
 
-class BillDetailAPIView(APIView):
+class BillDetailAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -70,7 +71,7 @@ class BillDetailAPIView(APIView):
     def get(self, request, bill_id):
         bill = self.service.get_bill_detail(
             bill_id=bill_id,
-            user=request.user,
+            user=self.account(request),
         )
 
         serializer = BillDetailSerializer(bill)
@@ -87,7 +88,7 @@ class BillDetailAPIView(APIView):
     def delete(self, request, bill_id):
         self.service.delete_bill(
             bill_id=bill_id,
-            user=request.user,
+            user=self.account(request),
         )
 
         return Response(
@@ -97,7 +98,7 @@ class BillDetailAPIView(APIView):
             }
         )
 
-class BillUpdateAPIView(APIView):
+class BillUpdateAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -114,7 +115,7 @@ class BillUpdateAPIView(APIView):
 
         bill = self.service.update_bill(
             bill_id=bill_id,
-            user=request.user,
+            user=self.account(request),
             validated_data=serializer.validated_data,
             meta=request_meta(request),
         )

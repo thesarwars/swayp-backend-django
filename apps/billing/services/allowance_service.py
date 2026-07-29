@@ -106,10 +106,22 @@ class AllowanceService:
             # send thirty invites on a three-seat plan and only discover it
             # when the thirty-first person tried to accept — surfacing the
             # failure to the invitee instead of the buyer.
-            return TeamMember.objects.filter(
+            rows = TeamMember.objects.filter(
                 account=subscription.account,
                 status__in=OCCUPYING_STATUSES,
-            ).count()
+            )
+
+            used = rows.count()
+
+            # The owner's row is created lazily, on first contact with a team
+            # endpoint. Counting rows alone would report one seat too few
+            # until then — under-reporting on the billing screen and letting
+            # the invite gate hand out an extra seat. The owner occupies a
+            # seat from the moment the account exists, row or no row.
+            if not rows.filter(user=subscription.account).exists():
+                used += 1
+
+            return used
 
         return None
 

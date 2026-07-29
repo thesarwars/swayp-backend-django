@@ -19,6 +19,8 @@ from apps.billing.services.allowance_service import AllowanceService
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
+from apps.teams.access import AccountScopedMixin, RequiresCapability
+from apps.teams.permissions import MANAGE_BILLING
 
 
 @extend_schema(
@@ -47,12 +49,19 @@ class PlanListAPIView(BaseAPIView):
     ),
     responses={200: SubscriptionSerializer},
 )
-class SubscriptionAPIView(BaseAPIView):
+class SubscriptionAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
+    # Reading the plan is fine for anyone on the team; changing it is not,
+    # because it changes what the owner is charged.
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BILLING
+    safe_methods = ("GET",)
 
     def get(self, request):
-        subscription = self.service.current(request.user)
+        subscription = self.service.current(self.account(request))
 
         return ApiResponse.success(
             data=(
@@ -69,7 +78,7 @@ class SubscriptionAPIView(BaseAPIView):
         serializer.is_valid(raise_exception=True)
 
         subscription = self.service.subscribe(
-            account=request.user,
+            account=self.account(request),
             plan_code=serializer.validated_data["plan"],
         )
 
@@ -85,7 +94,7 @@ class SubscriptionAPIView(BaseAPIView):
         serializer.is_valid(raise_exception=True)
 
         subscription = self.service.change_plan(
-            account=request.user,
+            account=self.account(request),
             plan_code=serializer.validated_data["plan"],
         )
 
@@ -95,7 +104,7 @@ class SubscriptionAPIView(BaseAPIView):
         )
 
     def delete(self, request):
-        subscription = self.service.cancel(account=request.user)
+        subscription = self.service.cancel(account=self.account(request))
 
         return ApiResponse.success(
             data=SubscriptionSerializer(subscription).data,
@@ -111,10 +120,10 @@ class SubscriptionAPIView(BaseAPIView):
         "banks are standing capacity; checks reset each cycle."
     ),
 )
-class AllowanceAPIView(BaseAPIView):
+class AllowanceAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
-        subscription = SubscriptionService().current(request.user)
+        subscription = SubscriptionService().current(self.account(request))
 
         if subscription is None:
             raise ValidationError(
@@ -135,12 +144,18 @@ class AllowanceAPIView(BaseAPIView):
     ),
     responses={200: AddOnSerializer(many=True)},
 )
-class AddOnAPIView(BaseAPIView):
+class AddOnAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = AddOnService
+    # Adding an add-on adds an invoice line, so it is a billing change.
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BILLING
+    safe_methods = ("GET",)
 
     def _subscription(self, request):
-        subscription = SubscriptionService().current(request.user)
+        subscription = SubscriptionService().current(self.account(request))
 
         if subscription is None:
             raise ValidationError(
@@ -186,12 +201,12 @@ class AddOnAPIView(BaseAPIView):
     ),
     responses={200: InvoicePreviewSerializer},
 )
-class InvoicePreviewAPIView(BaseAPIView):
+class InvoicePreviewAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = AddOnService
 
     def get(self, request):
-        subscription = SubscriptionService().current(request.user)
+        subscription = SubscriptionService().current(self.account(request))
 
         if subscription is None:
             raise ValidationError(
@@ -212,10 +227,10 @@ class InvoicePreviewAPIView(BaseAPIView):
     description="The per-transaction fee ledger, newest first.",
     responses={200: FeeChargeSerializer(many=True)},
 )
-class FeeChargeListAPIView(BaseAPIView):
+class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
-        subscription = SubscriptionService().current(request.user)
+        subscription = SubscriptionService().current(self.account(request))
 
         if subscription is None:
             raise ValidationError(

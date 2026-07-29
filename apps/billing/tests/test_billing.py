@@ -273,10 +273,14 @@ class AllowanceTests(TestCase):
 
     def test_releasing_capacity_frees_the_slot(self):
         """Removing the underlying record is the release — there is no
-        counter to decrement."""
+        counter to decrement.
+
+        Founding allows 3 seats and the owner holds one implicitly, so
+        two members fill the plan.
+        """
         members = [
             ActiveMemberFactory(account=self.subscription.account)
-            for _ in range(3)
+            for _ in range(2)
         ]
 
         with self.assertRaises(PlanLimitExceededException):
@@ -352,8 +356,9 @@ class AllowanceTests(TestCase):
         SubscriptionService().renew(self.subscription)
         self.service.reset_metered(self.subscription)
 
+        # The owner plus the one member.
         self.assertEqual(
-            self.service.used(self.subscription, AllowanceKind.SEATS), 1
+            self.service.used(self.subscription, AllowanceKind.SEATS), 2
         )
         self.assertEqual(
             self.service.used(self.subscription, AllowanceKind.BANKS), 1

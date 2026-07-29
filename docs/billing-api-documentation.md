@@ -153,6 +153,25 @@ means Founding *offers* a lock. Whether a given customer *has* one is
 
 One endpoint, four verbs.
 
+### 3.0 Reads are open to the team; writes are owner-only ⚠️
+
+Anyone on the account can `GET` the subscription, allowances, invoice and
+fees — seeing which plan you are on is not privileged.
+
+`POST`, `PATCH` and `DELETE` require the **owner**. Not even an admin can
+change the plan, because a plan change changes what the owner is charged.
+Add-on writes are owner-only for the same reason: they add invoice lines.
+
+**403** on a write means the caller is not the owner — render "ask the
+account owner", never an upgrade prompt:
+
+```json
+{ "success": false, "message": "Your role does not allow this action." }
+```
+
+Gate the billing settings screen on `capabilities` containing
+`manage_billing` from [`GET /teams/me/`](teams-api-documentation.md).
+
 ### 3.1 Read
 
 ```

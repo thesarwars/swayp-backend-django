@@ -44,10 +44,20 @@ Sending a 403 to the pricing page is a dead end for the user. Sending a 402 to
 "ask your admin" hides a sale. Both carry `message` only, with no `errors`
 object, and both messages are written to be displayed verbatim.
 
-### 1.4 An invited member acts on the inviting account
+### 1.4 An invited member acts on the inviting account ⚠️
 
 After accepting, a user's requests operate on the **owner's** account, not a
 private one of their own. `GET /teams/me/` returns that `account_id`.
+
+This is not just a label — it is what the data is keyed on. A member calling
+`GET /bills/occurrences/`, `/vendors/`, `/banking/accounts/`,
+`/dashboard/home/`, `/payments/history/` or `/billing/subscription/` sees the
+**account's** rows, and a bill they create belongs to the account rather than
+to them. Otherwise their work would vanish the moment they closed the tab.
+
+**Personal things stay personal.** Notifications are addressed to a human,
+not an account, and so is everything under `auth/`. Those still scope to the
+signed-in user.
 
 ### 1.5 Everyone is solo until they invite someone
 
@@ -412,7 +422,6 @@ wrong company.
 
 | Gap | Impact |
 |---|---|
-| **Team-wide data visibility** | Roles, seats and gates are enforced, but the existing bill/vendor/payment **read** endpoints still scope to the signed-in user, so an invited member sees an empty list rather than the account's data. `GET /teams/me/` already returns the right `account_id`; the read paths move onto it next. Do not ship a member-facing dashboard against this yet. |
 | Approval workflows | E10-S4, explicitly deferred beyond R4 in the epic. No approval step gates payment confirm. The $99 add-on is sellable but inert. |
 | ERP sync | E10-S4, same. The $149 add-on is sellable but inert. |
 | Per-entity funding sources | An entity does not yet own its own bank connections; funding is account-wide. |

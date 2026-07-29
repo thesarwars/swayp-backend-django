@@ -18,6 +18,7 @@ from apps.reports.services.report_service import (
     PLAN_GATE_MESSAGE,
     ReportService,
 )
+from apps.teams.access import AccountScopedMixin
 
 
 @extend_schema(
@@ -43,7 +44,7 @@ from apps.reports.services.report_service import (
         422: OpenApiResponse(description="Inverted date range"),
     },
 )
-class PaymentsReportAPIView(BaseAPIView):
+class PaymentsReportAPIView(AccountScopedMixin, BaseAPIView):
     """Query-time payments report (E8-S2)."""
 
     service_class = ReportService
@@ -56,7 +57,7 @@ class PaymentsReportAPIView(BaseAPIView):
         data = query.validated_data
 
         result = self.service.payments_report(
-            user=request.user,
+            user=self.account(request),
             vendor_id=data.get("vendor"),
             date_from=data.get("date_from"),
             date_to=data.get("date_to"),
@@ -90,7 +91,7 @@ class PaymentsReportAPIView(BaseAPIView):
         405: OpenApiResponse(description="Export is not supported yet"),
     },
 )
-class Form1099ReportAPIView(BaseAPIView):
+class Form1099ReportAPIView(AccountScopedMixin, BaseAPIView):
     """Per-vendor annual totals for tax prep (E8-S2)."""
 
     service_class = ReportService
@@ -100,14 +101,14 @@ class Form1099ReportAPIView(BaseAPIView):
         # ?export=csv must get the 403 that describes their situation, not a
         # 405 about a feature they cannot reach either way. The service gates
         # again — that one is the authority for any non-HTTP caller.
-        if not has_plan_at_least(request.user, PlanCode.STANDARD):
+        if not has_plan_at_least(self.account(request), PlanCode.STANDARD):
             raise ForbiddenException(PLAN_GATE_MESSAGE)
 
         query = Form1099QuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
 
         result = self.service.vendor_1099(
-            user=request.user, year=query.validated_data.get("year")
+            user=self.account(request), year=query.validated_data.get("year")
         )
 
         return ApiResponse.success(

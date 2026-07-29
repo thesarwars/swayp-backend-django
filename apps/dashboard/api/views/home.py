@@ -12,6 +12,7 @@ from apps.dashboard.api.serializers.home import (
     HomeSerializer,
 )
 from apps.dashboard.services.home_service import HomeService
+from apps.teams.access import AccountScopedMixin
 
 
 @extend_schema(
@@ -32,7 +33,7 @@ from apps.dashboard.services.home_service import HomeService
         401: UNAUTHORIZED_RESPONSE,
     },
 )
-class HomeAPIView(BaseAPIView):
+class HomeAPIView(AccountScopedMixin, BaseAPIView):
     """Home dashboard aggregate (E8-S1)."""
 
     service_class = HomeService
@@ -42,7 +43,7 @@ class HomeAPIView(BaseAPIView):
         query.is_valid(raise_exception=True)
 
         result = self.service.build(
-            user=request.user,
+            user=self.account(request),
             tab=query.validated_data.get("tab"),
         )
 

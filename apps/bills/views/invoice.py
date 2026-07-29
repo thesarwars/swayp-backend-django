@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from apps.bills.services.bill_service import BillService
 from apps.bills.services.invoice_service import InvoiceService
 from apps.common.responses import ApiResponse
+from apps.teams.access import AccountScopedMixin
 
 
 @extend_schema(
@@ -17,7 +18,7 @@ from apps.common.responses import ApiResponse
         "in v1. Includes the payment reference the invoice QR encodes."
     ),
 )
-class BillInvoiceAPIView(APIView):
+class BillInvoiceAPIView(AccountScopedMixin, APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -29,7 +30,7 @@ class BillInvoiceAPIView(APIView):
     def get(self, request, bill_id):
         bill = self.service.get_bill_detail(
             bill_id=bill_id,
-            user=request.user,
+            user=self.account(request),
         )
 
         return ApiResponse.success(

@@ -19,7 +19,7 @@ from apps.payments.selectors.payment_detail_selector import (
 )
 from apps.payments.services.confirm_service import PaymentConfirmService
 from apps.payments.services.payment_create_service import PaymentCreateService
-from apps.teams.access import RequiresCapability
+from apps.teams.access import AccountScopedMixin, RequiresCapability
 from apps.teams.permissions import SEND_MONEY
 from apps.payments.services.resolution_service import (
     PaymentResolutionService,
@@ -38,7 +38,7 @@ from rest_framework.exceptions import ValidationError
     ),
     request=PaymentCreateSerializer,
 )
-class PaymentCreateAPIView(IdempotencyMixin, BaseAPIView):
+class PaymentCreateAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentCreateService
     idempotency_endpoint = "payments.create"
@@ -49,7 +49,7 @@ class PaymentCreateAPIView(IdempotencyMixin, BaseAPIView):
 
         def handler():
             result = self.service.create(
-                user=request.user,
+                user=self.account(request),
                 occurrence_ids=serializer.validated_data["occurrence_ids"],
                 funding_account_id=serializer.validated_data.get(
                     "funding_account_id"
@@ -87,7 +87,7 @@ class PaymentCreateAPIView(IdempotencyMixin, BaseAPIView):
     ),
     request=ConfirmSerializer,
 )
-class BatchConfirmAPIView(IdempotencyMixin, BaseAPIView):
+class BatchConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_batch"
@@ -100,7 +100,7 @@ class BatchConfirmAPIView(IdempotencyMixin, BaseAPIView):
 
         def handler():
             result = self.service.confirm_batch(
-                user=request.user,
+                user=self.account(request),
                 batch_id=batch_id,
                 authorization_text=serializer.validated_data[
                     "authorization_text"
@@ -131,7 +131,7 @@ class BatchConfirmAPIView(IdempotencyMixin, BaseAPIView):
     summary="Confirm a single payment",
     request=ConfirmSerializer,
 )
-class PaymentConfirmAPIView(IdempotencyMixin, BaseAPIView):
+class PaymentConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_payment"
@@ -145,7 +145,7 @@ class PaymentConfirmAPIView(IdempotencyMixin, BaseAPIView):
 
         def handler():
             result = self.service.confirm_payment(
-                user=request.user,
+                user=self.account(request),
                 payment_id=payment_id,
                 authorization_text=serializer.validated_data[
                     "authorization_text"
@@ -170,11 +170,11 @@ class PaymentConfirmAPIView(IdempotencyMixin, BaseAPIView):
     summary="Payment status",
     description="Ordered stage checklist. Poll while the drawer is open.",
 )
-class PaymentStatusAPIView(BaseAPIView):
+class PaymentStatusAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request, payment_id):
         selector = PaymentDetailSelector()
-        payment = selector.get_payment(request.user, payment_id)
+        payment = selector.get_payment(self.account(request), payment_id)
 
         if payment is None:
             raise ValidationError({"payment": "Payment not found."})
@@ -202,11 +202,11 @@ class PaymentStatusAPIView(BaseAPIView):
     summary="Batch status",
     description="Aggregates its payments; a single failure surfaces.",
 )
-class BatchStatusAPIView(BaseAPIView):
+class BatchStatusAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request, batch_id):
         selector = PaymentDetailSelector()
-        batch = selector.get_batch(request.user, batch_id)
+        batch = selector.get_batch(self.account(request), batch_id)
 
         if batch is None:
             raise ValidationError({"batch": "Batch not found."})
@@ -231,11 +231,11 @@ class BatchStatusAPIView(BaseAPIView):
     ),
     responses={200: PaymentDetailSerializer},
 )
-class PaymentDetailAPIView(BaseAPIView):
+class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request, payment_id):
         payment = PaymentDetailSelector().get_payment(
-            request.user, payment_id
+            self.account(request), payment_id
         )
 
         if payment is None:
@@ -252,13 +252,13 @@ class PaymentDetailAPIView(BaseAPIView):
     summary="Cancel a payment",
     description="Allowed until the cancellation deadline; 409 afterwards.",
 )
-class PaymentCancelAPIView(BaseAPIView):
+class PaymentCancelAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
 
     def post(self, request, payment_id):
         payment = self.service.cancel_payment(
-            user=request.user, payment_id=payment_id
+            user=self.account(request), payment_id=payment_id
         )
 
         return ApiResponse.success(
@@ -271,13 +271,13 @@ class PaymentCancelAPIView(BaseAPIView):
     tags=["Payments"],
     summary="Cancel a batch",
 )
-class BatchCancelAPIView(BaseAPIView):
+class BatchCancelAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
 
     def post(self, request, batch_id):
         result = self.service.cancel_batch(
-            user=request.user, batch_id=batch_id
+            user=self.account(request), batch_id=batch_id
         )
 
         return ApiResponse.success(
@@ -299,14 +299,14 @@ class BatchCancelAPIView(BaseAPIView):
         "late-fee countdown."
     ),
 )
-class PaymentFailureAPIView(BaseAPIView):
+class PaymentFailureAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = PaymentResolutionService
 
     def get(self, request, payment_id):
         return ApiResponse.success(
             data=self.service.failure(
-                user=request.user, payment_id=payment_id
+                user=self.account(request), payment_id=payment_id
             ),
             message="Failure detail fetched successfully.",
         )
@@ -321,7 +321,7 @@ class PaymentFailureAPIView(BaseAPIView):
     ),
     request=ResolveSerializer,
 )
-class PaymentResolveAPIView(IdempotencyMixin, BaseAPIView):
+class PaymentResolveAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentResolutionService
     idempotency_endpoint = "payments.resolve"
@@ -332,7 +332,7 @@ class PaymentResolveAPIView(IdempotencyMixin, BaseAPIView):
 
         def handler():
             result = self.service.resolve(
-                user=request.user,
+                user=self.account(request),
                 payment_id=payment_id,
                 action=serializer.validated_data["action"],
                 payment_method_id=serializer.validated_data.get(

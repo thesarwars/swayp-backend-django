@@ -26,13 +26,45 @@ def acting_account(request):
     A member who accepted an invitation acts on the inviting account. Falling
     back to ``request.user`` keeps every solo user — which is everyone until
     they invite someone — behaving exactly as before.
+
+    **This, not ``request.user``, is what account-owned data is keyed on.**
+    Bills, vendors, payments, banks and the subscription belong to the
+    account; using the signed-in user instead gives each teammate a private
+    empty copy of the product and, worse, lets them start a second
+    subscription of their own.
+
+    Personal things stay on ``request.user``: notifications are addressed to a
+    human, and so is everything under ``apps/authentication``.
+
+    Memoised on the request. A view resolves the account several times — once
+    per selector call — and without this each one costs a membership query,
+    which showed up immediately as the dashboard going from 5 queries to 6.
+    The cache is per-request, so it cannot go stale within a request or
+    survive beyond it.
     """
+    cached = getattr(request, "_swayp_acting_account", None)
+
+    if cached is not None:
+        return cached
+
     membership = TeamService().membership_for(request.user)
+    account = membership.account if membership is not None else request.user
 
-    if membership is not None:
-        return membership.account
+    request._swayp_acting_account = account
 
-    return request.user
+    return account
+
+
+class AccountScopedMixin:
+    """Gives a view ``self.account(request)``.
+
+    A mixin rather than a helper import per view, so the intent is visible in
+    the class definition and a view that scopes by account cannot look like
+    one that does not.
+    """
+
+    def account(self, request):
+        return acting_account(request)
 
 
 def acting_role(request):
@@ -49,6 +81,14 @@ class RequiresCapability(BasePermission):
 
     A view that names nothing is unrestricted, so this is safe to add to the
     default permission list without auditing every endpoint at once.
+
+    ``safe_methods`` exempts reads on a view whose writes are restricted::
+
+        required_capability = MANAGE_BILLING
+        safe_methods = ("GET",)
+
+    That is the common shape: everyone on the team may see which plan they are
+    on, but only the owner may change what the owner is charged.
     """
 
     message = "Your role does not allow this action."
@@ -57,6 +97,9 @@ class RequiresCapability(BasePermission):
         capability = getattr(view, "required_capability", None)
 
         if capability is None:
+            return True
+
+        if request.method in getattr(view, "safe_methods", ()):
             return True
 
         if not request.user or not request.user.is_authenticated:

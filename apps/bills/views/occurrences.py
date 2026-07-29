@@ -10,6 +10,7 @@ from apps.bills.serializers.bill_occurrence_row_serializer import (
 from apps.bills.services.bill_service import BillService
 from apps.common.pagination import StandardPagination
 from apps.common.responses import ApiResponse
+from apps.teams.access import AccountScopedMixin
 
 
 @extend_schema(
@@ -27,7 +28,7 @@ from apps.common.responses import ApiResponse
     ],
     responses={200: BillOccurrenceRowSerializer(many=True)},
 )
-class BillOccurrenceListAPIView(APIView):
+class BillOccurrenceListAPIView(AccountScopedMixin, APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -37,7 +38,7 @@ class BillOccurrenceListAPIView(APIView):
 
     def get(self, request):
         queryset = self.service.list_occurrences(
-            request.user,
+            self.account(request),
             filters=request.query_params,
         )
 

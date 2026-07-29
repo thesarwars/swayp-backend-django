@@ -349,7 +349,6 @@ or the database.
 | Spend figures fill in as payments run | `total_paid` and `monthly_spend` read real payments now; they are zero only until payments exist. |
 | `payee_verified` always `false` | Set by provider-run verification, which isn't wired. The trust badge will never light up yet. |
 | Subscription payment is not wired | Plans, allowances, fees and the invoice are all live, but no card is charged — Stripe credentials aren't in the build. Subscriptions are created directly. Every shape is final. [Billing API §11](billing-api-documentation.md). |
-| Team-wide data visibility | Seats, roles and gates are enforced, but bill/vendor/payment **reads** still scope to the signed-in user, so an invited member sees an empty list. [Teams API §9](teams-api-documentation.md). |
 | SMS OTP | Rejected explicitly. Don't offer the channel. |
 | QR payload format | Provisional. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
 

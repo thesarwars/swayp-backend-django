@@ -19,9 +19,11 @@ from apps.common.dates import initiation_date
 from apps.common.enums import (
     AutopayMode,
     BillOccurrenceStatus,
+    NotificationType,
     PaymentRail,
     PaymentStatus,
 )
+from apps.notifications.services import notify
 from apps.payments.models import Payment
 from apps.payments.services.payment_create_service import PaymentCreateService
 
@@ -167,25 +169,40 @@ class AutopayService:
             lambda: execute_payment.delay(payment_id=str(payment.id))
         )
 
+        notify(
+            bill.user,
+            NotificationType.AUTOPAY_EXECUTED,
+            {
+                "vendor_name": bill.vendor.name,
+                "amount": str(occurrence.amount),
+                "due_date": str(occurrence.due_date),
+                "bill_id": str(bill.id),
+                "occurrence_id": str(occurrence.id),
+                "payment_id": str(payment.id),
+            },
+        )
+
         return payment
 
     def _alert_missing_authorization(self, bill):
-        from apps.notifications.models import Notification
-
         logger.error(
             "autopay: bill %s is AUTO with no live standing authorization",
             bill.pk,
         )
 
-        Notification.objects.create(
-            user=bill.user,
+        # SYSTEM, not AUTOPAY_EXECUTED (its inverse) and not PAYMENT_FAILED
+        # (no Payment row exists on this branch). The enum has no member for
+        # "autopay could not run"; this changes the wire value from PAYMENT.
+        notify(
+            bill.user,
+            NotificationType.SYSTEM,
+            {"bill_id": str(bill.id), "vendor_name": bill.vendor.name},
             title="Autopay needs your attention",
             message=(
                 f"Autopay for {bill.vendor.name} could not run because the "
                 "authorization is no longer active. Re-enable autopay to "
                 "continue."
             ),
-            type="PAYMENT",
         )
 
 

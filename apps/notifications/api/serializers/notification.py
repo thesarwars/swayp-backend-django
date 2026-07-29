@@ -14,6 +14,10 @@ class NotificationSerializer(serializers.Serializer):
         source="read_at",
         allow_null=True,
     )
+    # The deep-link payload (bill_id, occurrence_id, payment_id). Without it
+    # the column is write-only and the client is back to parsing the message
+    # text, which is the exact thing it exists to prevent (E8-S3).
+    metadata = serializers.JSONField(read_only=True)
 
 
 class NotificationListResponseSerializer(serializers.Serializer):

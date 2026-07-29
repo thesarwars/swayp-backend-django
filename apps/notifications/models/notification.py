@@ -18,8 +18,12 @@ class Notification(BaseModel):
 
     message = models.TextField()
 
+    # 30 rather than 20 for parity with NotificationPreference.type: the two
+    # columns store the same vocabulary and join on the string value, so a
+    # future member of 21-30 chars would otherwise be storable as a
+    # preference and unstorable as a notification.
     type = models.CharField(
-        max_length=20,
+        max_length=30,
         choices=NotificationType.choices,
         default=NotificationType.SYSTEM,
     )

@@ -1,23 +1,36 @@
+from drf_spectacular.utils import extend_schema
+
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
-
-from .schemas import (
-    notification_list_schema,
-    notification_read_all_schema,
-    notification_read_schema,
+from apps.common.swagger import (
+    BAD_REQUEST_RESPONSE,
+    NOT_FOUND_RESPONSE,
+    UNAUTHORIZED_RESPONSE,
 )
-from .serializers import (
+from apps.notifications.api.serializers.notification import (
+    MarkNotificationReadResponseSerializer,
+    NotificationListResponseSerializer,
     NotificationQuerySerializer,
     NotificationSerializer,
 )
-from .services import NotificationService
+from apps.notifications.services import NotificationService
 
 
 class NotificationListAPIView(BaseAPIView):
 
     service_class = NotificationService
 
-    @notification_list_schema  
+    @extend_schema(
+        tags=["Notifications"],
+        summary="List Notifications",
+        description="Returns notifications for the authenticated user.",
+        parameters=[NotificationQuerySerializer],
+        responses={
+            200: NotificationListResponseSerializer,
+            400: BAD_REQUEST_RESPONSE,
+            401: UNAUTHORIZED_RESPONSE,
+        },
+    )
     def get(self, request):
         query = NotificationQuerySerializer(
             data=request.query_params,
@@ -46,7 +59,17 @@ class NotificationReadAPIView(BaseAPIView):
 
     service_class = NotificationService
 
-    @notification_read_schema
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Mark Notification As Read",
+        description="Marks a notification as read.",
+        responses={
+            200: MarkNotificationReadResponseSerializer,
+            400: BAD_REQUEST_RESPONSE,
+            401: UNAUTHORIZED_RESPONSE,
+            404: NOT_FOUND_RESPONSE,
+        },
+    )
     def patch(
         self,
         request,
@@ -66,7 +89,16 @@ class NotificationReadAllAPIView(BaseAPIView):
 
     service_class = NotificationService
 
-    @notification_read_all_schema
+    @extend_schema(
+        tags=["Notifications"],
+        summary="Mark All Notifications As Read",
+        description="Marks all unread notifications as read.",
+        responses={
+            200: MarkNotificationReadResponseSerializer,
+            400: BAD_REQUEST_RESPONSE,
+            401: UNAUTHORIZED_RESPONSE,
+        },
+    )
     def patch(self, request):
         self.service.mark_all_as_read(
             user=request.user,

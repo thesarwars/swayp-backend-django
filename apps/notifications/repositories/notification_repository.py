@@ -1,7 +1,6 @@
-from django.db.models import Count
 from django.utils import timezone
 
-from .models import Notification
+from apps.notifications.models import Notification
 
 
 class NotificationRepository:

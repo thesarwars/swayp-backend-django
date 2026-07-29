@@ -418,3 +418,18 @@ PASSWORD_HISTORY_COMPARE_DEPTH = env.int(
     "PASSWORD_HISTORY_COMPARE_DEPTH", default=1
 )
 PASSWORD_HISTORY_KEEP = env.int("PASSWORD_HISTORY_KEEP", default=5)
+
+
+# --- Notification delivery (E8-S3) ---------------------------------------
+
+# Out-of-app notification email. Off by default: BRD §1.2 ships in-app now and
+# external delivery at R4, and the MessagingProvider is already wired
+# (MESSAGING_PROVIDER above), so flipping this is the whole release switch.
+#
+# HARD PRECONDITION: a NotificationDispatch ledger (key unique, user, type,
+# sent_at) must land BEFORE this is turned on anywhere. Idempotency for the
+# reminder job lives on the Notification row, and a user with in_app off has
+# no row — so with email on, that user is re-emailed every single day.
+NOTIFICATION_EMAIL_ENABLED = env.bool(
+    "NOTIFICATION_EMAIL_ENABLED", default=False
+)

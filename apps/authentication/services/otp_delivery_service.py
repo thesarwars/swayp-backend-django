@@ -72,8 +72,11 @@ class OTPDeliveryService:
         destination = user.email if channel == OTPChannel.EMAIL else None
 
         if not destination:
-            raise ValidationError(
-                {"channel": "No destination available for this channel."}
+            # Was `raise ValidationError(...)` with no import left after the
+            # switch to ChannelNotAvailableException, so this path raised
+            # NameError instead of the error it meant to.
+            raise ChannelNotAvailableException(
+                f"No destination available for {channel} delivery."
             )
 
         transaction.on_commit(

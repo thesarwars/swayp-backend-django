@@ -1,11 +1,19 @@
 from datetime import date
 from decimal import Decimal
 
-from django.db.models import Prefetch, Sum
-from django.db.models.functions import TruncMonth
+from django.db.models import (
+    DecimalField,
+    OuterRef,
+    Prefetch,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+)
+from django.db.models.functions import Coalesce, TruncMonth
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 
+from apps.common.dates import today_eastern
 from apps.common.enums import (
     PaymentStatus,
     VendorPaymentMethodType,
@@ -103,6 +111,58 @@ class VendorSelector:
         }
 
     @staticmethod
+    def preview(user, today=None, limit=3):
+        """Top vendors for the home dashboard, ranked by this month's value.
+
+        Built on ``VendorSelector.list(user)`` with no filters so the rowset is
+        provably the one vendors/summary/ counts — list() defaults status to
+        ACTIVE and summary() is literally list().count().
+        """
+        today = today or today_eastern()
+
+        return (
+            VendorSelector.list(user)
+            # list() attaches a primary-method Prefetch that would cost a
+            # second query for data the `rail` Subquery already supplies.
+            .prefetch_related(None)
+            .annotate(
+                monthly_amount=Coalesce(
+                    Sum(
+                        "bills__occurrences__amount",
+                        filter=Q(
+                            # bills__user as well as the vendor's own user:
+                            # nothing in the schema forces bill.user to equal
+                            # bill.vendor.user, so without it a bill someone
+                            # else owns against this vendor would be summed
+                            # into this user's card. Every sibling selector
+                            # scopes by the bill's owner; so does this one.
+                            bills__user=user,
+                            bills__deleted_at__isnull=True,
+                            bills__occurrences__due_date__year=today.year,
+                            bills__occurrences__due_date__month=today.month,
+                        ),
+                    ),
+                    Value(Decimal("0.00")),
+                    output_field=DecimalField(
+                        max_digits=18, decimal_places=2
+                    ),
+                ),
+                # The primary method's rail, same answer as
+                # VendorListSerializer.get_payment_rail. [:1] is exact rather
+                # than arbitrary: one_primary_method_per_vendor guarantees it.
+                rail=Subquery(
+                    VendorPaymentMethod.objects.filter(
+                        vendor=OuterRef("pk"), is_primary=True
+                    ).values("method_type")[:1]
+                ),
+            )
+            # Highest value first — that is what "top vendors" means on the
+            # home screen. Name breaks ties so the preview is stable across
+            # requests rather than following whatever order the DB returns.
+            .order_by("-monthly_amount", "name")[:limit]
+        )
+
+    @staticmethod
     def payment_methods(user, vendor_id):
         return (
             VendorPaymentMethod.objects.filter(
@@ -134,7 +194,9 @@ class VendorSelector:
         One query for the sums; the zero-filling is done in Python so months
         with no payments still appear rather than collapsing the chart.
         """
-        today = today or timezone.localdate()
+        # Eastern, not localdate() — the whole vendor screen has to agree on
+        # which day it is, and ``preview``/``recent_occurrences`` are Eastern.
+        today = today or today_eastern()
 
         start_year, start_month = today.year, today.month
         offset = months - 1
@@ -219,7 +281,10 @@ class VendorSelector:
         from apps.bills.models.bill_occurrence import BillOccurrence
         from apps.bills.selectors.occurrence_status import open_occurrences
 
-        today = today or timezone.localdate()
+        # Eastern: ``recent_occurrences`` labels an occurrence due today "DUE"
+        # off annotate_status()'s Eastern default, so a UTC ``today`` here
+        # would drop that same row out of next_due for five hours an evening.
+        today = today or today_eastern()
 
         return (
             open_occurrences(

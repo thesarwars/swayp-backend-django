@@ -12,8 +12,8 @@ moment the clock does.
 """
 
 from django.db.models import Case, CharField, F, Value, When
-from django.utils import timezone
 
+from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus
 
 #: Stored states that win over anything the calendar would say.
@@ -25,7 +25,7 @@ TERMINAL_STATUSES = (
 
 def status_expression(today=None):
     """Case/When yielding the effective status of an occurrence."""
-    today = today or timezone.localdate()
+    today = today or today_eastern()
 
     return Case(
         When(status__in=TERMINAL_STATUSES, then=F("status")),

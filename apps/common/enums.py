@@ -17,6 +17,17 @@ class NotificationType(models.TextChoices):
     PAYMENT = "PAYMENT", "Payment"
     PROMOTION = "PROMOTION", "Promotion"
     SECURITY = "SECURITY", "Security"
+    # E8-S3 typed events, appended so the generated choices list — and
+    # therefore every migration that stores it — stays append-only. Both
+    # columns that hold this vocabulary (notifications.type,
+    # notification_preferences.type) are max_length=30, so they can never
+    # disagree about what is storable.
+    BILL_DUE = "BILL_DUE", "Bill due"
+    PAYMENT_FAILED = "PAYMENT_FAILED", "Payment failed"
+    PAYMENT_REVERSED = "PAYMENT_REVERSED", "Payment reversed"
+    AUTOPAY_EXECUTED = "AUTOPAY_EXECUTED", "Autopay executed"
+    PAYMENT_ARRIVED = "PAYMENT_ARRIVED", "Payment arrived"
+    LATE_FEE_WARNING = "LATE_FEE_WARNING", "Late fee warning"
 
 
 class ProviderStatus(models.TextChoices):
@@ -126,3 +137,14 @@ class BillSource(models.TextChoices):
     MANUAL = "MANUAL", "Manual"
     QR = "QR", "QR Scan"
     DETECTED = "DETECTED", "Detected"
+
+
+# --- Commercial plans (BRD §6.2). E9 owns the Plan table; this enum is the
+# vocabulary both sides agree on, so the E8-S2 entitlement gate can exist
+# before the table does. Order matters and lives in apps/common/plans.py.
+
+
+class PlanCode(models.TextChoices):
+    FOUNDING = "FOUNDING", "Founding"
+    STANDARD = "STANDARD", "Standard"
+    ENTERPRISE = "ENTERPRISE", "Enterprise"

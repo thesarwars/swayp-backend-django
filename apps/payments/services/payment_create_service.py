@@ -24,6 +24,7 @@ from apps.common.enums import (
 )
 from apps.payments.models import Payment, PaymentBatch
 from apps.payments.models.reference import create_with_reference
+from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
 from apps.payments.services.authorization_text import (
     for_batch,
     for_single,
@@ -205,11 +206,7 @@ class PaymentCreateService:
         # a screen was left open is exactly what this prevents (E6-S9 AC).
         in_flight = Payment.objects.filter(
             bill_occurrence__in=occurrences,
-            status__in=[
-                PaymentStatus.SCHEDULED,
-                PaymentStatus.PENDING,
-                PaymentStatus.PROCESSING,
-            ],
+            status__in=IN_FLIGHT_PAYMENT_STATUSES,
         ).values_list("bill_occurrence_id", flat=True)
 
         if in_flight:

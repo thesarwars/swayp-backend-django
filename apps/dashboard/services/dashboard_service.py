@@ -1,5 +1,4 @@
-from django.utils import timezone
-
+from apps.common.dates import now_eastern
 from apps.common.exceptions import (
     NotFoundException,
 )
@@ -44,8 +43,12 @@ class DashboardService:
         }
 
     @staticmethod
-    def _get_greeting():
-        hour = timezone.localtime().hour
+    def _get_greeting(now=None):
+        # timezone.localtime() follows TIME_ZONE, which is UTC, so a US user
+        # was greeted 4-5 hours ahead of their own clock — 8 AM ET read "Good
+        # Afternoon". `now` is injectable so the bands are testable without a
+        # clock-freezing dependency.
+        hour = now_eastern(now).hour
 
         if 5 <= hour < 12:
             return "Good Morning"

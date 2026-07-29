@@ -17,6 +17,17 @@ class BillSelector:
             .order_by("-created_at")
         )
 
+    def count_active_bills(self, user):
+        """How many live bills the user has — the "Total Bills 6" stat.
+
+        Bills, not occurrences (docs/epics/epic-4-bills.md:7). The filter is
+        the one ``get_user_bills`` uses, so this equals the row count of the
+        unpaginated GET /api/v1/bills/.
+        """
+        return Bill.objects.filter(
+            user=user, deleted_at__isnull=True
+        ).count()
+
     def get_bill(self, bill_id, user):
         return (
             Bill.objects.filter(

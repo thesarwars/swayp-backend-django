@@ -9,3 +9,6 @@ class BillSummarySerializer(serializers.Serializer):
     upcoming_count = serializers.IntegerField()
     due_count = serializers.IntegerField()
     overdue_count = serializers.IntegerField()
+    # Bills, not occurrences — see docs/epics/epic-4-bills.md:7.
+    total_bills = serializers.IntegerField()
+    paid_count = serializers.IntegerField()

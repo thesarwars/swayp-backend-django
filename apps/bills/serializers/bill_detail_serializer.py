@@ -1,8 +1,8 @@
-from django.utils import timezone
 from rest_framework import serializers
 
 from apps.bills.models.bill import Bill
 from apps.bills.selectors.occurrence_status import open_occurrences
+from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus
 
 
@@ -50,10 +50,13 @@ class BillDetailSerializer(serializers.ModelSerializer):
             return obj.payment_method.method_type
         return None
     
+    # Eastern, not localdate(): the occurrence list, bills/summary/ and the
+    # dashboard all classify against the user's calendar day, and a bill that
+    # every other screen calls DUE must not be "1 day overdue" here.
     def get_next_due(self, obj):
         occurrence = (
             open_occurrences(obj.occurrences)
-            .filter(due_date__gte=timezone.localdate())
+            .filter(due_date__gte=today_eastern())
             .order_by("due_date")
             .first()
         )
@@ -65,13 +68,13 @@ class BillDetailSerializer(serializers.ModelSerializer):
 
     def get_overdue_amount(self, obj):
         overdue = open_occurrences(obj.occurrences).filter(
-            due_date__lt=timezone.localdate(),
+            due_date__lt=today_eastern(),
         )
 
         return sum(item.amount for item in overdue)
 
     def get_days_overdue(self, obj):
-        today = timezone.localdate()
+        today = today_eastern()
 
         oldest = (
             open_occurrences(obj.occurrences)

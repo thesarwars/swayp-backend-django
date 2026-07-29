@@ -13,10 +13,11 @@ by the processor and its webhooks, not by a client call.
 from django.db import transaction
 from django.utils import timezone
 
-from apps.common.enums import PaymentStatus
-from apps.notifications.models import Notification
+from apps.common.enums import NotificationType, PaymentStatus
+from apps.notifications.services import notify
 from apps.payments.repositories import PaymentRepository
 from apps.payments.selectors.payment_selector import PaymentSelector
+from apps.payments.services.notification_context import payment_context
 from apps.payments.services.payment_state_service import PaymentStateService
 from apps.payments.services.stage_service import StageService
 
@@ -67,10 +68,16 @@ class PaymentService:
             payment=payment, status=PaymentStatus.PROCESSING
         )
 
-        self._notify(
-            payment,
-            "Payment processing",
-            f"Payment {payment.transaction_reference} is being processed.",
+        # No typed member covers "processing", and this is a staff-only
+        # manual transition, so it keeps the generic type and its own copy.
+        notify(
+            payment.user,
+            NotificationType.PAYMENT,
+            payment_context(payment),
+            title="Payment processing",
+            message=(
+                f"Payment {payment.transaction_reference} is being processed."
+            ),
         )
 
         return payment
@@ -105,10 +112,15 @@ class PaymentService:
                 payment_reference=payment.transaction_reference,
             )
 
-        self._notify(
-            payment,
-            "Payment successful",
-            f"Payment {payment.transaction_reference} completed successfully.",
+        notify(
+            payment.user,
+            NotificationType.PAYMENT,
+            payment_context(payment),
+            title="Payment successful",
+            message=(
+                f"Payment {payment.transaction_reference} completed "
+                "successfully."
+            ),
         )
 
         return payment
@@ -138,22 +150,12 @@ class PaymentService:
                 status=BillOccurrenceStatus.SCHEDULED,
             ).update(status=BillOccurrenceStatus.UPCOMING)
 
-        self._notify(
-            payment,
-            "Payment failed",
-            (
-                f"Payment {payment.transaction_reference} failed. "
-                "The bill is outstanding again."
-            ),
+        # Same detail the stage already records, so the notification and the
+        # stage trail cannot tell different stories.
+        notify(
+            payment.user,
+            NotificationType.PAYMENT_FAILED,
+            {**payment_context(payment), "reason": "Marked failed"},
         )
 
         return payment
-
-    def _notify(self, payment, title, message):
-        Notification.objects.create(
-            user=payment.user,
-            title=title,
-            message=message,
-            type="PAYMENT",
-            metadata={"payment_id": str(payment.id)},
-        )

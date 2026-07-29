@@ -17,11 +17,14 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.common.enums import (
+    NotificationType,
     PaymentProcessor,
     PaymentStageStatus,
     PaymentStatus,
 )
+from apps.notifications.services import notify
 from apps.payments.models import Payment, PaymentStageName
+from apps.payments.services.notification_context import payment_context
 from apps.payments.services.stage_service import StageService
 from integrations.factory import get_money_movement_provider
 from integrations.money_movement.base import TransferRequest
@@ -183,10 +186,16 @@ class PaymentExecutionService:
                 payment_reference=payment.transaction_reference,
             )
 
-        self._notify(
-            payment,
-            "Payment successful",
-            f"{payment.transaction_reference} completed successfully.",
+        # Stays on the generic PAYMENT type: SUCCESSFUL at the processor is
+        # not arrival — a check is five business days from sent to arrived,
+        # which is why estimated_arrival exists. PAYMENT_ARRIVED belongs to
+        # the webhook consumer.
+        notify(
+            payment.user,
+            NotificationType.PAYMENT,
+            payment_context(payment),
+            title="Payment successful",
+            message=f"{payment.transaction_reference} completed successfully.",
         )
 
     def _fail(self, payment, result):
@@ -218,10 +227,10 @@ class PaymentExecutionService:
                 status=BillOccurrenceStatus.SCHEDULED,
             ).update(status=BillOccurrenceStatus.UPCOMING)
 
-        self._notify(
-            payment,
-            "Payment failed",
-            f"{payment.transaction_reference} failed: {reason}.",
+        notify(
+            payment.user,
+            NotificationType.PAYMENT_FAILED,
+            {**payment_context(payment), "reason": reason},
         )
 
     def _source_token(self, payment):
@@ -244,16 +253,6 @@ class PaymentExecutionService:
             return ""
 
         return method.provider_token or method.network_payee_ref or ""
-
-    def _notify(self, payment, title, message):
-        from apps.notifications.models import Notification
-
-        Notification.objects.create(
-            user=payment.user,
-            title=title,
-            message=message,
-            type="PAYMENT",
-        )
 
     # --- reconciliation ---------------------------------------------------
 

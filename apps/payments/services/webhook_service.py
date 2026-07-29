@@ -21,10 +21,13 @@ from django.utils import timezone
 
 from apps.common.enums import (
     BillOccurrenceStatus,
+    NotificationType,
     PaymentStageStatus,
     PaymentStatus,
 )
+from apps.notifications.services import notify
 from apps.payments.models import Payment, PaymentStageName, WebhookEvent
+from apps.payments.services.notification_context import payment_context
 from apps.payments.services.stage_service import StageService
 
 logger = logging.getLogger(__name__)
@@ -184,6 +187,15 @@ class WebhookService:
             reference=payment.transaction_reference,
         )
 
+        # Only reachable on a genuinely asynchronous rail: when the execution
+        # engine already set SUCCESSFUL inline, _apply short-circuits the
+        # later transfer.completed as a duplicate before it gets here.
+        notify(
+            payment.user,
+            NotificationType.PAYMENT_ARRIVED,
+            payment_context(payment),
+        )
+
         return RESULT_APPLIED
 
     def _apply_failure(self, payment, payload):
@@ -204,6 +216,15 @@ class WebhookService:
 
         self.stages.fail(payment, detail=payment.failure_reason)
         self._set_occurrence(payment, BillOccurrenceStatus.UPCOMING)
+
+        # The processor-driven failure. On an asynchronous rail this is the
+        # only place a failure is ever learned about, so without it the
+        # "failure alerts" half of the story has no producer at all.
+        notify(
+            payment.user,
+            NotificationType.PAYMENT_FAILED,
+            {**payment_context(payment), "reason": payment.failure_reason},
+        )
 
         return RESULT_APPLIED
 
@@ -240,13 +261,10 @@ class WebhookService:
             payment, BillOccurrenceStatus.DUE, clear_payment=True
         )
 
-        self._notify(
-            payment,
-            "Payment returned",
-            (
-                f"{payment.transaction_reference} was returned by the bank. "
-                "The bill is outstanding again."
-            ),
+        notify(
+            payment.user,
+            NotificationType.PAYMENT_REVERSED,
+            payment_context(payment),
         )
 
         return RESULT_APPLIED
@@ -284,15 +302,4 @@ class WebhookService:
 
         BillOccurrence.objects.filter(pk=payment.bill_occurrence_id).update(
             **fields
-        )
-
-    def _notify(self, payment, title, message):
-        from apps.notifications.models import Notification
-
-        Notification.objects.create(
-            user=payment.user,
-            title=title,
-            message=message,
-            type="PAYMENT",
-            metadata={"payment_id": str(payment.id)},
         )

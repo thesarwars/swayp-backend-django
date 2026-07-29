@@ -1,13 +1,16 @@
 from decimal import Decimal
 
+from django.db.models import Count, Q
 from django.db.models.aggregates import Sum
-from django.utils import timezone
 
 from apps.bills.models.bill_occurrence import BillOccurrence
+from apps.bills.selectors.bill_selector import BillSelector
 from apps.bills.selectors.occurrence_status import (
+    TERMINAL_STATUSES,
     annotate_status,
     open_occurrences,
 )
+from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus
 
 _RELATED = (
@@ -26,7 +29,7 @@ class BillOccurrenceSelector:
         )
 
     def get_upcoming_occurrences(self, user, today=None):
-        today = today or timezone.localdate()
+        today = today or today_eastern()
 
         queryset = open_occurrences(
             self._for_user(user).filter(due_date__gte=today)
@@ -39,9 +42,31 @@ class BillOccurrenceSelector:
         )
 
     def get_summary(self, user, today=None):
-        today = today or timezone.localdate()
+        """The numbers behind bills/summary/ and the dashboard stat cards.
 
-        unpaid = open_occurrences(self._for_user(user))
+        One conditional aggregate rather than a Sum plus three counts: every
+        predicate is on a local column of ``bill_occurrences`` after the single
+        join to ``bills``, and the dashboard reads all five at once. The three
+        count predicates are term-for-term the ``When()`` branches of
+        ``status_expression``, which is what makes the tab counts and the rows
+        behind them provably describe the same occurrences.
+        """
+        today = today or today_eastern()
+
+        # Same rows as open_occurrences(): status is non-nullable, so the
+        # negated IN and the .exclude() agree on NULL semantics.
+        open_q = ~Q(status__in=TERMINAL_STATUSES)
+        month_q = Q(due_date__year=today.year, due_date__month=today.month)
+
+        agg = self._for_user(user).aggregate(
+            total=Sum("amount", filter=open_q & month_q),
+            paid_count=Count(
+                "id", filter=month_q & Q(status=BillOccurrenceStatus.PAID)
+            ),
+            upcoming_count=Count("id", filter=open_q & Q(due_date__gt=today)),
+            due_count=Count("id", filter=open_q & Q(due_date=today)),
+            overdue_count=Count("id", filter=open_q & Q(due_date__lt=today)),
+        )
 
         return {
             # "Due this month" is what the user still owes, so settled
@@ -49,17 +74,37 @@ class BillOccurrenceSelector:
             # Decimal, not int 0 — this figure is also read raw by the
             # onboarding summary, which has no serializer to coerce it, so an
             # empty month would otherwise render as 0 there and "0.00" here.
-            "total_due_this_month": unpaid.filter(
-                due_date__year=today.year,
-                due_date__month=today.month,
-            ).aggregate(
-                total=Sum("amount")
-            )["total"] or Decimal("0.00"),
+            "total_due_this_month": agg["total"] or Decimal("0.00"),
 
-            "upcoming_count": unpaid.filter(due_date__gt=today).count(),
-            "due_count": unpaid.filter(due_date=today).count(),
-            "overdue_count": unpaid.filter(due_date__lt=today).count(),
+            "upcoming_count": agg["upcoming_count"],
+            "due_count": agg["due_count"],
+            "overdue_count": agg["overdue_count"],
+            "paid_count": agg["paid_count"],
+            # Bills, not occurrences — "Overdue 14 / Due 9 / Upcoming 14" and
+            # "Total Bills 6" only reconcile if they count different units
+            # (docs/epics/epic-4-bills.md:7).
+            "total_bills": BillSelector().count_active_bills(user),
         }
+
+    def get_recent_occurrences(self, user, today=None, limit=5):
+        """The most recently due occurrences, settled ones included (E8-S1).
+
+        Every status, not just the open ones: the PAID/SCHEDULED chips are the
+        only place the dashboard shows that something went right, and the
+        forward-looking list is already the pay panel. ``annotate_status`` is
+        load-bearing here — ``BillOccurrenceRowSerializer.get_status`` falls
+        back to the stored status, which defaults to UPCOMING, so an
+        unannotated overdue row would render "UPCOMING".
+        """
+        today = today or today_eastern()
+
+        return (
+            annotate_status(
+                self._for_user(user).filter(due_date__lte=today), today
+            )
+            .select_related(*_RELATED)
+            .order_by("-due_date", "-created_at")[:limit]
+        )
 
     def list_occurrences(self, user, filters=None, today=None):
         """Occurrence rows for the bills list screen (E4-S2).
@@ -68,7 +113,7 @@ class BillOccurrenceSelector:
         ``date_to``. Status is filtered on the annotation, so "overdue" means
         what the screen shows rather than what happens to be stored.
         """
-        today = today or timezone.localdate()
+        today = today or today_eastern()
         filters = filters or {}
 
         queryset = annotate_status(self._for_user(user), today)
@@ -93,7 +138,7 @@ class BillOccurrenceSelector:
 
     def get_next_due(self, user, today=None):
         """Nearest unsettled occurrence (E4-S8 — excludes SCHEDULED/PAID)."""
-        today = today or timezone.localdate()
+        today = today or today_eastern()
 
         queryset = open_occurrences(
             self._for_user(user).filter(due_date__gte=today)

@@ -26,12 +26,12 @@ urlpatterns = [
     
     path(
         "notifications/",
-        include("apps.notifications.urls"),
+        include("apps.notifications.api.urls"),
     ),
 
     path(
         "dashboard/",
-        include("apps.dashboard.urls"),
+        include("apps.dashboard.api.urls"),
     ),
 
     path(
@@ -45,5 +45,9 @@ urlpatterns = [
     path(
         "ai/",
         include("apps.ai_advisor.api.urls"),
+    ),
+    path(
+        "reports/",
+        include("apps.reports.api.urls"),
     ),
 ]

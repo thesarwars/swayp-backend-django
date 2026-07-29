@@ -9,15 +9,21 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from apps.common.dates import estimated_arrival, initiation_date
+from apps.common.dates import (
+    estimated_arrival,
+    initiation_date,
+    today_eastern,
+)
 from apps.common.enums import (
     BillOccurrenceStatus,
     PaymentStatus,
 )
 from apps.payments.models import Payment
 from apps.payments.models.reference import create_with_reference
+from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
 from apps.payments.services.authorization_text import processor_for_rail
 from apps.payments.services.payment_create_service import PaymentCreateService
+from apps.vendors.services.late_fee import grace_days, has_late_fee_policy
 
 RETRY = "retry"
 CHANGE_METHOD = "change_method"
@@ -35,7 +41,14 @@ class PaymentResolutionService:
 
     def failure(self, *, user, payment_id, today=None):
         """Everything the failure screen shows (840:13131)."""
-        today = today or timezone.localdate()
+        # Eastern, not localdate(). days_overdue and the late-fee block below
+        # are the same claim about the same occurrence that the E8-S4 warning
+        # job makes, and localdate() rolls over at 19:00/20:00 ET: on the last
+        # evening of a grace period this screen would announce the fee had
+        # landed while the notifier was still counting down to it. Sharing the
+        # arithmetic (apps/vendors/services/late_fee.py) is only worth
+        # anything if both surfaces also agree which day it is.
+        today = today or today_eastern()
 
         payment = Payment.objects.filter(
             id=payment_id, user=user
@@ -78,18 +91,22 @@ class PaymentResolutionService:
         }
 
     def _late_fee(self, vendor, days_overdue):
-        """Late-fee rule and the countdown, from the vendor's own terms."""
-        if vendor is None or vendor.late_fee_amount is None:
+        """Late-fee rule and the countdown, from the vendor's own terms.
+
+        Policy detection is shared with the E8-S4 warning job so the two
+        surfaces cannot disagree about whether a vendor has a policy — a
+        $0.00 fee is not one, and "$0.00 in 3 days" is not a warning.
+        """
+        if not has_late_fee_policy(vendor):
             return None
 
-        grace_days = vendor.late_fee_grace_days or 0
-        days_remaining = max(grace_days - days_overdue, 0)
+        grace = grace_days(vendor)
 
         return {
             "amount": vendor.late_fee_amount,
-            "grace_days": grace_days,
-            "days_remaining": days_remaining,
-            "applies": days_overdue > grace_days,
+            "grace_days": grace,
+            "days_remaining": max(grace - days_overdue, 0),
+            "applies": days_overdue > grace,
         }
 
     # --- resolution -------------------------------------------------------
@@ -97,6 +114,13 @@ class PaymentResolutionService:
     @transaction.atomic
     def resolve(self, *, user, payment_id, action, payment_method_id=None,
                 scheduled_for=None, funding_account_id=None, today=None):
+        # Deliberately still localdate(), unlike failure() above: this `today`
+        # dates a *payment* — it floors initiated_date and stamps the
+        # reference sequence — and PaymentCreateService.create
+        # (payment_create_service.py:66) and create_with_reference
+        # (models/reference.py:20) date theirs the same way. Moving one of the
+        # three to Eastern on its own is how the money path starts
+        # disagreeing with itself; they move together, in their own commit.
         today = today or timezone.localdate()
 
         if action not in ACTIONS:
@@ -159,11 +183,7 @@ class PaymentResolutionService:
         """An occurrence may only ever have one payment in flight."""
         live = Payment.objects.filter(
             bill_occurrence=occurrence,
-            status__in=[
-                PaymentStatus.SCHEDULED,
-                PaymentStatus.PENDING,
-                PaymentStatus.PROCESSING,
-            ],
+            status__in=IN_FLIGHT_PAYMENT_STATUSES,
         ).exists()
 
         if live:

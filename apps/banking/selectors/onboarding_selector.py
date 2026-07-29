@@ -4,8 +4,7 @@ Every figure is derived from the same selectors the bills and vendors screens
 use, so the summary cannot drift from what those screens show.
 """
 
-from django.db.models import Count, Q, Sum
-from django.utils import timezone
+from django.db.models import Count, Q
 
 from apps.banking.models import (
     BankConnection,
@@ -13,6 +12,7 @@ from apps.banking.models import (
     BillDetectionCandidate,
 )
 from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.common.dates import today_eastern
 from apps.common.enums import VendorPaymentMethodType, VendorStatus
 from apps.vendors.models import Vendor
 
@@ -20,7 +20,10 @@ from apps.vendors.models import Vendor
 class OnboardingSelector:
 
     def summary(self, user, today=None):
-        today = today or timezone.localdate()
+        # Eastern, the same day BillOccurrenceSelector.get_summary defaults to.
+        # Passing localdate() here would hand the bills selector a UTC day and
+        # make this screen contradict GET /bills/summary/ every evening.
+        today = today or today_eastern()
 
         return {
             "connection": self.connection_meta(user),

@@ -16,6 +16,10 @@ Per-domain reference lives in:
 | [Teams API](teams-api-documentation.md) | seats, roles, invitations, multi-entity accounts |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
 
+Building the billing or team screens? Start with
+[**E9 + E10 Frontend Implementation Guide**](e9-e10-frontend-implementation-guide.md) —
+screen-by-screen build order, the 402-vs-403 rule, and the traps that cost a day.
+
 Every response body in those guides was captured from the running API, not
 written from a spec.
 

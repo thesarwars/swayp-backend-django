@@ -330,6 +330,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "payments.reconcile_payments",
         "schedule": crontab(minute=15),
     },
+    # E8-S4. The first slot at which every input this job reads is settled:
+    # occurrences exist (03:00), autopay has created today's payments (04:00)
+    # and future-dated sends have been released (04:30) — a reminder for an
+    # occurrence that already has money moving is the one thing it must never
+    # send. 05:00 also exists on both DST transition days, unlike 02:00.
+    "notifications-bill-status-notifier": {
+        "task": "notifications.bill_status_notifier",
+        "schedule": crontab(hour=5, minute=0),
+    },
 }
 
 # Per-processor webhook signing secrets (E6-S8). A processor with no
@@ -432,4 +441,26 @@ PASSWORD_HISTORY_KEEP = env.int("PASSWORD_HISTORY_KEEP", default=5)
 # no row — so with email on, that user is re-emailed every single day.
 NOTIFICATION_EMAIL_ENABLED = env.bool(
     "NOTIFICATION_EMAIL_ENABLED", default=False
+)
+
+
+# --- Reminder + late-fee notifier (E8-S4) --------------------------------
+
+# Calendar days of notice before the money actually has to leave. Measured
+# from the rail's initiation date, not the due date: a REMIND user's approval
+# is what starts the payment, and ACH_STANDARD initiates 2 business days early
+# while CHECK initiates 5 (apps/common/dates.py RAIL_LEAD_BUSINESS_DAYS).
+BILL_DUE_REMINDER_LEAD_DAYS = env.int("BILL_DUE_REMINDER_LEAD_DAYS", default=3)
+
+# How long past the due date BILL_DUE keeps repeating. 30 days stops a monthly
+# bill's reminder as the next cycle's begins, so an abandoned occurrence cannot
+# stack reminders forever.
+BILL_DUE_REMINDER_OVERDUE_DAYS = env.int(
+    "BILL_DUE_REMINDER_OVERDUE_DAYS", default=30
+)
+
+# Days before the vendor's grace period expires that the countdown starts
+# (840:13131 "no late fee yet — N days left").
+LATE_FEE_WARNING_THRESHOLD_DAYS = env.int(
+    "LATE_FEE_WARNING_THRESHOLD_DAYS", default=7
 )

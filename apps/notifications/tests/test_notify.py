@@ -32,6 +32,7 @@ from apps.notifications.models import (
     NotificationPreference,
 )
 from apps.notifications.services import notify
+from apps.notifications.services.dispatch_service import dedupe_key_is_storable
 from apps.vendors.factories import UserFactory
 from integrations.messaging.base import DeliveryResult
 
@@ -45,6 +46,9 @@ BILL_DUE_CONTEXT = {
 
 _PROVIDER = "apps.notifications.tasks.get_messaging_provider"
 _DELAY = "apps.notifications.channels.email.send_notification_email.delay"
+_STORABLE = (
+    "apps.notifications.services.dispatch_service.dedupe_key_is_storable"
+)
 
 
 class SpyMessagingProvider:
@@ -321,18 +325,57 @@ class NotifyTests(TestCase):
         self.assertEqual(notification.title, "Autopay needs your attention")
         self.assertEqual(notification.metadata, {"bill_id": "b1"})
 
+    def test_a_dedupe_key_reaches_the_row_the_in_app_channel_writes(self):
+        """E8-S4 added Notification.dedupe_key, so the guard disarmed itself.
+
+        The other half is the known hole this whole story's email default
+        rests on: the key rides on the in-app row, so a user with in_app off
+        has no row and no key. E8-S4 pins the consequence; this pins the
+        mechanism.
+        """
+        self.assertTrue(dedupe_key_is_storable())
+
+        result = notify(
+            self.user,
+            NotificationType.BILL_DUE,
+            BILL_DUE_CONTEXT,
+            dedupe_key="BILL_DUE:o1:2026-08-01",
+        )
+
+        self.assertEqual(
+            result.notification.dedupe_key, "BILL_DUE:o1:2026-08-01"
+        )
+        self.assertEqual(
+            Notification.objects.get().dedupe_key, "BILL_DUE:o1:2026-08-01"
+        )
+
+        NotificationPreference.objects.create(
+            user=self.user,
+            type=NotificationType.BILL_DUE,
+            in_app=False,
+            email=True,
+        )
+
+        skipped = notify(
+            self.user,
+            NotificationType.BILL_DUE,
+            BILL_DUE_CONTEXT,
+            dedupe_key="BILL_DUE:o1:2026-08-02",
+        )
+
+        self.assertIsNone(skipped.notification)
+        self.assertEqual(Notification.objects.count(), 1)
+
     @override_settings(NOTIFICATION_EMAIL_ENABLED=True)
     def test_a_dedupe_key_is_never_silently_dropped(self):
-        """The parameter ships now; Notification.dedupe_key lands with E8-S4.
+        """A key that cannot be persisted is a TypeError, not a shrug.
 
-        Until the column exists a caller that supplies a key gets a
-        TypeError — and, critically, it cannot depend on the user's
-        preferences. The in-app write is what would store the key, and that
-        channel is skipped outright for a user with in_app off, so a check
-        living there would lapse for exactly those users while their email
-        still went out every day. An idempotency guarantee that holds for
-        some users and not others is worse than none at all, so the refusal
-        is made in notify() before any channel runs.
+        The refusal is made in notify() before any channel runs, and
+        critically it cannot depend on the user's preferences: the in-app
+        write is what stores the key, and that channel is skipped outright
+        for a user with in_app off. Reached here by pretending the column is
+        gone, which is the only way back into this branch now that E8-S4 has
+        shipped it.
         """
         for in_app in (True, False):
             with self.subTest(in_app=in_app):
@@ -345,15 +388,16 @@ class NotifyTests(TestCase):
 
                 provider = SpyMessagingProvider()
 
-                with mock.patch(_PROVIDER, return_value=provider):
-                    with self.captureOnCommitCallbacks(execute=True):
-                        with self.assertRaises(TypeError):
-                            notify(
-                                self.user,
-                                NotificationType.BILL_DUE,
-                                BILL_DUE_CONTEXT,
-                                dedupe_key="BILL_DUE:o1:2026-08-01",
-                            )
+                with mock.patch(_STORABLE, return_value=False):
+                    with mock.patch(_PROVIDER, return_value=provider):
+                        with self.captureOnCommitCallbacks(execute=True):
+                            with self.assertRaises(TypeError):
+                                notify(
+                                    self.user,
+                                    NotificationType.BILL_DUE,
+                                    BILL_DUE_CONTEXT,
+                                    dedupe_key="BILL_DUE:o1:2026-08-01",
+                                )
 
                 # Refused before anything was written or handed off, so the
                 # caller cannot mistake a dropped key for a deduplicated one.
@@ -362,11 +406,12 @@ class NotifyTests(TestCase):
 
         NotificationPreference.objects.all().delete()
 
-        result = notify(
-            self.user,
-            NotificationType.BILL_DUE,
-            BILL_DUE_CONTEXT,
-            dedupe_key=None,
-        )
+        with mock.patch(_STORABLE, return_value=False):
+            result = notify(
+                self.user,
+                NotificationType.BILL_DUE,
+                BILL_DUE_CONTEXT,
+                dedupe_key=None,
+            )
 
         self.assertIsNotNone(result.notification)

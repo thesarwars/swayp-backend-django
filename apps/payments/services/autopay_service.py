@@ -1,4 +1,9 @@
-"""Autopay scheduling and the REMIND loop (E6-S9).
+"""Autopay scheduling (E6-S9).
+
+The REMIND half of E6-S9 moved to apps/notifications/services/
+bill_status_service.py in E8-S4: reminders are notifications, so they have to
+respect notification preferences, and two producers of "this bill is due" is a
+duplicate waiting to ship.
 
 An AUTO bill pays itself at its rail's lead time, backed by the standing
 authorization captured when autopay was switched on (E4-S3) — there is no
@@ -25,6 +30,7 @@ from apps.common.enums import (
 )
 from apps.notifications.services import notify
 from apps.payments.models import Payment
+from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
 from apps.payments.services.payment_create_service import PaymentCreateService
 
 logger = logging.getLogger(__name__)
@@ -35,6 +41,21 @@ RAIL_BY_METHOD = {
     "NETWORK": PaymentRail.NETWORK,
     "CHECK": PaymentRail.CHECK,
 }
+
+
+def rail_for_bill(bill):
+    """The rail a bill's stored payment method implies.
+
+    Module-level because E8-S4's reminder window is measured from
+    ``initiation_date(due_date, rail)`` — a check has to be approved three
+    business days earlier than an ACH debit for the same due date.
+    """
+    method = bill.payment_method
+
+    if method is None:
+        return PaymentRail.ACH_STANDARD
+
+    return RAIL_BY_METHOD.get(method.method_type, PaymentRail.ACH_STANDARD)
 
 
 class AutopayService:
@@ -77,14 +98,7 @@ class AutopayService:
         return due
 
     def rail_for(self, bill):
-        method = bill.payment_method
-
-        if method is None:
-            return PaymentRail.ACH_STANDARD
-
-        return RAIL_BY_METHOD.get(
-            method.method_type, PaymentRail.ACH_STANDARD
-        )
+        return rail_for_bill(bill)
 
     def has_live_authorization(self, bill):
         return bill.standing_authorizations.filter(
@@ -128,11 +142,7 @@ class AutopayService:
     def _already_in_flight(self, occurrence):
         return Payment.objects.filter(
             bill_occurrence=occurrence,
-            status__in=[
-                PaymentStatus.SCHEDULED,
-                PaymentStatus.PENDING,
-                PaymentStatus.PROCESSING,
-            ],
+            status__in=IN_FLIGHT_PAYMENT_STATUSES,
         ).exists()
 
     @transaction.atomic
@@ -204,66 +214,3 @@ class AutopayService:
                 "continue."
             ),
         )
-
-
-class ReminderService:
-    """The REMIND half of E6-S9.
-
-    Notifies rather than pays, and carries the ids the approval screen needs so
-    the user's approval calls the normal create endpoint.
-    """
-
-    def due_reminders(self, today=None):
-        today = today or timezone.localdate()
-
-        return (
-            BillOccurrence.objects.filter(
-                bill__autopay_mode=AutopayMode.REMIND,
-                bill__deleted_at__isnull=True,
-                due_date__lte=today,
-                status__in=[
-                    BillOccurrenceStatus.UPCOMING,
-                    BillOccurrenceStatus.DUE,
-                    BillOccurrenceStatus.OVERDUE,
-                ],
-            )
-            .select_related("bill", "bill__vendor", "bill__user")
-        )
-
-    def run(self, today=None):
-        from apps.notifications.models import Notification
-
-        sent = 0
-
-        for occurrence in self.due_reminders(today):
-            # A scheduled payment already stops the nagging; this is the
-            # belt-and-braces check for occurrences paid another way.
-            if Payment.objects.filter(
-                bill_occurrence=occurrence,
-                status__in=[
-                    PaymentStatus.SCHEDULED,
-                    PaymentStatus.PENDING,
-                    PaymentStatus.PROCESSING,
-                    PaymentStatus.SUCCESSFUL,
-                ],
-            ).exists():
-                continue
-
-            bill = occurrence.bill
-
-            Notification.objects.create(
-                user=bill.user,
-                title=f"{bill.vendor.name} is due",
-                message=(
-                    f"{bill.vendor.name} for {occurrence.amount} was due on "
-                    f"{occurrence.due_date}. Approve it to pay."
-                ),
-                type="PAYMENT",
-                metadata={
-                    "bill_id": str(bill.id),
-                    "occurrence_id": str(occurrence.id),
-                },
-            )
-            sent += 1
-
-        return sent

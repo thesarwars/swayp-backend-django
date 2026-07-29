@@ -1,4 +1,4 @@
-"""Async notification delivery (E8-S3).
+"""Notification background work (E8-S3 delivery, E8-S4 the daily sweep).
 
 Deliberately unlike apps/authentication/tasks.py, which retries: an OTP blocks
 a user mid-flow, a notification email does not, and the in-app row already
@@ -44,3 +44,33 @@ def send_notification_email(*, to, subject, body, notification_type=""):
         return "failed"
 
     return "sent" if result.delivered else "failed"
+
+
+@shared_task(name="notifications.bill_status_notifier")
+def bill_status_notifier():
+    """Daily BILL_DUE + LATE_FEE_WARNING sweep (E8-S4).
+
+    Safe to re-run on the same Eastern day: every emission is keyed and the key
+    is unique in the database, so a replay after a crash resumes rather than
+    repeats.
+    """
+    # Lazy, like apps/payments/tasks.py: Celery autodiscovery imports this
+    # module while the app registry is still being populated.
+    from apps.notifications.services import BillStatusNotifierService
+
+    report = BillStatusNotifierService().run()
+
+    logger.info(
+        "bill_status_notifier bill_due=%s late_fee=%s live=%s dup=%s "
+        "no_channel=%s failed=%s",
+        report["bill_due"],
+        report["late_fee"],
+        report["skipped_live_payment"],
+        report["skipped_duplicate"],
+        report["skipped_no_channel"],
+        report["failed"],
+    )
+
+    # bill_due + late_fee is a *send* count: an emission every channel was off
+    # for lands in skipped_no_channel and is deliberately not in this number.
+    return report["bill_due"] + report["late_fee"]

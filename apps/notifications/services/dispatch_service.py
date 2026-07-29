@@ -54,6 +54,24 @@ class NotificationDispatchService:
 
     def __init__(self):
         self.preferences = NotificationPreferenceSelector()
+        # One instance, one snapshot of the preferences it has already read.
+        # The free ``notify()`` below builds a fresh service per call, so every
+        # event-driven caller reads through exactly as it did before and a
+        # PATCH to preferences can never be served stale. The memo only pays
+        # off for a batch producer that holds one instance for the length of
+        # its run — E8-S4's nightly sweep, where a user with twenty bills
+        # otherwise costs twenty byte-identical SELECTs for the same row.
+        self._resolved = {}
+
+    def _resolve(self, *, user, type):
+        cache_key = (user.pk, str(type))
+
+        if cache_key not in self._resolved:
+            self._resolved[cache_key] = self.preferences.resolve(
+                user=user, type=type
+            )
+
+        return self._resolved[cache_key]
 
     def notify(
         self,
@@ -84,7 +102,7 @@ class NotificationDispatchService:
             type, context, title=title, message=message
         )
 
-        resolved = self.preferences.resolve(user=user, type=type)
+        resolved = self._resolve(user=user, type=type)
 
         dispatch = Dispatch(
             user=user,

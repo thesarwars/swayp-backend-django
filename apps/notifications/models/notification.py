@@ -45,6 +45,17 @@ class Notification(BaseModel):
         blank=True,
     )
 
+    # E8-S4. Idempotency handle for notifications emitted on a schedule:
+    # "<TYPE>:<occurrence-id>:<eastern-date>". NULL for event-driven rows — a
+    # webhook PAYMENT_FAILED is a real event every time it happens — and NULLs
+    # do not collide under the partial constraint below.
+    dedupe_key = models.CharField(
+        max_length=120,
+        null=True,
+        blank=True,
+        default=None,
+    )
+
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]
@@ -53,6 +64,17 @@ class Notification(BaseModel):
             models.Index(fields=["is_read"]),
             models.Index(fields=["created_at"]),
             models.Index(fields=["type"]),
+        ]
+        # The condition is not redundant with "NULLs are distinct": it keeps
+        # the index off the event-driven rows, which are the overwhelming
+        # majority, and it states the intent so a later default="" cannot
+        # silently turn every undeduped row into a collision.
+        constraints = [
+            models.UniqueConstraint(
+                fields=["dedupe_key"],
+                condition=models.Q(dedupe_key__isnull=False),
+                name="uniq_notification_dedupe_key",
+            ),
         ]
 
     def __str__(self):

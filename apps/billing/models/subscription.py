@@ -45,6 +45,19 @@ class Subscription(BaseModel):
 
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
+    # --- provider linkage (E9-S1) ---------------------------------------
+    # Populated only when a real billing provider is collecting money.
+    # Blank means the subscription is an entitlement Swayp granted and
+    # nothing is being charged for it — which is exactly the state the
+    # whole product ran in before Stripe was wired.
+    provider_customer_id = models.CharField(max_length=100, blank=True)
+    provider_subscription_id = models.CharField(
+        max_length=100, blank=True, db_index=True
+    )
+    # The provider's own word for the state, kept verbatim next to Swayp's
+    # status so a disagreement is visible rather than lost in translation.
+    provider_status = models.CharField(max_length=30, blank=True)
+
     class Meta:
         db_table = "subscriptions"
         ordering = ["-period_start"]

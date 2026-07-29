@@ -63,8 +63,15 @@ class SubscriptionService:
         return self.founding_seats_taken() < FOUNDING_LOCK_LIMIT
 
     @transaction.atomic
-    def subscribe(self, *, account, plan_code, today=None):
-        """Start a subscription, honouring the Founding price lock."""
+    def subscribe(self, *, account, plan_code, today=None,
+                  payment_method_id=""):
+        """Start a subscription, honouring the Founding price lock.
+
+        ``payment_method_id`` comes from the client after it has collected a
+        card against a SetupIntent, so the card itself never reaches Swayp.
+        It is ignored when the provider collects nothing, which keeps every
+        caller — tests, demos, the mock deployment — working unchanged.
+        """
         today = today or timezone.localdate()
 
         if self.current(account) is not None:
@@ -85,7 +92,7 @@ class SubscriptionService:
         if plan.price_locked and self.founding_lock_available():
             locked_price = plan.monthly_price
 
-        return Subscription.objects.create(
+        subscription = Subscription.objects.create(
             account=account,
             plan=plan,
             status=SubscriptionStatus.ACTIVE,
@@ -93,6 +100,19 @@ class SubscriptionService:
             period_end=add_month(today),
             locked_price=locked_price,
         )
+
+        self._provider().start(
+            subscription, payment_method_id=payment_method_id
+        )
+
+        return subscription
+
+    def _provider(self):
+        from apps.billing.services.provider_service import (
+            BillingProviderService,
+        )
+
+        return BillingProviderService()
 
     @transaction.atomic
     def change_plan(self, *, account, plan_code, today=None):
@@ -124,6 +144,11 @@ class SubscriptionService:
         subscription.save(
             update_fields=["plan", "locked_price", "updated_at"]
         )
+
+        # Provider-side move happens after the local one so a provider outage
+        # cannot leave Swayp showing the old plan while the customer is billed
+        # for the new one. The reverse mismatch is visible and reconcilable.
+        self._provider().change_plan(subscription)
 
         return subscription
 
@@ -158,5 +183,10 @@ class SubscriptionService:
         subscription.save(
             update_fields=["status", "cancelled_at", "updated_at"]
         )
+
+        # Cancels provider-side too, but never lets that failure undo this:
+        # telling a customer their cancellation failed while continuing to
+        # bill them is the one outcome worth avoiding at any cost.
+        self._provider().cancel(subscription)
 
         return subscription

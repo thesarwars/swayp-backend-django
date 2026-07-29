@@ -10,12 +10,14 @@ from apps.billing.api.serializers.billing import (
     InvoicePreviewSerializer,
     PlanSerializer,
     SetAddOnSerializer,
+    SetupIntentSerializer,
     SubscribeSerializer,
     SubscriptionSerializer,
 )
 from apps.billing.models import Plan
 from apps.billing.services.addon_service import AddOnService
 from apps.billing.services.allowance_service import AllowanceService
+from apps.billing.services.provider_service import BillingProviderService
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
@@ -80,6 +82,9 @@ class SubscriptionAPIView(AccountScopedMixin, BaseAPIView):
         subscription = self.service.subscribe(
             account=self.account(request),
             plan_code=serializer.validated_data["plan"],
+            payment_method_id=serializer.validated_data.get(
+                "payment_method_id", ""
+            ),
         )
 
         return ApiResponse.success(
@@ -243,4 +248,65 @@ class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
                 many=True,
             ).data,
             message="Fee charges fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Start card collection",
+    description=(
+        "Returns a SetupIntent client secret for the card form. The card is "
+        "sent straight to the processor, never to Swayp; POST the resulting "
+        "payment_method_id to /billing/subscription/. When collects_money is "
+        "false no processor is configured and there is no card to collect."
+    ),
+    responses={200: SetupIntentSerializer},
+)
+class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
+
+    service_class = SubscriptionService
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BILLING
+
+    def post(self, request):
+        account = self.account(request)
+        provider = BillingProviderService()
+
+        if not provider.collects_money:
+            # Not an error: the mock deployment genuinely has nothing to
+            # collect, and the client needs to know that rather than wait for
+            # a card form that will never work.
+            return ApiResponse.success(
+                data={
+                    "client_secret": "",
+                    "publishable_key": "",
+                    "collects_money": False,
+                },
+                message="No payment processor is configured.",
+            )
+
+        subscription = self.service.current(account)
+
+        if subscription is None:
+            # A SetupIntent needs a customer, and a customer without a chosen
+            # plan is an object nobody will ever bill. Subscribe first.
+            raise ValidationError(
+                {
+                    "subscription": (
+                        "Choose a plan before adding a payment method."
+                    )
+                }
+            )
+
+        intent = provider.setup_intent(subscription)
+
+        return ApiResponse.success(
+            data={
+                "client_secret": intent.client_secret,
+                "publishable_key": intent.publishable_key,
+                "collects_money": True,
+            },
+            message="Setup intent created.",
         )

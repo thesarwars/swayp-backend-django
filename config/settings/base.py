@@ -384,6 +384,21 @@ BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
 MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
+
+# Who collects subscription money (E9-S1). "mock" is entitlement-only:
+# subscriptions and fees are recorded and nothing is charged. Switching to
+# "stripe" with the keys below is the entire go-live change — no code moves,
+# and test vs live keys differ only in value.
+SUBSCRIPTION_BILLING_PROVIDER = env(
+    "SUBSCRIPTION_BILLING_PROVIDER", default="mock"
+)
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+# Stripe Billing events sign with Stripe's own scheme, not the shared HMAC
+# the payment rails use, so it gets its own secret and its own endpoint.
+STRIPE_BILLING_WEBHOOK_SECRET = env(
+    "STRIPE_BILLING_WEBHOOK_SECRET", default=""
+)
 # "template" rather than "mock": if the kill switch is ever flipped on before
 # a real provider is configured, the mock's "[mock-llm] ..." echo would go
 # straight to a user. The template provider is the deterministic sentence.

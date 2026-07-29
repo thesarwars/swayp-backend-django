@@ -140,7 +140,7 @@ class FeeService:
     def _create(self, *, subscription, payment, kind, guaranteed_arrival):
         try:
             with transaction.atomic():
-                return FeeCharge.objects.create(
+                fee = FeeCharge.objects.create(
                     subscription=subscription,
                     payment=payment,
                     kind=kind,
@@ -148,6 +148,14 @@ class FeeService:
                     state=FeeState.PENDING,
                     guaranteed_arrival=guaranteed_arrival,
                 )
+
+            # Onto the customer's next invoice, if a provider is collecting.
+            # Outside the atomic block and failure-swallowing by design: the
+            # ledger row is the record of truth and a provider hiccup must
+            # not roll back a fee that was correctly charged.
+            self._record_with_provider(fee)
+
+            return fee
         except IntegrityError:
             # uniq_fee_kind_per_payment: a retry re-entered the fee path, and
             # the customer must not be charged twice for one payment.
@@ -157,6 +165,13 @@ class FeeService:
             )
 
             return FeeCharge.objects.get(payment=payment, kind=kind)
+
+    def _record_with_provider(self, fee):
+        from apps.billing.services.provider_service import (
+            BillingProviderService,
+        )
+
+        return BillingProviderService().record_fee(fee)
 
     # --- refunds (E9-S4) --------------------------------------------------
 

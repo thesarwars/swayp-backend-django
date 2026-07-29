@@ -14,19 +14,21 @@ Related: [Payments API](payments-api-documentation.md) · [Banking API](banking-
 
 ## 1. Read this first
 
-### 1.1 Payment is not wired yet ⚠️
+### 1.1 Whether a card is charged depends on configuration ⚠️
 
-No card is charged and no subscription money moves. `POST /subscription/`
-creates the subscription record immediately and the fee ledger accrues real
-rows, but nothing settles — Stripe credentials are not in the build yet.
+Stripe is wired. Whether it collects depends on one setting:
 
-**What this means for you:** build the whole flow. Every request, response and
-error shape below is final. When Stripe is wired, `POST /subscription/` gains a
-payment-method step *before* the subscription is created; nothing already built
-changes shape.
+| | `POST /subscription/` |
+|---|---|
+| **mock** (default) | records the entitlement, charges nothing |
+| **stripe** | creates a real customer and subscription, charges the card |
 
-Do not build a "pay now" or card-entry screen against this API yet — there is
-nothing behind it.
+**Ask, do not assume.** `POST /billing/payment-method/setup/` returns
+`collects_money`. When it is `false`, skip the card form entirely rather than
+mounting one that can never work.
+
+The request and response shapes are identical either way, so one client build
+serves both. Full flow: [Stripe Billing Setup](stripe-billing-setup.md).
 
 ### 1.2 402 means "upgrade", not "forbidden"
 
@@ -155,6 +157,10 @@ means Founding *offers* a lock. Whether a given customer *has* one is
 ## 3. Subscription
 
 One endpoint, four verbs.
+
+> **Collecting a card?** `POST /billing/payment-method/setup/` first, then
+> send the resulting `payment_method_id` with the subscribe call. The card
+> never reaches Swayp. See [Stripe Billing Setup](stripe-billing-setup.md).
 
 ### 3.0 Reads are open to the team; writes are owner-only ⚠️
 
@@ -637,7 +643,6 @@ a closed invoice and drops out of the preview.
 
 | Gap | Impact |
 |---|---|
-| Stripe is not wired | No card is charged. Subscriptions are created directly and fees accrue in the ledger unsettled. Every shape here is final; a payment-method step is added ahead of `POST /subscription/`. |
 | No proration | A mid-cycle plan change takes effect immediately at the new price with no credit for the unused part. Don't promise "you'll be credited". |
 | Renewal rolls the cycle but collects nothing | A nightly job advances `period_start`/`period_end` and resets the free-check allowance, so entitlements are correct. It does **not** charge — that arrives with Stripe. Treat `period_end` as "when the allowance resets", not "when the card is billed". |
 | Invoice history | Only the **current** cycle preview exists. There is no list of past invoices and no PDF. |

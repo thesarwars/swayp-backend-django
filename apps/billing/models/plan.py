@@ -43,6 +43,12 @@ class Plan(BaseModel):
     # rise must not reach an existing subscription.
     price_locked = models.BooleanField(default=False)
 
+    # Cached provider-side price id (E9-S1). Created from this table on
+    # first use rather than configured by hand in a dashboard, so the BRD
+    # numbers stay the single source of truth and going live needs no
+    # manual setup. Blank while the mock provider is in use.
+    provider_price_id = models.CharField(max_length=100, blank=True)
+
     is_active = models.BooleanField(default=True)
 
     class Meta:

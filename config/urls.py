@@ -3,6 +3,7 @@
 from django.contrib import admin
 from django.urls import path,include
 
+from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -37,4 +38,12 @@ urlpatterns = [
     # Versionless: a processor-registered URL must never move with an
     # API version (E6-S8).
     path("webhooks/", include("apps.webhooks.api.urls")),
+    # Stripe Billing signs differently from the payment rails and is about
+    # subscriptions rather than money movement, so it gets its own
+    # versionless endpoint (E9-S1).
+    path(
+        "webhooks/stripe/billing/",
+        StripeBillingWebhookAPIView.as_view(),
+        name="webhook-stripe-billing",
+    ),
 ]

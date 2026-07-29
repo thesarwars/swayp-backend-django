@@ -23,11 +23,12 @@ three roles with a capability matrix, and multi-entity accounts for Enterprise.
 person. Bills, vendors, payments, banks and the subscription belong to the
 account, and everyone on the team sees the same data.
 
-⚠️ **No card is charged yet.** Stripe credentials are not in the build.
-Subscriptions are created directly and fees accrue in a ledger, unsettled.
-Every request and response shape here is final — when Stripe lands, a
-payment-method step appears *before* `POST /billing/subscription/` and nothing
-you build now changes. **Do not build a card-entry screen yet.**
+⚠️ **Stripe is wired, but whether it charges depends on configuration.**
+`POST /billing/payment-method/setup/` returns `collects_money`. When it is
+`false` the deployment records entitlements and charges nothing — skip the
+card form. When `true`, collect a card and pass `payment_method_id` to the
+subscribe call. The shapes are identical either way, so one build serves both.
+Full flow: [Stripe Billing Setup](stripe-billing-setup.md).
 
 ---
 
@@ -203,6 +204,43 @@ testing the null yourself.
 **Seat copy:** Founding is 3 seats **including the owner**, so a new customer
 can invite 2 people. Write "3 users" or "you + 2 teammates" — never "3
 teammates".
+
+---
+
+## 5b. Screen: Card collection
+
+Only when `collects_money` is `true`.
+
+```
+POST /api/v1/billing/payment-method/setup/
+```
+
+```json
+{ "client_secret": "seti_..._secret_...",
+  "publishable_key": "pk_test_...",
+  "collects_money": true }
+```
+
+Mount Stripe Elements with `publishable_key`, confirm the SetupIntent with
+`client_secret`, and send the resulting `payment_method_id` to
+`POST /billing/subscription/`. The card never reaches Swayp.
+
+### The subscribe response can ask for one more step ⚠️
+
+```json
+{ "id": "…", "status": "ACTIVE", "client_secret": "pi_..._secret_..." }
+```
+
+A non-empty `client_secret` means the bank wants 3-D Secure. **Confirm it with
+Stripe.js.** Ignoring it leaves the subscription unpaid at Stripe even though
+Swayp shows `ACTIVE` — the entitlement is granted immediately so the customer
+is not locked out mid-prompt, but the money has not moved.
+
+A declined card is a **400**, not a 402 — no upgrade fixes it:
+
+```json
+{ "errors": { "payment_method_id": "Your card was declined." } }
+```
 
 ---
 
@@ -547,7 +585,9 @@ drops. Nobody has to tell billing.
 - [ ] Re-run `/teams/me/` after accepting
 - [ ] Hide same-day ACH after the 11:59 PM Eastern cutoff
 - [ ] Gate the entities section on `ENTERPRISE`, not on an empty array
-- [ ] Do **not** build a card-entry screen — Stripe is not wired
+- [ ] Branch the card form on `collects_money`, never on a build flag
+- [ ] Confirm the returned `client_secret` after subscribe — skipping it
+      leaves the subscription unpaid
 
 ---
 
@@ -555,7 +595,7 @@ drops. Nobody has to tell billing.
 
 | Gap | Impact |
 |---|---|
-| Stripe | No card is charged. Shapes are final; a payment-method step joins `POST /subscription/` later. |
+| Dunning | A failed charge sets `PAST_DUE`, but no retry or reminder sequence runs off it yet. |
 | Proration | A mid-cycle plan change takes effect immediately at the new price, with no credit. Don't promise one. |
 | Invoice history | Current cycle only. No past invoices, no PDF. |
 | Approval workflows / ERP sync | E10-S4, deferred by the epic. The $99 and $149 add-ons are sellable but inert. |

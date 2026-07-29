@@ -54,4 +54,8 @@ urlpatterns = [
         "reports/",
         include("apps.reports.api.urls"),
     ),
+    path(
+        "teams/",
+        include("apps.teams.api.urls"),
+    ),
 ]

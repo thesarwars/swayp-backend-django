@@ -53,10 +53,13 @@ it. Today the live one is:
 | Action | Endpoint | Ceiling |
 |---|---|---|
 | Connect a bank | `POST /api/v1/banking/link/exchange/` | `bank_limit` |
+| Invite a team member | `POST /api/v1/teams/invite/` | `seat_limit` |
 
-Seats land with Teams (E10). **Handle 402 globally**, in whatever wraps fetch —
-it will appear on more endpoints over time, and the message is always
-displayable as-is.
+**Handle 402 globally**, in whatever wraps fetch — it will appear on more
+endpoints over time, and the message is always displayable as-is.
+
+Don't confuse it with **403**, which means the caller's *role* forbids the
+action. No upgrade fixes a 403. See [Teams API §1.3](teams-api-documentation.md).
 
 ### 1.4 `limit: null` means unlimited, not zero
 
@@ -295,7 +298,7 @@ GET /api/v1/billing/allowances/
 | Kind | Type | Resets | At the limit |
 |---|---|---|---|
 | `CHECKS` | metered | yes, at `period_end` | **never blocks** — bills $2.99 |
-| `SEATS` | capacity | no | 402 (arrives with Teams) |
+| `SEATS` | capacity | no | 402 on invite |
 | `BANKS` | capacity | no | 402 on bank connect |
 
 `used` can exceed `limit` for `CHECKS` — that is what an overage is.
@@ -304,13 +307,16 @@ overage count, not `-remaining`.
 
 ### 5.2 This screen and the 402 agree
 
-`BANKS.used` is counted from the account's live bank connections, and the
-connect gate counts the same rows. So when this shows `remaining: 0`, the
-connect button genuinely will 402 — and disconnecting a bank frees the slot on
-the next read with nothing to reconcile.
+`BANKS.used` is counted from the account's live bank connections and
+`SEATS.used` from its team members — the same rows the gates check. So when
+this shows `remaining: 0`, the button genuinely will 402, and removing a bank
+or a member frees the slot on the next read with nothing to reconcile.
 
-Practically: **refetch allowances after any connect or disconnect** and trust
-the number.
+**The owner occupies a seat**, so a new account reads `SEATS used 1` before
+anyone is invited. [Teams API §1.1](teams-api-documentation.md).
+
+Practically: **refetch allowances after any connect, disconnect, invite or
+removal** and trust the number.
 
 ---
 
@@ -613,7 +619,6 @@ a closed invoice and drops out of the preview.
 | No proration | A mid-cycle plan change takes effect immediately at the new price with no credit for the unused part. Don't promise "you'll be credited". |
 | Renewal is not scheduled | `renew()` exists and is tested but no periodic task calls it. `period_end` will pass without rolling until the billing rail lands. |
 | Invoice history | Only the **current** cycle preview exists. There is no list of past invoices and no PDF. |
-| Seats are not enforced | `SEATS` reports against `seat_limit`, but nothing consumes a seat until Teams (E10). It will read 0. |
 | Per-rail SLA thresholds | The guarantee compares against the arrival estimate at charge time. Explicit per-rail SLA windows are an open product question. |
 
 ---

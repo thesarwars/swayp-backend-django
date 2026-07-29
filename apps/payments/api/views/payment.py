@@ -19,6 +19,8 @@ from apps.payments.selectors.payment_detail_selector import (
 )
 from apps.payments.services.confirm_service import PaymentConfirmService
 from apps.payments.services.payment_create_service import PaymentCreateService
+from apps.teams.access import RequiresCapability
+from apps.teams.permissions import SEND_MONEY
 from apps.payments.services.resolution_service import (
     PaymentResolutionService,
 )
@@ -89,6 +91,8 @@ class BatchConfirmAPIView(IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_batch"
+    permission_classes = BaseAPIView.permission_classes + [RequiresCapability]
+    required_capability = SEND_MONEY
 
     def post(self, request, batch_id):
         serializer = ConfirmSerializer(data=request.data)
@@ -131,6 +135,9 @@ class PaymentConfirmAPIView(IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_payment"
+    # A MEMBER can prepare a payment but not authorize it (E10-S1).
+    permission_classes = BaseAPIView.permission_classes + [RequiresCapability]
+    required_capability = SEND_MONEY
 
     def post(self, request, payment_id):
         serializer = ConfirmSerializer(data=request.data)

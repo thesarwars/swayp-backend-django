@@ -17,6 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.billing.models import (
+    CAPACITY_KINDS,
     METERED_KINDS,
     AllowanceCounter,
     AllowanceKind,
@@ -77,15 +78,15 @@ class AllowanceService:
     def live_used(self, subscription, kind):
         """Usage counted from the real rows, or ``None`` if there are none.
 
-        The connected banks ARE the count of connected banks — a stored
-        counter is a second copy that drifts the moment a connection changes
-        anywhere other than through ``release_capacity``. Deriving keeps the
-        number the billing screen shows identical to the number the gate
-        enforces; without it, a Founding user saw "0 of 1 banks used" while
-        the connect button returned 402.
+        The connected banks ARE the count of connected banks, and the team
+        members ARE the seats. A stored counter is a second copy, and it
+        drifts the moment either changes by any path that forgets to update
+        it. Deriving keeps the number the billing screen shows identical to
+        the number the gate enforces; without it, a Founding user saw "0 of 1
+        banks used" while the connect button returned 402.
 
-        Seats have no live source until E10 owns teams, so they fall back to
-        the counter.
+        Both capacity kinds derive, so no counter is read for either — see
+        ``live_used_kind``.
         """
         if kind == AllowanceKind.BANKS:
             from apps.banking.models import (
@@ -96,6 +97,18 @@ class AllowanceService:
             return BankConnection.objects.filter(
                 user=subscription.account,
                 status=BankConnectionStatus.ACTIVE,
+            ).count()
+
+        if kind == AllowanceKind.SEATS:
+            from apps.teams.models import OCCUPYING_STATUSES, TeamMember
+
+            # A pending invitation holds a seat. Otherwise an owner could
+            # send thirty invites on a three-seat plan and only discover it
+            # when the thirty-first person tried to accept — surfacing the
+            # failure to the invitee instead of the buyer.
+            return TeamMember.objects.filter(
+                account=subscription.account,
+                status__in=OCCUPYING_STATUSES,
             ).count()
 
         return None
@@ -145,55 +158,17 @@ class AllowanceService:
 
         return True
 
-    def _assert_not_derived(self, kind, verb):
-        """A derived kind has no counter to move.
-
-        Incrementing one for BANKS would write a number nothing reads and
-        immediately contradict ``used()``. Raising says so at the call site
-        instead of silently doing nothing.
-        """
-        if self.live_used_kind(kind):
-            raise ValueError(
-                f"{kind} usage is derived from live rows; "
-                f"{verb} the underlying record instead."
-            )
-
     def live_used_kind(self, kind):
-        return kind == AllowanceKind.BANKS
+        """Is this kind's usage derived rather than counted?
 
-    @transaction.atomic
-    def consume_capacity(self, *, subscription, kind, quantity=1):
-        self._assert_not_derived(kind, "create")
-
-        counter = self._locked_counter(subscription, kind)
-
-        limit = self.limit_for(subscription, kind)
-
-        if limit is not None and counter.used + quantity > limit:
-            raise PlanLimitExceededException(
-                self.limit_message(subscription, kind, limit)
-            )
-
-        counter.used += quantity
-        counter.save(update_fields=["used", "updated_at"])
-
-        return counter
-
-    @transaction.atomic
-    def release_capacity(self, *, subscription, kind, quantity=1):
-        """Give capacity back — a removed seat frees its slot.
-
-        Banks need no release: disconnecting one already lowers the derived
-        count, which is the point of deriving it.
+        Both capacity kinds are, now that E10 owns team members. There is
+        deliberately no ``consume_capacity``/``release_capacity``: with
+        nothing left to increment, keeping them would mean keeping methods
+        that write a number ``used()`` does not read — a trap, not an API.
+        Capacity is granted by creating the underlying record (a
+        BankConnection, a TeamMember) and released by removing it.
         """
-        self._assert_not_derived(kind, "delete")
-
-        counter = self._locked_counter(subscription, kind)
-
-        counter.used = max(counter.used - quantity, 0)
-        counter.save(update_fields=["used", "updated_at"])
-
-        return counter
+        return kind in CAPACITY_KINDS
 
     # --- metered ----------------------------------------------------------
 

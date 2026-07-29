@@ -13,6 +13,7 @@ Per-domain reference lives in:
 | [Payments API](payments-api-documentation.md) | the pay flow, batches, cancel, failure recovery, autopay |
 | [Vendors API](vendors-api-documentation.md) | payees, payment methods, lead times, directory, QR |
 | [Billing API](billing-api-documentation.md) | plans, allowances, per-transaction fees, guarantee refunds, invoice |
+| [Teams API](teams-api-documentation.md) | seats, roles, invitations, multi-entity accounts |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
 
 Every response body in those guides was captured from the running API, not
@@ -304,6 +305,7 @@ so `payment_rail` stays populated.
 | 400 | validation — read `errors` per field |
 | 401 | missing or expired token → refresh, then retry |
 | 402 | plan ceiling reached → **upgrade prompt**, not a permission error |
+| 403 | the caller's **role** forbids it → permission message; no upgrade helps |
 | 404 | not found, **or owned by another user** |
 | 409 | `Idempotency-Key` reused with a different body |
 | 422 | QR payload unreadable → "scan again", not a server error |
@@ -347,6 +349,7 @@ or the database.
 | Spend figures fill in as payments run | `total_paid` and `monthly_spend` read real payments now; they are zero only until payments exist. |
 | `payee_verified` always `false` | Set by provider-run verification, which isn't wired. The trust badge will never light up yet. |
 | Subscription payment is not wired | Plans, allowances, fees and the invoice are all live, but no card is charged — Stripe credentials aren't in the build. Subscriptions are created directly. Every shape is final. [Billing API §11](billing-api-documentation.md). |
+| Team-wide data visibility | Seats, roles and gates are enforced, but bill/vendor/payment **reads** still scope to the signed-in user, so an invited member sees an empty list. [Teams API §9](teams-api-documentation.md). |
 | SMS OTP | Rejected explicitly. Don't offer the channel. |
 | QR payload format | Provisional. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
 
@@ -380,6 +383,10 @@ or the database.
 
 **Billing** — `billing/plans/` · `billing/subscription/` (GET/POST/PATCH/DELETE) ·
 `billing/allowances/` · `billing/addons/` · `billing/invoice/` · `billing/fees/`
+
+**Teams** — `teams/me/` · `teams/members/` · `teams/members/<id>/` ·
+`teams/invite/` · `teams/invite/accept/` · `teams/entities/` ·
+`teams/entities/<id>/`
 
 **Categories** — `bill-categories/`
 

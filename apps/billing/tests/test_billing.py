@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.banking.factories import BankConnectionFactory
+from apps.teams.factories import ActiveMemberFactory
 from apps.billing.factories import SubscriptionFactory
 from apps.billing.models import (
     ADDON_PRICES,
@@ -254,20 +255,12 @@ class AllowanceTests(TestCase):
             )
         )
 
-    def test_a_derived_kind_refuses_to_move_a_counter(self):
-        """Writing a BANKS counter would write a number nothing reads."""
-        with self.assertRaises(ValueError):
-            self.service.consume_capacity(
-                subscription=self.subscription, kind=AllowanceKind.BANKS
-            )
 
     def test_unlimited_capacity_never_blocks(self):
         subscription = SubscriptionFactory(plan=plan(PlanCode.ENTERPRISE))
 
         for _ in range(50):
-            self.service.consume_capacity(
-                subscription=subscription, kind=AllowanceKind.SEATS
-            )
+            ActiveMemberFactory(account=subscription.account)
 
         self.assertTrue(
             self.service.check_capacity(
@@ -279,21 +272,32 @@ class AllowanceTests(TestCase):
         )
 
     def test_releasing_capacity_frees_the_slot(self):
-        # Seats still use the counter — E10 owns the team model.
-        self.service.consume_capacity(
-            subscription=self.subscription,
-            kind=AllowanceKind.SEATS,
-            quantity=3,
-        )
-        self.service.release_capacity(
-            subscription=self.subscription, kind=AllowanceKind.SEATS
-        )
+        """Removing the underlying record is the release — there is no
+        counter to decrement."""
+        members = [
+            ActiveMemberFactory(account=self.subscription.account)
+            for _ in range(3)
+        ]
+
+        with self.assertRaises(PlanLimitExceededException):
+            self.service.check_capacity(
+                subscription=self.subscription, kind=AllowanceKind.SEATS
+            )
+
+        members[-1].delete()
 
         self.assertTrue(
             self.service.check_capacity(
                 subscription=self.subscription, kind=AllowanceKind.SEATS
             )
         )
+
+    def test_both_capacity_kinds_are_derived(self):
+        """No counter is read for either, so none can drift."""
+        for kind in (AllowanceKind.BANKS, AllowanceKind.SEATS):
+            self.assertTrue(self.service.live_used_kind(kind))
+
+        self.assertFalse(self.service.live_used_kind(AllowanceKind.CHECKS))
 
     def test_metered_use_is_free_up_to_the_allotment(self):
         # Founding includes two checks.
@@ -334,15 +338,16 @@ class AllowanceTests(TestCase):
         )
 
     def test_capacity_does_not_reset_on_the_new_cycle(self):
-        """A seat you had last month you still have this month.
+        """A seat and a bank you had last month you still have this month.
 
-        The bug this catches: scoping capacity counters to period_start made
-        renewal open a fresh row at used=0, handing out the ceiling again
-        every cycle.
+        The bug this originally caught: scoping capacity counters to
+        period_start made renewal open a fresh row at used=0, handing out the
+        ceiling again every cycle. Deriving removes the failure entirely —
+        there is no row to reopen — so this now guards the property rather
+        than the mechanism.
         """
-        self.service.consume_capacity(
-            subscription=self.subscription, kind=AllowanceKind.SEATS
-        )
+        ActiveMemberFactory(account=self.subscription.account)
+        self.connect_bank()
 
         SubscriptionService().renew(self.subscription)
         self.service.reset_metered(self.subscription)
@@ -350,13 +355,6 @@ class AllowanceTests(TestCase):
         self.assertEqual(
             self.service.used(self.subscription, AllowanceKind.SEATS), 1
         )
-
-    def test_derived_capacity_also_survives_the_new_cycle(self):
-        self.connect_bank()
-
-        SubscriptionService().renew(self.subscription)
-        self.service.reset_metered(self.subscription)
-
         self.assertEqual(
             self.service.used(self.subscription, AllowanceKind.BANKS), 1
         )

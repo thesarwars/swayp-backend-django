@@ -130,6 +130,15 @@ class Payment(BaseModel):
     # clock promise, so it cannot be stored as a naive or UTC-local date.
     cancellation_deadline = models.DateTimeField(null=True, blank=True)
 
+    # Multi-entity scoping (E10-S3); null on single-entity accounts.
+    entity = models.ForeignKey(
+        "teams.Entity",
+        on_delete=models.PROTECT,
+        related_name="payments",
+        null=True,
+        blank=True,
+    )
+
     # Future-dated send. Present means the payment waits for this date.
     scheduled_for = models.DateField(null=True, blank=True)
 

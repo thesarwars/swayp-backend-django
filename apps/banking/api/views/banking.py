@@ -20,6 +20,8 @@ from apps.banking.services.import_service import BillImportService
 from apps.banking.services.link_service import BankLinkService
 from apps.banking.services.scan_service import ScanService
 from apps.common.base_views import BaseAPIView
+from apps.teams.access import RequiresCapability
+from apps.teams.permissions import MANAGE_BANKS
 from apps.common.responses import ApiResponse
 from apps.payments.idempotency import IdempotencyMixin
 
@@ -56,6 +58,11 @@ class LinkTokenAPIView(BaseAPIView):
 class LinkExchangeAPIView(BaseAPIView):
 
     service_class = BankLinkService
+    # Connecting a bank exposes the account's money (E10-S1).
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BANKS
 
     def post(self, request):
         serializer = LinkExchangeSerializer(data=request.data)

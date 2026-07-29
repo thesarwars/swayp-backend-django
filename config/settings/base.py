@@ -100,6 +100,7 @@ LOCAL_APPS = [
     "apps.webhooks",
     "apps.ai_advisor",
     "apps.reports",
+    "apps.teams",
 ]
 
 INSTALLED_APPS = (
@@ -261,6 +262,10 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="noreply@getswayp.com")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@getswayp.com")
 SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
+
+# Where emailed links point (E10-S2 team invites). The accept page is a
+# frontend route, so the backend cannot derive this from its own host.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
 # Celery (E1-S1)
 # Broker/backend read from env; beat pinned to US Eastern so daily money

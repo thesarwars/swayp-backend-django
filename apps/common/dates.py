@@ -21,6 +21,18 @@ from apps.common.enums import BillFrequency, PaymentRail
 EASTERN = ZoneInfo("America/New_York")
 
 
+def now_eastern(now: dt.datetime | None = None) -> dt.datetime:
+    """Wall-clock time on the timezone the product actually runs on.
+
+    Same reason as ``today_eastern``: ``TIME_ZONE`` is UTC, so
+    ``timezone.localtime()`` answers in UTC and any "what time is it for the
+    user" question — the dashboard greeting — is 4-5 hours out.
+    """
+    from django.utils import timezone
+
+    return (now or timezone.now()).astimezone(EASTERN)
+
+
 def today_eastern(now: dt.datetime | None = None) -> dt.date:
     """Today on the wall clock the product actually runs on.
 
@@ -30,9 +42,7 @@ def today_eastern(now: dt.datetime | None = None) -> dt.date:
     ask Eastern instead, or an evening request gets tomorrow's answer — the
     same reason ``CELERY_BEAT_SCHEDULE`` is pinned to Eastern.
     """
-    from django.utils import timezone
-
-    return (now or timezone.now()).astimezone(EASTERN).date()
+    return now_eastern(now).date()
 
 
 # date.weekday(): Monday=0 ... Sunday=6

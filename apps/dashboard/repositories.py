@@ -1,7 +1,9 @@
 from django.contrib.auth import get_user_model
 
-from apps.notifications.repositories import (
-    NotificationRepository,
+# The notifications *selector*, not its repository: one app's persistence layer
+# is not another app's read surface, and E8-S3 restructures that module.
+from apps.notifications.selectors.notification_selector import (
+    NotificationSelector,
 )
 
 User = get_user_model()
@@ -10,8 +12,8 @@ User = get_user_model()
 class DashboardRepository:
 
     def __init__(self):
-        self.notification_repository = (
-            NotificationRepository()
+        self.notification_selector = (
+            NotificationSelector()
         )
 
     def get_user(self, user_id):
@@ -25,6 +27,6 @@ class DashboardRepository:
         self,
         user,
     ):
-        return self.notification_repository.unread_count(
-            user
+        return self.notification_selector.unread_count(
+            user=user
         )

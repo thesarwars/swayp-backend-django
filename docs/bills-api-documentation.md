@@ -369,11 +369,31 @@ GET /api/v1/bills/summary/
 ```json
 { "success": true, "message": "Bills summary fetched successfully.",
   "data": { "total_due_this_month": "0.00", "upcoming_count": 3,
-    "due_count": 0, "overdue_count": 0 } }
+    "due_count": 0, "overdue_count": 0,
+    "total_bills": 6, "paid_count": 0 } }
 ```
 
-All four numbers count **occurrences** and exclude anything already paid or
-scheduled. `total_due_this_month` is what is still owed this calendar month.
+`total_due_this_month`, `upcoming_count`, `due_count` and `overdue_count` count
+**occurrences** and exclude anything already paid or scheduled.
+`total_due_this_month` is what is still owed this calendar month.
+
+The remaining two are not the same unit and do not follow that rule:
+
+- `total_bills` counts **bills** — live ones, i.e. `deleted_at IS NULL`, not
+  occurrences. It equals the row count of the unpaginated §4.1 list. "Overdue 14
+  / Due 9 / Upcoming 14" and "Total Bills 6" only reconcile because they count
+  different things.
+- `paid_count` counts occurrences whose stored status is `PAID` and whose
+  `due_date` falls in the current calendar month — the same month window
+  `total_due_this_month` uses, so the two read as one card.
+
+A `SCHEDULED` occurrence (payment in flight) is in **neither**
+`total_due_this_month` nor `paid_count`, and in none of the three counts.
+
+"This month" and "today" are the *Eastern* calendar month and day, not UTC — the
+same day every other bills read uses, so an evening request does not get
+tomorrow's answer. `GET /banking/onboarding-summary/` and
+`GET /dashboard/home/` re-publish these numbers and cannot disagree with them.
 
 ### 4.5 Next due
 

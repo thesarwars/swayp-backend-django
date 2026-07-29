@@ -24,6 +24,24 @@
 }
 ```
 Extends `apps/dashboard` (migrate app to feature packages in same PR: `api/views/home.py`, …).
+
+**Shipped shape — recorded deviations from the JSON above (E8-S1).** The block
+above is the screen sketch; the wire is a superset of it, pinned by
+`apps/dashboard/tests/test_home.py::HomePayloadShapeTests`. ⟳ **Needs FE
+sign-off before a client is written against the sketch.**
+- `recent_bills[]` and `pay_panel.items[]` are `BillOccurrenceRowSerializer`
+  rows: `{id, bill_id, vendor_id, vendor_name, vendor_logo, category_name,
+  due_date, amount, status, autopay_mode}`. The sketch's `vendor`/`logo` are
+  spelled `vendor_name`/`vendor_logo`, and there is an `id` — without an
+  occurrence id the pay panel's rows cannot start a payment, which is the whole
+  point of the panel. Same serializer as `GET bills/occurrences/?status=`, so a
+  preloaded row and a tab-switch row are the same object.
+- `pay_panel.active_tab` is additive: `items` is the *resolved* tab (overdue,
+  falling back to due then upcoming), so the client cannot know which tab it is
+  holding without being told.
+- `greeting.name` is the user's first name ("Jhon"), falling back to the full
+  name when `first_name` is blank.
+
 **AC:**
 - [ ] Selector-composed (no N+1; assert query count)
 - [ ] Numbers reconcile with `bills/summary/` + `vendors/summary/` under same user fixture

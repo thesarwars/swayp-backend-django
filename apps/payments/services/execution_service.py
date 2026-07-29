@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.common.enums import (
     NotificationType,
     PaymentProcessor,
+    PaymentRail,
     PaymentStageStatus,
     PaymentStatus,
 )
@@ -235,13 +236,28 @@ class PaymentExecutionService:
         )
 
     def _settle_guarantee(self, payment):
-        """Refund a guaranteed fee when the arrival date was missed."""
+        """Judge the delivery guarantee, but only where this moment is arrival.
+
+        Same-day ACH settles the day the processor confirms it, so confirmation
+        here IS the arrival and a late execution is a genuine miss.
+
+        Every other rail is left to the webhook consumer. At processor success
+        a check has been printed and mailed, not delivered, and judging it now
+        would pass a guarantee that has not yet had a chance to be broken.
+
+        This previously passed ``payment.estimated_arrival`` as the actual
+        arrival on every rail — comparing the promise against itself, which is
+        never late, so no guarantee could ever be missed.
+        """
         from apps.billing.services.fee_service import FeeService
+
+        if payment.rail != PaymentRail.ACH_SAMEDAY:
+            return []
 
         try:
             return FeeService().settle_guarantee(
                 payment=payment,
-                actual_arrival=payment.estimated_arrival,
+                actual_arrival=timezone.localdate(),
             )
         except Exception:
             logger.exception(

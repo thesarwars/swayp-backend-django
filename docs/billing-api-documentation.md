@@ -418,6 +418,21 @@ Same-day ACH and expedited check buy a delivery promise. Miss it and the fee
 refunds **automatically** — it is the product commitment, not a goodwill
 gesture, so no support ticket is involved.
 
+### 7.1 When the judgement happens
+
+**At arrival, not at send.** The refund cannot be decided when the payment
+goes out: a mailed check has been printed, not delivered, and nothing is late
+yet.
+
+| Rail | Judged when |
+|---|---|
+| Same-day ACH | the processor confirms — for this rail, confirmation *is* arrival |
+| Check | the processor's arrival webhook fires |
+
+So a fee can sit `PENDING` well past its `guaranteed_arrival` and still refund
+later. **Do not compute "this looks late, show it as refunded" client-side** —
+poll the ledger, or wait for the notification.
+
 The refunded row:
 
 ```json
@@ -432,6 +447,8 @@ The refunded row:
   "refund_reason": "Delivery guarantee missed"
 }
 ```
+
+### 7.2 The amount does not change — the state does
 
 `amount` stays `4.99` — the fee that *was* charged. What changed is `state`.
 **Do not sum `amount` to get what is owed**; use the invoice (§9), where a

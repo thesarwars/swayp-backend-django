@@ -18,6 +18,7 @@ import logging
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from apps.common.enums import (
     BillOccurrenceStatus,
@@ -31,6 +32,32 @@ from apps.payments.services.notification_context import payment_context
 from apps.payments.services.stage_service import StageService
 
 logger = logging.getLogger(__name__)
+
+#: Keys a processor might state the arrival date under. Checked in order;
+#: providers disagree on the name and none of them is guaranteed present.
+ARRIVAL_KEYS = ("arrived_at", "delivered_at", "effective_date", "settled_at")
+
+
+def parse_arrival(payload):
+    """The date the money actually landed, if the provider said so.
+
+    Returns ``None`` rather than guessing, so the caller decides the fallback.
+    A malformed date is also ``None``: a guarantee must not be judged against
+    something that failed to parse.
+    """
+    for key in ARRIVAL_KEYS:
+        raw = payload.get(key)
+
+        if not raw:
+            continue
+
+        parsed = parse_date(str(raw)[:10])
+
+        if parsed is not None:
+            return parsed
+
+    return None
+
 
 #: Event type -> resulting payment status.
 EVENT_STATUS = {
@@ -187,6 +214,11 @@ class WebhookService:
             reference=payment.transaction_reference,
         )
 
+        # This is the arrival event, so it is where a delivery guarantee can
+        # honestly be judged (E9-S4). The execution engine cannot: at
+        # processor success a check has been mailed, not delivered.
+        self._settle_guarantee(payment, payload)
+
         # Only reachable on a genuinely asynchronous rail: when the execution
         # engine already set SUCCESSFUL inline, _apply short-circuits the
         # later transfer.completed as a duplicate before it gets here.
@@ -197,6 +229,31 @@ class WebhookService:
         )
 
         return RESULT_APPLIED
+
+    def _settle_guarantee(self, payment, payload):
+        """Refund a guaranteed fee if this arrival missed the promise.
+
+        The arrival date comes from the payload when the provider states one,
+        and otherwise from today — the webhook fires when the money lands, so
+        today is the honest default. It must never fall back to
+        ``estimated_arrival``: comparing the promise against itself is never
+        late, which is exactly how this went unnoticed.
+        """
+        from apps.billing.services.fee_service import FeeService
+
+        arrived = parse_arrival(payload) or timezone.localdate()
+
+        try:
+            return FeeService().settle_guarantee(
+                payment=payment, actual_arrival=arrived
+            )
+        except Exception:
+            logger.exception(
+                "guarantee settlement failed for %s",
+                payment.transaction_reference,
+            )
+
+            return []
 
     def _apply_failure(self, payment, payload):
         if payment.is_terminal:

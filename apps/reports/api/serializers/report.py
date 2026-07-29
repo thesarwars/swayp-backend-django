@@ -65,9 +65,7 @@ class ReportQuerySerializer(
         return attrs
 
 
-class Form1099QuerySerializer(
-    _ExportRejectingSerializer, PaginationQuerySerializer
-):
+class Form1099QuerySerializer(_ExportRejectingSerializer):
     """Query params for GET reports/1099/.
 
     Deliberately does not accept vendor/date_from/date_to: a 1099 is a tax
@@ -75,6 +73,12 @@ class Form1099QuerySerializer(
     would otherwise get a full-year answer that looks filtered. DRF ignores
     undeclared keys rather than rejecting them, so the refusal has to be
     written out — see ``validate``.
+
+    It does not inherit PaginationQuerySerializer either, for the same reason
+    read the other way round: the response is only honest if it is whole, since
+    ``rows`` plus ``unattributed`` are published as reconciling to ``totals``.
+    Declaring page/pageSize would advertise — in the query params and in the
+    OpenAPI schema — a slicing this endpoint does not do.
     """
 
     year = serializers.IntegerField(required=False)
@@ -96,7 +100,7 @@ class Form1099QuerySerializer(
         if unknown:
             raise BadRequestException(
                 f"This report does not accept {', '.join(unknown)}. A 1099 "
-                "covers a whole tax year — pass ?year= instead."
+                "covers one whole tax year: the only filter is ?year=."
             )
 
         return attrs

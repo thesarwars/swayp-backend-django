@@ -317,6 +317,25 @@ class Form1099PlanGateTests(Form1099TestCase):
                 self.assertIn(ignored, response.data["message"])
 
     @override_settings(DEFAULT_PLAN_CODE="STANDARD")
+    def test_1099_is_whole_and_does_not_advertise_pagination(self):
+        # rows + unattributed are published as reconciling to totals, which is
+        # only true of a complete answer — so page/pageSize are refused rather
+        # than accepted and ignored, and every vendor comes back in one body.
+        for sliced in ("page", "pageSize"):
+            with self.subTest(param=sliced):
+                response = self.client.get(REPORT_1099_URL, {sliced: 1})
+
+                self.assertEqual(
+                    response.status_code, status.HTTP_400_BAD_REQUEST
+                )
+                self.assertIn(sliced, response.data["message"])
+
+        data = self._report({"year": self.year})
+
+        self.assertEqual(len(data["rows"]), 2)
+        self.assertNotIn("pagination", self.client.get(REPORT_1099_URL).data)
+
+    @override_settings(DEFAULT_PLAN_CODE="STANDARD")
     def test_1099_requires_authentication(self):
         response = APIClient().get(REPORT_1099_URL)
 

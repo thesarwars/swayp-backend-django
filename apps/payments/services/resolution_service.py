@@ -231,8 +231,15 @@ class PaymentResolutionService:
             )
 
         rail = failed.rail
+        # A retry of an expedited check stays expedited: the customer paid
+        # for speed and the failure was not theirs. It is charged again
+        # because it is a second physical check, and it is refunded again
+        # under the same guarantee if it is late.
+        expedited = failed.expedited
         anchor = scheduled_for or occurrence.due_date
-        initiated = max(initiation_date(anchor, rail), today)
+        initiated = max(
+            initiation_date(anchor, rail, expedited=expedited), today
+        )
 
         status = (
             PaymentStatus.SCHEDULED if scheduled_for else PaymentStatus.PENDING
@@ -257,11 +264,14 @@ class PaymentResolutionService:
                     else rail
                 ),
                 initiated_date=initiated,
-                estimated_arrival=estimated_arrival(initiated, rail),
+                estimated_arrival=estimated_arrival(
+                    initiated, rail, expedited=expedited
+                ),
                 cancellation_deadline=(
                     self.create_service.cancellation_deadline(initiated)
                 ),
                 scheduled_for=scheduled_for,
+                expedited=expedited,
                 retry_of=failed,
             )
 

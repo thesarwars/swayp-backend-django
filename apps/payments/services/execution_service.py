@@ -126,9 +126,7 @@ class PaymentExecutionService:
             return FeeService().charge_for_payment(
                 subscription=subscription,
                 payment=payment,
-                expedited=bool(
-                    (payment.failure_detail or {}).get("expedited")
-                ),
+                expedited=payment.expedited,
             )
         except Exception:
             logger.exception(

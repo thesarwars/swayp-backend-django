@@ -133,6 +133,12 @@ class Payment(BaseModel):
     # Future-dated send. Present means the payment waits for this date.
     scheduled_for = models.DateField(null=True, blank=True)
 
+    # Paid-for faster delivery on the CHECK rail (E9-S3, $8.99). A real field
+    # rather than a flag in failure_detail: it is an option the customer chose
+    # and was billed for, so it has to survive on the payment and be
+    # auditable next to the FeeCharge that references it.
+    expedited = models.BooleanField(default=False)
+
     # --- failure ----------------------------------------------------------
 
     failure_reason = models.CharField(max_length=50, blank=True)

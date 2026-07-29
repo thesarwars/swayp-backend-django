@@ -208,16 +208,34 @@ RAIL_TRANSIT_BUSINESS_DAYS = {
     PaymentRail.CHECK: 5,
 }
 
+#: Expedited check transit (E9-S3). The $8.99 has to buy something: charging
+#: it against the standard 5-day transit would be selling a promise identical
+#: to the free one. Only the CHECK rail can be expedited — the others have no
+#: slower tier to escape.
+EXPEDITED_TRANSIT_BUSINESS_DAYS = {
+    PaymentRail.CHECK: 2,
+}
 
-def initiation_date(due_date: dt.date, rail: str) -> dt.date:
+
+def initiation_date(due_date: dt.date, rail: str, expedited: bool = False):
     """When to start a payment so it arrives on/by the due date."""
     lead = RAIL_LEAD_BUSINESS_DAYS[rail]
+
+    if expedited:
+        lead = EXPEDITED_TRANSIT_BUSINESS_DAYS.get(rail, lead)
+
     return add_business_days(due_date, -lead)
 
 
-def estimated_arrival(sent_date: dt.date, rail: str) -> dt.date:
+def estimated_arrival(
+    sent_date: dt.date, rail: str, expedited: bool = False
+) -> dt.date:
     """When a payment sent on ``sent_date`` is expected to arrive."""
     transit = RAIL_TRANSIT_BUSINESS_DAYS[rail]
+
+    if expedited:
+        transit = EXPEDITED_TRANSIT_BUSINESS_DAYS.get(rail, transit)
+
     return add_business_days(sent_date, transit)
 
 

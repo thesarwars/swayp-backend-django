@@ -54,6 +54,7 @@ class PaymentCreateAPIView(IdempotencyMixin, BaseAPIView):
                 ),
                 rail=serializer.validated_data["rail"],
                 scheduled_for=serializer.validated_data.get("scheduled_for"),
+                expedited=serializer.validated_data.get("expedited", False),
             )
 
             payments = result["payments"]

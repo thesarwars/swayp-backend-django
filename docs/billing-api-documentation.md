@@ -318,12 +318,15 @@ the number.
 
 Four things a payment can cost:
 
-| Rail | Fee | Guaranteed? |
-|---|---|---|
-| Standard ACH | free, unlimited | — |
-| Same-day ACH | **$4.99**, before the daily cutoff only | yes |
-| Standard check | free up to the plan allotment, then **$2.99** | no |
-| Expedited check | **$8.99** on every plan | yes |
+| Rail | Requested with | Fee | Guaranteed? |
+|---|---|---|---|
+| Standard ACH | `rail: "ACH_STANDARD"` | free, unlimited | — |
+| Same-day ACH | `rail: "ACH_SAMEDAY"` | **$4.99**, before the daily cutoff only | yes |
+| Standard check | `rail: "CHECK"` | free up to the plan allotment, then **$2.99** | no |
+| Expedited check | `rail: "CHECK"` + `expedited: true` | **$8.99** on every plan | yes |
+
+All four are chosen on `POST /api/v1/payments/`. Fees are charged **at send**,
+not at arrival, and appear in the ledger (§6.4) against the payment reference.
 
 ### 6.1 After the cutoff, same-day is not sold ⚠️
 
@@ -341,7 +344,25 @@ $8.99 applies on every plan and is never free, regardless of how much of the
 check allotment is left. It is a separate product, not a penalty — a user with
 5 free checks remaining still pays $8.99 to expedite one.
 
-### 6.3 The ledger
+Request it with `expedited: true` on `POST /api/v1/payments/`, **CHECK rail
+only**. Any other rail is a 400 rather than a silent downgrade:
+
+```json
+{ "success": false, "message": "Validation failed.",
+  "errors": { "expedited": "Only check payments can be expedited." } }
+```
+
+The created payment echoes `"expedited": true` and carries a nearer
+`estimated_arrival` — 2 business days of transit instead of 5. Full request
+shape in [Payments API §2](payments-api-documentation.md).
+
+### 6.3 `guaranteed_arrival` is the date the customer was shown
+
+It equals the payment's `estimated_arrival` exactly. That matters for what you
+render: **show the payment's `estimated_arrival` as the promise**, and the
+refund in §7 will trigger on precisely the date the user was looking at.
+
+### 6.4 The ledger
 
 ```
 GET /api/v1/billing/fees/

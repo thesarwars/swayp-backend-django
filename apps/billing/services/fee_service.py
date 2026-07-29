@@ -73,6 +73,22 @@ class FeeService:
         # ACH_STANDARD and NETWORK carry no per-transaction fee.
         return None
 
+    def promised_arrival(self, payment, expedited=False):
+        """The date the customer was actually shown.
+
+        Read off the payment rather than recomputed. Recomputing let the two
+        drift apart in exactly the direction that costs the customer: an
+        expedited check displayed arrival on the 1st while the fee guaranteed
+        the 4th, so a check three days late by the only date the customer ever
+        saw would not have refunded.
+        """
+        if payment.estimated_arrival:
+            return payment.estimated_arrival
+
+        send_date = payment.initiated_date or timezone.localdate()
+
+        return estimated_arrival(send_date, payment.rail, expedited=expedited)
+
     def _charge_same_day(self, subscription, payment, now):
         send_date = payment.initiated_date or timezone.localdate()
 
@@ -89,14 +105,10 @@ class FeeService:
             subscription=subscription,
             payment=payment,
             kind=FeeKind.SAME_DAY_ACH,
-            guaranteed_arrival=estimated_arrival(
-                send_date, PaymentRail.ACH_SAMEDAY
-            ),
+            guaranteed_arrival=self.promised_arrival(payment),
         )
 
     def _charge_check(self, subscription, payment, expedited, now):
-        send_date = payment.initiated_date or timezone.localdate()
-
         if expedited:
             # $8.99 regardless of plan or allotment — expedited is a separate
             # product, not an overage.
@@ -104,8 +116,8 @@ class FeeService:
                 subscription=subscription,
                 payment=payment,
                 kind=FeeKind.EXPEDITED_CHECK,
-                guaranteed_arrival=estimated_arrival(
-                    send_date, PaymentRail.CHECK
+                guaranteed_arrival=self.promised_arrival(
+                    payment, expedited=True
                 ),
             )
 

@@ -5,6 +5,7 @@ from rest_framework import serializers
 from apps.bill_categories.models import BillCategory
 from apps.common.enums import VendorSource
 from apps.vendors.models.vendor import Vendor
+from apps.vendors.selectors.vendor_selector import VendorSelector
 
 
 #: Distinguishes "the queryset did not annotate this" from "it annotated
@@ -148,18 +149,12 @@ class VendorDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_total_paid(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return VendorSelector.total_paid(obj)
 
     def get_monthly_spend(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return VendorSelector.monthly_spend(obj)
 
     def get_next_bill(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         occurrence = VendorSelector.next_bill(obj)
 
         if occurrence is None:
@@ -174,8 +169,6 @@ class VendorDetailSerializer(serializers.ModelSerializer):
 
     def get_bills(self, obj):
         """Capped list of the vendor's bills with read-time status chips."""
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return [
             {
                 "occurrence_id": occ.id,

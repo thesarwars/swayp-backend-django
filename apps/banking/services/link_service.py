@@ -91,14 +91,20 @@ class BankLinkService:
     def _assert_bank_allowance(self, user):
         """Refuse a new institution once the plan's bank limit is reached.
 
-        Counted from live connections rather than a stored counter: a
-        disconnect frees the slot immediately, and the two can never drift.
+        Delegates to the one gate rather than counting here. Counting in both
+        places is how the billing screen ended up showing "0 of 1 banks used"
+        at the moment this raised 402: the gate counted live connections, the
+        screen read a stored counter nothing incremented. AllowanceService
+        now derives bank usage from these same rows, so the number shown and
+        the number enforced cannot disagree.
         """
+        # Imported here, not at module level: AllowanceService reads
+        # BankConnection, so importing it up top would be a cycle.
+        from apps.billing.models import AllowanceKind
         from apps.billing.services.allowance_service import AllowanceService
         from apps.billing.services.subscription_service import (
             SubscriptionService,
         )
-        from apps.common.exceptions import PlanLimitExceededException
 
         subscription = SubscriptionService().current(user)
 
@@ -107,21 +113,9 @@ class BankLinkService:
             # entitlement seam already treats that as the lowest tier.
             return
 
-        limit = AllowanceService().limit_for(subscription, "BANKS")
-
-        if limit is None:
-            return
-
-        connected = BankConnection.objects.filter(
-            user=user, status=BankConnectionStatus.ACTIVE
-        ).count()
-
-        if connected >= limit:
-            raise PlanLimitExceededException(
-                f"Your {subscription.plan.name} plan allows {limit} "
-                f"connected bank{'s' if limit != 1 else ''}. "
-                "Upgrade to connect another."
-            )
+        AllowanceService().check_capacity(
+            subscription=subscription, kind=AllowanceKind.BANKS
+        )
 
     def _sync_accounts(self, connection, accounts):
         now = timezone.now()

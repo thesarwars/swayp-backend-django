@@ -12,6 +12,7 @@ Per-domain reference lives in:
 | [Bills API](bills-api-documentation.md) | bill wizard, occurrence list, summary, invoice, QR |
 | [Payments API](payments-api-documentation.md) | the pay flow, batches, cancel, failure recovery, autopay |
 | [Vendors API](vendors-api-documentation.md) | payees, payment methods, lead times, directory, QR |
+| [Billing API](billing-api-documentation.md) | plans, allowances, per-transaction fees, guarantee refunds, invoice |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
 
 Every response body in those guides was captured from the running API, not
@@ -302,17 +303,22 @@ so `payment_rail` stays populated.
 |---|---|
 | 400 | validation — read `errors` per field |
 | 401 | missing or expired token → refresh, then retry |
+| 402 | plan ceiling reached → **upgrade prompt**, not a permission error |
 | 404 | not found, **or owned by another user** |
 | 409 | `Idempotency-Key` reused with a different body |
 | 422 | QR payload unreadable → "scan again", not a server error |
 | 429 | OTP resend or routing-validation rate limit; honour `Retry-After` |
 
-**Two nesting quirks:**
+**Three quirks:**
 
 - Vendor create nests branch errors one level deeper:
   `errors.payment_method.<field>`, not `errors.<field>`.
 - A resource owned by someone else returns **404, not 403** — the API does not
   confirm the id exists.
+- A **402 carries `message` only, no `errors` object**, and the message is
+  written to be shown to the user verbatim. Handle it globally: it surfaces
+  from whichever endpoint performs the action, not from Billing.
+  [Billing API §1.2](billing-api-documentation.md).
 
 ---
 
@@ -340,6 +346,7 @@ or the database.
 | Real rails are not wired | Payments execute end to end against the **mock** processor. Moov, Stripe and Lob are a config swap gated on the provider application, so the flow and every response shape are final. |
 | Spend figures fill in as payments run | `total_paid` and `monthly_spend` read real payments now; they are zero only until payments exist. |
 | `payee_verified` always `false` | Set by provider-run verification, which isn't wired. The trust badge will never light up yet. |
+| Subscription payment is not wired | Plans, allowances, fees and the invoice are all live, but no card is charged — Stripe credentials aren't in the build. Subscriptions are created directly. Every shape is final. [Billing API §11](billing-api-documentation.md). |
 | SMS OTP | Rejected explicitly. Don't offer the channel. |
 | QR payload format | Provisional. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
 
@@ -370,6 +377,9 @@ or the database.
 **Vendors** — `vendors/` · `vendors/<id>/` · `vendors/summary/` ·
 `vendors/<id>/payment-methods/` · `.../<mid>/` · `.../<mid>/set-primary/` ·
 `vendors/directory-search/` · `vendors/qr/decode/`
+
+**Billing** — `billing/plans/` · `billing/subscription/` (GET/POST/PATCH/DELETE) ·
+`billing/allowances/` · `billing/addons/` · `billing/invoice/` · `billing/fees/`
 
 **Categories** — `bill-categories/`
 

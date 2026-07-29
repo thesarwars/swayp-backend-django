@@ -37,6 +37,14 @@ class AllowanceService:
         AllowanceKind.CHECKS: "free_checks_per_month",
     }
 
+    #: (singular, plural) for the 402 message. "allows 1 banks" reads like a
+    #: bug report, and this message is shown to the customer.
+    NOUN = {
+        AllowanceKind.SEATS: ("seat", "seats"),
+        AllowanceKind.BANKS: ("connected bank", "connected banks"),
+        AllowanceKind.CHECKS: ("check", "checks"),
+    }
+
     def period_for(self, subscription, kind):
         """Which counter row applies.
 
@@ -66,7 +74,38 @@ class AllowanceService:
 
         return counter
 
+    def live_used(self, subscription, kind):
+        """Usage counted from the real rows, or ``None`` if there are none.
+
+        The connected banks ARE the count of connected banks — a stored
+        counter is a second copy that drifts the moment a connection changes
+        anywhere other than through ``release_capacity``. Deriving keeps the
+        number the billing screen shows identical to the number the gate
+        enforces; without it, a Founding user saw "0 of 1 banks used" while
+        the connect button returned 402.
+
+        Seats have no live source until E10 owns teams, so they fall back to
+        the counter.
+        """
+        if kind == AllowanceKind.BANKS:
+            from apps.banking.models import (
+                BankConnection,
+                BankConnectionStatus,
+            )
+
+            return BankConnection.objects.filter(
+                user=subscription.account,
+                status=BankConnectionStatus.ACTIVE,
+            ).count()
+
+        return None
+
     def used(self, subscription, kind):
+        live = self.live_used(subscription, kind)
+
+        if live is not None:
+            return live
+
         return self.counter(subscription, kind).used
 
     def remaining(self, subscription, kind):
@@ -78,6 +117,14 @@ class AllowanceService:
         return max(limit - self.used(subscription, kind), 0)
 
     # --- capacity ---------------------------------------------------------
+
+    def limit_message(self, subscription, kind, limit):
+        singular, plural = self.NOUN[kind]
+
+        return (
+            f"Your {subscription.plan.name} plan allows {limit} "
+            f"{singular if limit == 1 else plural}. Upgrade to add more."
+        )
 
     def check_capacity(self, *, subscription, kind, requested=1):
         """Raise if adding ``requested`` would breach the plan ceiling.
@@ -93,22 +140,38 @@ class AllowanceService:
 
         if self.used(subscription, kind) + requested > limit:
             raise PlanLimitExceededException(
-                f"Your {subscription.plan.name} plan allows {limit} "
-                f"{kind.lower()}. Upgrade to add more."
+                self.limit_message(subscription, kind, limit)
             )
 
         return True
 
+    def _assert_not_derived(self, kind, verb):
+        """A derived kind has no counter to move.
+
+        Incrementing one for BANKS would write a number nothing reads and
+        immediately contradict ``used()``. Raising says so at the call site
+        instead of silently doing nothing.
+        """
+        if self.live_used_kind(kind):
+            raise ValueError(
+                f"{kind} usage is derived from live rows; "
+                f"{verb} the underlying record instead."
+            )
+
+    def live_used_kind(self, kind):
+        return kind == AllowanceKind.BANKS
+
     @transaction.atomic
     def consume_capacity(self, *, subscription, kind, quantity=1):
+        self._assert_not_derived(kind, "create")
+
         counter = self._locked_counter(subscription, kind)
 
         limit = self.limit_for(subscription, kind)
 
         if limit is not None and counter.used + quantity > limit:
             raise PlanLimitExceededException(
-                f"Your {subscription.plan.name} plan allows {limit} "
-                f"{kind.lower()}. Upgrade to add more."
+                self.limit_message(subscription, kind, limit)
             )
 
         counter.used += quantity
@@ -118,7 +181,13 @@ class AllowanceService:
 
     @transaction.atomic
     def release_capacity(self, *, subscription, kind, quantity=1):
-        """Give capacity back — a disconnected bank frees its slot."""
+        """Give capacity back — a removed seat frees its slot.
+
+        Banks need no release: disconnecting one already lowers the derived
+        count, which is the point of deriving it.
+        """
+        self._assert_not_derived(kind, "delete")
+
         counter = self._locked_counter(subscription, kind)
 
         counter.used = max(counter.used - quantity, 0)

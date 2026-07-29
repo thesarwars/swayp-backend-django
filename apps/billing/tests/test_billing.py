@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.banking.factories import BankConnectionFactory
 from apps.billing.factories import SubscriptionFactory
 from apps.billing.models import (
     ADDON_PRICES,
@@ -188,22 +189,21 @@ class AllowanceTests(TestCase):
             plan=plan(PlanCode.FOUNDING)
         )
 
+    def connect_bank(self):
+        return BankConnectionFactory(user=self.subscription.account)
+
     def test_capacity_is_blocked_past_the_plan_limit(self):
         # Founding allows one bank.
-        self.service.consume_capacity(
-            subscription=self.subscription, kind=AllowanceKind.BANKS
-        )
+        self.connect_bank()
 
         with self.assertRaises(PlanLimitExceededException):
-            self.service.consume_capacity(
+            self.service.check_capacity(
                 subscription=self.subscription, kind=AllowanceKind.BANKS
             )
 
     def test_the_limit_error_is_402_not_403(self):
         """Authorised, just needs a bigger plan — so the client can upsell."""
-        self.service.consume_capacity(
-            subscription=self.subscription, kind=AllowanceKind.BANKS
-        )
+        self.connect_bank()
 
         with self.assertRaises(PlanLimitExceededException) as ctx:
             self.service.check_capacity(
@@ -211,6 +211,55 @@ class AllowanceTests(TestCase):
             )
 
         self.assertEqual(ctx.exception.status_code, 402)
+
+    def test_the_limit_message_reads_as_english(self):
+        """It is shown to the customer, so "allows 1 banks" will not do."""
+        self.connect_bank()
+
+        with self.assertRaises(PlanLimitExceededException) as ctx:
+            self.service.check_capacity(
+                subscription=self.subscription, kind=AllowanceKind.BANKS
+            )
+
+        self.assertIn("allows 1 connected bank.", str(ctx.exception.detail))
+
+    def test_bank_usage_shown_matches_bank_usage_enforced(self):
+        """The regression: the screen said 0 of 1 while connect returned 402.
+
+        The gate counted live connections; the summary read a counter that
+        nothing incremented. Both derive from the connections now.
+        """
+        self.connect_bank()
+
+        summary = self.service.summary(self.subscription)
+
+        self.assertEqual(summary["BANKS"]["used"], 1)
+        self.assertEqual(summary["BANKS"]["remaining"], 0)
+
+        with self.assertRaises(PlanLimitExceededException):
+            self.service.check_capacity(
+                subscription=self.subscription, kind=AllowanceKind.BANKS
+            )
+
+    def test_disconnecting_a_bank_frees_the_slot_with_no_bookkeeping(self):
+        connection = self.connect_bank()
+        connection.delete()
+
+        self.assertEqual(
+            self.service.used(self.subscription, AllowanceKind.BANKS), 0
+        )
+        self.assertTrue(
+            self.service.check_capacity(
+                subscription=self.subscription, kind=AllowanceKind.BANKS
+            )
+        )
+
+    def test_a_derived_kind_refuses_to_move_a_counter(self):
+        """Writing a BANKS counter would write a number nothing reads."""
+        with self.assertRaises(ValueError):
+            self.service.consume_capacity(
+                subscription=self.subscription, kind=AllowanceKind.BANKS
+            )
 
     def test_unlimited_capacity_never_blocks(self):
         subscription = SubscriptionFactory(plan=plan(PlanCode.ENTERPRISE))
@@ -230,16 +279,19 @@ class AllowanceTests(TestCase):
         )
 
     def test_releasing_capacity_frees_the_slot(self):
+        # Seats still use the counter — E10 owns the team model.
         self.service.consume_capacity(
-            subscription=self.subscription, kind=AllowanceKind.BANKS
+            subscription=self.subscription,
+            kind=AllowanceKind.SEATS,
+            quantity=3,
         )
         self.service.release_capacity(
-            subscription=self.subscription, kind=AllowanceKind.BANKS
+            subscription=self.subscription, kind=AllowanceKind.SEATS
         )
 
         self.assertTrue(
             self.service.check_capacity(
-                subscription=self.subscription, kind=AllowanceKind.BANKS
+                subscription=self.subscription, kind=AllowanceKind.SEATS
             )
         )
 
@@ -282,10 +334,25 @@ class AllowanceTests(TestCase):
         )
 
     def test_capacity_does_not_reset_on_the_new_cycle(self):
-        """A bank you had last month you still have this month."""
+        """A seat you had last month you still have this month.
+
+        The bug this catches: scoping capacity counters to period_start made
+        renewal open a fresh row at used=0, handing out the ceiling again
+        every cycle.
+        """
         self.service.consume_capacity(
-            subscription=self.subscription, kind=AllowanceKind.BANKS
+            subscription=self.subscription, kind=AllowanceKind.SEATS
         )
+
+        SubscriptionService().renew(self.subscription)
+        self.service.reset_metered(self.subscription)
+
+        self.assertEqual(
+            self.service.used(self.subscription, AllowanceKind.SEATS), 1
+        )
+
+    def test_derived_capacity_also_survives_the_new_cycle(self):
+        self.connect_bank()
 
         SubscriptionService().renew(self.subscription)
         self.service.reset_metered(self.subscription)

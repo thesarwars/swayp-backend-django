@@ -6,10 +6,8 @@ restart and cannot be dodged by hitting a different worker.
 """
 
 from datetime import timedelta
-
 from django.conf import settings
 from django.utils import timezone
-
 from apps.authentication.models import OTP
 from apps.common.exceptions import OTPThrottledException
 

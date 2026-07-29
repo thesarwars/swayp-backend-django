@@ -98,6 +98,7 @@ LOCAL_APPS = [
     "apps.vendors",
     "apps.webhooks",
     "apps.ai_advisor",
+    "apps.reports",
 ]
 
 INSTALLED_APPS = (
@@ -389,6 +390,17 @@ FLO_UPCOMING_WINDOW_DAYS = env.int("FLO_UPCOMING_WINDOW_DAYS", default=30)
 # how wrong that fact can be; it is also the floor on provider call volume,
 # since every advisor request inside the window reuses the stored value.
 BALANCE_MAX_AGE_SECONDS = env.int("BALANCE_MAX_AGE_SECONDS", default=300)
+
+
+# --- Plan entitlements (E8-S2 seam, replaced by E9) ----------------------
+
+# The plan every user is treated as being on until E9 ships Subscription rows.
+# FOUNDING is the LOWEST tier, so the Standard-only 1099 report (BRD §6.2) is
+# denied to everyone by default. An unrecognised value degrades to FOUNDING in
+# apps/common/plans.py rather than opening the gate, so a typo here cannot
+# grant an entitlement. Delete this setting when E9 lands, or a stale env var
+# will keep overriding real Subscription rows.
+DEFAULT_PLAN_CODE = env("DEFAULT_PLAN_CODE", default="FOUNDING")
 
 
 # --- Authentication tuning (E2-S1, S2, S4) -------------------------------

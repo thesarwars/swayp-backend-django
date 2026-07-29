@@ -46,4 +46,8 @@ urlpatterns = [
         "ai/",
         include("apps.ai_advisor.api.urls"),
     ),
+    path(
+        "reports/",
+        include("apps.reports.api.urls"),
+    ),
 ]

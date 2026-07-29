@@ -126,3 +126,14 @@ class BillSource(models.TextChoices):
     MANUAL = "MANUAL", "Manual"
     QR = "QR", "QR Scan"
     DETECTED = "DETECTED", "Detected"
+
+
+# --- Commercial plans (BRD §6.2). E9 owns the Plan table; this enum is the
+# vocabulary both sides agree on, so the E8-S2 entitlement gate can exist
+# before the table does. Order matters and lives in apps/common/plans.py.
+
+
+class PlanCode(models.TextChoices):
+    FOUNDING = "FOUNDING", "Founding"
+    STANDARD = "STANDARD", "Standard"
+    ENTERPRISE = "ENTERPRISE", "Enterprise"

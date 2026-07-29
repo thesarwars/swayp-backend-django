@@ -1,0 +1,231 @@
+"""Billing endpoints (E9-S1 … E9-S5)."""
+
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.exceptions import ValidationError
+
+from apps.billing.api.serializers.billing import (
+    AddOnSerializer,
+    FeeChargeSerializer,
+    InvoicePreviewSerializer,
+    PlanSerializer,
+    SetAddOnSerializer,
+    SubscribeSerializer,
+    SubscriptionSerializer,
+)
+from apps.billing.models import Plan
+from apps.billing.services.addon_service import AddOnService
+from apps.billing.services.allowance_service import AllowanceService
+from apps.billing.services.subscription_service import SubscriptionService
+from apps.common.base_views import BaseAPIView
+from apps.common.responses import ApiResponse
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="List plans",
+    description="The three tiers and what each includes.",
+    responses={200: PlanSerializer(many=True)},
+)
+class PlanListAPIView(BaseAPIView):
+
+    def get(self, request):
+        plans = Plan.objects.filter(is_active=True).order_by("monthly_price")
+
+        return ApiResponse.success(
+            data=PlanSerializer(plans, many=True).data,
+            message="Plans fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Current subscription",
+    description=(
+        "The account's active subscription, or null when there is none. "
+        "effective_price honours the Founding price lock."
+    ),
+    responses={200: SubscriptionSerializer},
+)
+class SubscriptionAPIView(BaseAPIView):
+
+    service_class = SubscriptionService
+
+    def get(self, request):
+        subscription = self.service.current(request.user)
+
+        return ApiResponse.success(
+            data=(
+                SubscriptionSerializer(subscription).data
+                if subscription
+                else None
+            ),
+            message="Subscription fetched successfully.",
+        )
+
+    def post(self, request):
+        """Subscribe to a plan."""
+        serializer = SubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        subscription = self.service.subscribe(
+            account=request.user,
+            plan_code=serializer.validated_data["plan"],
+        )
+
+        return ApiResponse.success(
+            data=SubscriptionSerializer(subscription).data,
+            message="Subscribed successfully.",
+            status_code=status.HTTP_201_CREATED,
+        )
+
+    def patch(self, request):
+        """Change plan, keeping the current cycle."""
+        serializer = SubscribeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        subscription = self.service.change_plan(
+            account=request.user,
+            plan_code=serializer.validated_data["plan"],
+        )
+
+        return ApiResponse.success(
+            data=SubscriptionSerializer(subscription).data,
+            message="Plan changed.",
+        )
+
+    def delete(self, request):
+        subscription = self.service.cancel(account=request.user)
+
+        return ApiResponse.success(
+            data=SubscriptionSerializer(subscription).data,
+            message="Subscription cancelled.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Plan allowances",
+    description=(
+        "Usage against each allowance. limit null means unlimited. Seats and "
+        "banks are standing capacity; checks reset each cycle."
+    ),
+)
+class AllowanceAPIView(BaseAPIView):
+
+    def get(self, request):
+        subscription = SubscriptionService().current(request.user)
+
+        if subscription is None:
+            raise ValidationError(
+                {"subscription": "No active subscription."}
+            )
+
+        return ApiResponse.success(
+            data=AllowanceService().summary(subscription),
+            message="Allowances fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Enterprise add-ons",
+    description=(
+        "Each add-on is its own invoice line. Send quantity 0 to remove one."
+    ),
+    responses={200: AddOnSerializer(many=True)},
+)
+class AddOnAPIView(BaseAPIView):
+
+    service_class = AddOnService
+
+    def _subscription(self, request):
+        subscription = SubscriptionService().current(request.user)
+
+        if subscription is None:
+            raise ValidationError(
+                {"subscription": "No active subscription."}
+            )
+
+        return subscription
+
+    def get(self, request):
+        subscription = self._subscription(request)
+
+        return ApiResponse.success(
+            data=AddOnSerializer(
+                subscription.addons.order_by("kind"), many=True
+            ).data,
+            message="Add-ons fetched successfully.",
+        )
+
+    def post(self, request):
+        subscription = self._subscription(request)
+
+        serializer = SetAddOnSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        addon = self.service.set_addon(
+            subscription=subscription,
+            kind=serializer.validated_data["kind"],
+            quantity=serializer.validated_data["quantity"],
+        )
+
+        return ApiResponse.success(
+            data=AddOnSerializer(addon).data if addon else None,
+            message="Add-on removed." if addon is None else "Add-on saved.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Invoice preview",
+    description=(
+        "Every line for the current cycle: the plan, each add-on, and each "
+        "unbilled fee. Refunded fees appear at zero rather than disappearing."
+    ),
+    responses={200: InvoicePreviewSerializer},
+)
+class InvoicePreviewAPIView(BaseAPIView):
+
+    service_class = AddOnService
+
+    def get(self, request):
+        subscription = SubscriptionService().current(request.user)
+
+        if subscription is None:
+            raise ValidationError(
+                {"subscription": "No active subscription."}
+            )
+
+        return ApiResponse.success(
+            data=InvoicePreviewSerializer(
+                self.service.invoice_preview(subscription)
+            ).data,
+            message="Invoice preview fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Fee charges",
+    description="The per-transaction fee ledger, newest first.",
+    responses={200: FeeChargeSerializer(many=True)},
+)
+class FeeChargeListAPIView(BaseAPIView):
+
+    def get(self, request):
+        subscription = SubscriptionService().current(request.user)
+
+        if subscription is None:
+            raise ValidationError(
+                {"subscription": "No active subscription."}
+            )
+
+        return ApiResponse.success(
+            data=FeeChargeSerializer(
+                subscription.fee_charges.select_related("payment"),
+                many=True,
+            ).data,
+            message="Fee charges fetched successfully.",
+        )

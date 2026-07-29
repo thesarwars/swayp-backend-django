@@ -98,7 +98,45 @@ class PaymentExecutionService:
             payment, PaymentStageName.DEBITING, PaymentStageStatus.RUNNING
         )
 
+        # Billed at send, not at success: a check that goes out has been
+        # printed and mailed whatever the bank does next, and same-day is
+        # charged for the slot it occupies (E9-S3).
+        self._charge_fee(payment)
+
         return payment
+
+    def _charge_fee(self, payment):
+        """Apply any per-transaction fee this payment attracts (E9-S3).
+
+        Never allowed to break execution: a billing failure must not stop
+        money that the customer already authorised. The fee ledger is
+        reconcilable after the fact; a stranded payment is not.
+        """
+        from apps.billing.services.fee_service import FeeService
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+
+        try:
+            subscription = SubscriptionService().current(payment.user)
+
+            if subscription is None:
+                return None
+
+            return FeeService().charge_for_payment(
+                subscription=subscription,
+                payment=payment,
+                expedited=bool(
+                    (payment.failure_detail or {}).get("expedited")
+                ),
+            )
+        except Exception:
+            logger.exception(
+                "fee charging failed for %s; execution continues",
+                payment.transaction_reference,
+            )
+
+            return None
 
     def _call_processor(self, payment):
         """Ask the processor to move the money, or recover a prior attempt.
@@ -197,6 +235,23 @@ class PaymentExecutionService:
             title="Payment successful",
             message=f"{payment.transaction_reference} completed successfully.",
         )
+
+    def _settle_guarantee(self, payment):
+        """Refund a guaranteed fee when the arrival date was missed."""
+        from apps.billing.services.fee_service import FeeService
+
+        try:
+            return FeeService().settle_guarantee(
+                payment=payment,
+                actual_arrival=payment.estimated_arrival,
+            )
+        except Exception:
+            logger.exception(
+                "guarantee settlement failed for %s",
+                payment.transaction_reference,
+            )
+
+            return []
 
     def _fail(self, payment, result):
         from apps.bills.models.bill_occurrence import BillOccurrence

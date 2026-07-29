@@ -38,23 +38,42 @@ _RANK = {code: index for index, code in enumerate(PLAN_ORDER)}
 def current_plan_code(user) -> str:
     """The plan this user is on.
 
-    THE SEAM. E9-S1 replaces this body — and nothing else — with:
+    THE SEAM, now filled in by E9-S1: the answer comes from the real
+    Subscription table. Everything else in this module — the ordering, the
+    comparison, every caller — is untouched, which is what the seam was for.
 
-        from apps.billing.models import Subscription
+    Still fail-closed, in three ways:
 
-        subscription = (
-            Subscription.objects
-            .filter(account=user, status=SubscriptionStatus.ACTIVE)
-            .select_related("plan")
-            .first()
-        )
-        return subscription.plan.code if subscription else PlanCode.FOUNDING
+    * no active subscription means FOUNDING, the lowest tier, so a user who
+      has never subscribed is entitled to nothing extra rather than
+      everything;
+    * a plan code the ordering does not recognise also degrades to FOUNDING,
+      so a bad row cannot hand out Enterprise;
+    * ``settings.DEFAULT_PLAN_CODE`` remains the fallback for an anonymous or
+      user-less caller, so a demo environment can still open a gate without a
+      code change.
 
-    Until then every user is on ``settings.DEFAULT_PLAN_CODE``, which defaults
-    to FOUNDING — so the 1099 gate is shut for everyone in production, and can
-    be opened per-environment for a demo without touching code.
+    Imported inside the function because ``apps.billing`` imports from
+    ``apps.common`` — at module level this would be a cycle.
     """
-    code = getattr(settings, "DEFAULT_PLAN_CODE", PlanCode.FOUNDING)
+    default = getattr(settings, "DEFAULT_PLAN_CODE", PlanCode.FOUNDING)
+    default = default if default in _RANK else PlanCode.FOUNDING
+
+    if user is None or not getattr(user, "is_authenticated", True):
+        return default
+
+    from apps.billing.models import Subscription, SubscriptionStatus
+
+    code = (
+        Subscription.objects.filter(
+            account=user, status=SubscriptionStatus.ACTIVE
+        )
+        .values_list("plan__code", flat=True)
+        .first()
+    )
+
+    if code is None:
+        return default
 
     return code if code in _RANK else PlanCode.FOUNDING
 

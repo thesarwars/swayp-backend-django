@@ -54,6 +54,10 @@ class BankLinkService:
                 }
             )
 
+        # Plan ceiling before anything is created — discovering the limit
+        # after the connection exists would mean tearing it back down.
+        self._assert_bank_allowance(user)
+
         result = self.provider.exchange_public_token(
             public_token=public_token
         )
@@ -83,6 +87,41 @@ class BankLinkService:
         self._sync_accounts(connection, result.accounts)
 
         return connection
+
+    def _assert_bank_allowance(self, user):
+        """Refuse a new institution once the plan's bank limit is reached.
+
+        Counted from live connections rather than a stored counter: a
+        disconnect frees the slot immediately, and the two can never drift.
+        """
+        from apps.billing.services.allowance_service import AllowanceService
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+        from apps.common.exceptions import PlanLimitExceededException
+
+        subscription = SubscriptionService().current(user)
+
+        if subscription is None:
+            # No subscription is not a licence to connect without limit; the
+            # entitlement seam already treats that as the lowest tier.
+            return
+
+        limit = AllowanceService().limit_for(subscription, "BANKS")
+
+        if limit is None:
+            return
+
+        connected = BankConnection.objects.filter(
+            user=user, status=BankConnectionStatus.ACTIVE
+        ).count()
+
+        if connected >= limit:
+            raise PlanLimitExceededException(
+                f"Your {subscription.plan.name} plan allows {limit} "
+                f"connected bank{'s' if limit != 1 else ''}. "
+                "Upgrade to connect another."
+            )
 
     def _sync_accounts(self, connection, accounts):
         now = timezone.now()

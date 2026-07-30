@@ -20,9 +20,6 @@ Per-domain reference lives in:
 has one guide per epic — endpoints, build order and the traps specific to
 each. Start there; the per-domain references above are the lookup layer.
 
-For billing and teams specifically, see also
-[E9 + E10 Implementation Guide](e9-e10-frontend-implementation-guide.md).
-
 Every response body in those guides was captured from the running API, not
 written from a spec.
 

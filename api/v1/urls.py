@@ -58,4 +58,8 @@ urlpatterns = [
         "teams/",
         include("apps.teams.api.urls"),
     ),
+    path(
+        "users/",
+        include("apps.users.api.urls"),
+    ),
 ]

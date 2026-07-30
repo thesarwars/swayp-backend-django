@@ -144,3 +144,50 @@ this work drive the API rather than the service.
    Pre-existing since E6-S1.
 7. **Bank and seat usage disagreed with the gate** — the billing screen showed
    "0 of 1 used" while the button returned 402.
+
+---
+
+## 7. Design coverage: `figma_node.md` vs the epics
+
+Node ids were extracted from both and compared.
+
+| Direction | Result |
+|---|---|
+| Epic → Figma | **0 mismatches.** Every screen an epic cites exists in `figma_node.md`. |
+| Figma → Epic | **4 of 72 uncovered.** |
+
+**Uncovered:** `2113:6165`, `2113:6501`, `2113:6795`, `2113:7090`.
+
+They appear in `figma_node.md` and nowhere else — no epic, no PRD, no BRD.
+In the file they sit inside E2's auth block, between the register screen
+(`1464:15936`) and the OTP screen (`1464:16992`), which suggests something in
+the post-registration flow.
+
+**They have not been built.** Figma requires authentication, so the designs
+cannot be read from the node id alone, and building an API for a guess would
+close the gap on paper while leaving it open in fact. Product needs to say
+what these four screens are.
+
+## 8. A gap found while checking that: the profile was read-only
+
+Registration collects `full_name`, `address` and — for a business —
+`business_name`, `poc_name` and `billing_address`. Nothing could change any of
+them afterwards. There was one read-only `GET /dashboard/profile-summary/`
+and no write path anywhere, so a typo in a business name was permanent and a
+company that moved office had no way to say so. The billing address is what
+appears on the invoice.
+
+No epic mentions profiles at all, which is why it was never noticed.
+
+`GET`/`PATCH /api/v1/users/profile/` closes it:
+
+- account-scoped, so a team member sees the business they work for;
+- `account_type`, `email` and `phone_number` are read-only — the first
+  changes what the account *is*, and the other two are login identifiers
+  verified by OTP, so changing one is an authentication flow rather than a
+  profile edit;
+- `business_name` and `poc_name` are `null` rather than absent on an
+  individual account, so one form renders both types;
+- profile and branch rows are created lazily, because accounts predate these
+  models and failing to open a settings screen is worse than showing an empty
+  one.

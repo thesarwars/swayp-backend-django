@@ -16,9 +16,12 @@ Per-domain reference lives in:
 | [Teams API](teams-api-documentation.md) | seats, roles, invitations, multi-entity accounts |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
 
-Building the billing or team screens? Start with
-[**E9 + E10 Frontend Implementation Guide**](e9-e10-frontend-implementation-guide.md) —
-screen-by-screen build order, the 402-vs-403 rule, and the traps that cost a day.
+**Building screen by screen?** [**docs/frontend_api/**](frontend_api/README.md)
+has one guide per epic — endpoints, build order and the traps specific to
+each. Start there; the per-domain references above are the lookup layer.
+
+For billing and teams specifically, see also
+[E9 + E10 Implementation Guide](e9-e10-frontend-implementation-guide.md).
 
 Every response body in those guides was captured from the running API, not
 written from a spec.
@@ -101,22 +104,31 @@ POST auth/verify-otp/      →  account activated
 ```
 
 ```json
-{ "email": "user@example.com", "phone_number": "+14155552671",
+{ "first_name": "Jane", "last_name": "Smith",
+  "email": "jane@acme.com", "business_name": "Acme Corporation, LLC",
+  "industry": "Construction", "business_size": "11-50",
   "password": "…", "confirm_password": "…",
-  "account_type": "BUSINESS", "full_name": "…", "address": "…",
-  "business_name": "…", "poc_name": "…", "billing_address": "…" }
+  "terms_accepted": true, "signatory_confirmed": true,
+  "marketing_opt_in": false }
 ```
 
 ```json
 { "success": true, "message": "Registration successful. OTP has been sent." }
 ```
 
-`account_type` is `INDIVIDUAL` or `BUSINESS`; `business_name` and `poc_name`
-apply to `BUSINESS` only.
+That is the whole payload — **no postal address, phone, billing address or
+point of contact.** Onboarding Step 1 and Settings collect those. `full_name`
+still works instead of the split name, so older clients are unaffected.
 
-> **`phone_number` is validated properly.** Invented numbers like
-> `+15550002222` are rejected. Use real-format numbers in test fixtures —
-> `+14155552671` works.
+`account_type` defaults to `BUSINESS` ("Business accounts only" on the screen);
+`INDIVIDUAL` remains valid.
+
+> **`phone_number` is optional and validated when present.** Invented numbers
+> like `+15550002222` are rejected; `+14155552671` works. **Omitting it means
+> phone login is unavailable to that account permanently** — nothing can add
+> one later.
+
+Full detail: [E2 Authentication](frontend_api/e2-authentication.md).
 
 **The account is inactive until the OTP is verified.** Logging in before that
 fails.

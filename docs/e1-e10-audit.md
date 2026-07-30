@@ -191,3 +191,29 @@ No epic mentions profiles at all, which is why it was never noticed.
 - profile and branch rows are created lazily, because accounts predate these
   models and failing to open a settings screen is worse than showing an empty
   one.
+
+---
+
+## 9. Code removed as no longer aligned
+
+`GET /api/v1/providers/search/` — deleted, along with its view, schema and
+query serializer.
+
+Three documents called it superseded: **E3-S7** ("supersedes `providers/search/`
+— deprecate in E8-S3 cleanup"), **E6-S10** ("superseded by E3-S7", with an AC
+to mark it deprecated *before* removal), and the dashboard plan. It had
+already been marked `deprecated=True` in the OpenAPI schema with a note
+pointing at the replacement, so the deprecation step the AC asked for was
+done and removal was what came next.
+
+It was also a duplicate twice over: the view was a thin wrapper around the
+same `ProviderService.list_providers(search=...)` that `providers/?search=`
+already exposes, and the biller directory it stood in for is now
+`vendors/directory-search/`.
+
+Nothing referenced it — no test, no client-facing API doc. `providers/` itself
+stays, which the dashboard plan asks for explicitly ("keep as the directory
+cache").
+
+Everything else the epics declared removed was already gone: `payment-tracking/`
+and the `wallet/` subsystem both 404, with tests asserting it.

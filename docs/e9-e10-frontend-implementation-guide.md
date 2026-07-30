@@ -153,6 +153,40 @@ export const can = (c) => session.capabilities.has(c);
 
 ---
 
+## 3b. Resuming onboarding
+
+```
+GET /api/v1/users/onboarding/
+```
+
+```json
+{ "total_steps": 5, "designed_steps": 4, "current_step": 3,
+  "complete": false,
+  "steps": [
+    { "step": 1, "key": "business", "complete": true },
+    { "step": 2, "key": "plan",     "complete": true },
+    { "step": 3, "key": "payment",  "complete": false },
+    { "step": 4, "key": "bank",     "complete": false,
+      "skipped": false, "skippable": true }
+  ] }
+```
+
+**Send the user to `current_step`.** It is `null` once nothing is
+outstanding. Derived from the real data each step creates, so it cannot drift
+— a bank connected later from Settings completes step 4 without the wizard
+being involved.
+
+`POST /api/v1/users/onboarding/skip-bank/` records "Skip for now". That is the
+one thing that cannot be derived: declining a step leaves no trace, and
+without it the wizard would return the user to a step they refused on every
+sign-in. A skipped step reports `skipped: true` with `complete: false`, so you
+can still offer it again later.
+
+> `designed_steps` is 4 while `total_steps` is 5 — the progress bar says five
+> and the fifth has never been specified. Render "of 5" from `total_steps`.
+
+---
+
 ## 4. Build order
 
 Each step has real data by the time you reach it.

@@ -36,5 +36,12 @@ class Profile(BaseModel):
     # The third checkbox is a preference, not a consent record.
     marketing_opt_in = models.BooleanField(default=False)
 
+    # The one part of onboarding progress that cannot be derived. Every other
+    # step is read from what it creates — a business name, a subscription, a
+    # bank connection — but "Skip for now" on the bank step leaves no trace,
+    # and without this the wizard would keep returning someone to a step they
+    # deliberately declined.
+    onboarding_bank_skipped = models.BooleanField(default=False)
+
     class Meta:
         db_table = "profiles"

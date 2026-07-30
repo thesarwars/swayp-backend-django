@@ -1,7 +1,7 @@
 # E2 — Authentication & Accounts
 
 **Goal:** close the gaps between the shipped auth app and the Figma flows (channel choice, phone login, throttling, password history).
-**Release:** R1 · **Blocked by:** E1-S1 (Celery for delivery) · **Screens:** 1464:15936, 1464:16992, 1464:17675, 1472:18735, 1472:18816, 1473:18911, 1473:18992, 1464:14947
+**Release:** R1 · **Blocked by:** E1-S1 (Celery for delivery) · **Screens:** 1464:15936, 1464:16992, 1464:17675, 1472:18735, 1472:18816, 1473:18911, 1473:18992, 1464:14947, **2113:6165, 2113:6501, 2113:6795, 2113:7090** (signup + onboarding, see E2-S6)
 
 > **Already shipped (do not rebuild):** register w/ account_type + business fields; purpose-scoped OTP (`OTPPurpose` = REGISTRATION/LOGIN/RESET_PASSWORD with `expires_at`, `attempts`); two-step login (`login/` → `login/verify/`); forgot/reset password; refresh/logout. Package refactor to feature files done in commit `00a6b9a`.
 
@@ -74,6 +74,60 @@ class PasswordHistory(BaseModel):
 **Work:** introduce an `AllowAny` variant of the base (auth endpoints are public); move per-view service wiring to `service_class`; add `selectors/` where reads exist. No behavior change.
 **AC:**
 - [ ] All 9+ views subclass the shared base; responses byte-identical (contract tests)
+
+## E2-S6 · Signup and the onboarding wizard
+
+**As a** new business **I complete** signup and onboarding **so that** I reach
+a usable account with a plan and a connected bank.
+
+⟳ **Documented after the fact.** These four designs sat in `figma_node.md`
+cited by no epic, PRD or BRD, so they were built against screenshots without
+an owning story — which meant the code served them while an audit still read
+them as uncovered. That is worse than an honest gap, and this story closes it.
+
+**Screens:** 2113:6165 (Create Account), 2113:6501 (Step 1 — business),
+2113:6795 (Step 2 — plan), 2113:7090 (Step 3 — payment). Step 4 (bank connect)
+reuses E5's Plaid screens.
+
+**Flow, and who serves each step:**
+
+| Step | Screen | Endpoint | Epic |
+|---|---|---|---|
+| — | Create Account | `POST auth/register/` | E2 |
+| — | Choose / Enter OTP | `POST auth/resend-otp/`, `auth/verify-otp/` | E2-S1 |
+| 1 of 5 | Business details | `PATCH users/profile/` | E2-S6 |
+| 2 of 5 | Choose plan | `GET billing/plans/`, `POST billing/subscription/` | E9-S1 |
+| 3 of 5 | Payment method | `POST billing/payment-method/setup/` | E9-S1 |
+| 4 of 5 | Connect bank | `POST banking/link/token/`, `link/exchange/` | E5-S2 |
+| 5 of 5 | **unspecified** | — | — |
+
+**Resolved while building:**
+
+* The Create Account screen collects first/last name, industry and business
+  size, and does **not** collect a postal address, phone, billing address or
+  point of contact — all four of which registration used to require, so a
+  client built to the design could not register at all. The four are optional
+  now and Step 1 and Settings collect them.
+* The screen's three checkboxes are captured: terms and the signatory
+  confirmation as timestamps (they are legal artifacts and "when" has to be
+  answerable), the marketing box as a preference.
+* Step 1 says "You can update these details anytime in Settings" —
+  `GET/PATCH users/profile/` is that settings screen.
+* "Free 14-day trial" is `Plan.trial_days`, on Standard only. The Founder card
+  says "Pay $49 and claim my spot", so a limited locked-rate seat is claimed
+  by paying rather than trialling. See E9-S1.
+
+**AC:**
+- [x] The Create Account payload registers with no extra fields
+- [x] Step 1 fields persist and are re-editable in Settings
+- [x] Progress survives a drop-out (`GET users/onboarding/`)
+- [ ] Step 5 identified — the progress bar says five, four are designed
+
+**Known conflicts with BRD §6.2, resolved in the BRD's favour:**
+the plan cards show a Solo $29 tier and "unlimited team members" on every
+plan; the BRD's three plans and 3/10/unlimited seat limits stand, and the
+design needs correcting. The Founder card says "first 100" in its body and
+"first 500" in its badge; 500 is correct.
 
 ## Open items feeding this epic
 - "Bill Corresponding Data" register field (PRD §10-Q5) — likely `billing_address`; confirm before adding anything.

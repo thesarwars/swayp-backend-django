@@ -158,6 +158,33 @@ stripe listen --forward-to localhost:8000/webhooks/stripe/billing/
 
 ---
 
+## 5b. Trials
+
+`Plan.trial_days` holds the free period — **Standard 14, Founding 0,
+Enterprise 0**. Per plan rather than global, because the signup screen offers
+the trial on the business tier while the Founder card says *"Pay $49 and claim
+my spot"*: a limited locked-rate seat is claimed by paying for it.
+
+A trialling subscription needs **no payment method**, which is what makes the
+screen's "no card needed" true. Stripe returns status `trialing`, there is no
+invoice to confirm, and `client_secret` comes back empty.
+
+The entitlement is `ACTIVE` throughout. A trial is a promise not to charge
+yet, not a reduced product — allowances are the plan's full allowances. Since
+`status` cannot tell a client whether a charge has happened, the subscription
+also reports `is_trialing` and `trial_days_remaining`. `trial_days_remaining`
+is `null` when there was never a trial and `0` when one has lapsed, so a
+banner can tell those apart.
+
+At trial end with no card on file, `trial_settings.end_behavior` is
+`create_invoice`: Stripe raises an invoice that goes unpaid, which fires
+`invoice.payment_failed`, which the billing webhook maps to `PAST_DUE` — a
+state the customer recovers from by adding a card. The alternatives are worse:
+the default silently cancels the subscription, and `pause` leaves it in a
+state this codebase has no handler for.
+
+---
+
 ## 6. Per-transaction fees
 
 Same-day ACH, expedited check and check overage accrue in Swayp's `FeeCharge`

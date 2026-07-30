@@ -18,8 +18,16 @@ def seed_plans(apps, schema_editor):
 
     Plan = apps.get_model("billing", "Plan")
 
+    # PLAN_SPECS is the live constant and it grows: trial_days was added
+    # later, and passing it to this migration's historical model — which has
+    # no such column — raised FieldError on every fresh database. Narrowing
+    # to the fields that existed here keeps old migrations working as the
+    # spec evolves, and the migration that adds a field backfills it.
+    known = {f.name for f in Plan._meta.get_fields()}
+
     for code, spec in PLAN_SPECS.items():
-        Plan.objects.update_or_create(code=code, defaults=dict(spec))
+        defaults = {k: v for k, v in spec.items() if k in known}
+        Plan.objects.update_or_create(code=code, defaults=defaults)
 
 
 def unseed_plans(apps, schema_editor):

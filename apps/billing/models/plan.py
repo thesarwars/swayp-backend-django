@@ -43,6 +43,12 @@ class Plan(BaseModel):
     # rise must not reach an existing subscription.
     price_locked = models.BooleanField(default=False)
 
+    # Free days before the first charge. Per plan rather than a global
+    # constant because the Create Account screen offers the trial on the
+    # business tier while the Founder card says "Pay $49 and claim my spot" —
+    # a limited locked-rate seat is claimed by paying, not by trialling.
+    trial_days = models.PositiveIntegerField(default=0)
+
     # Cached provider-side price id (E9-S1). Created from this table on
     # first use rather than configured by hand in a dashboard, so the BRD
     # numbers stay the single source of truth and going live needs no
@@ -78,6 +84,9 @@ PLAN_SPECS = {
         "free_checks_per_month": 2,
         "included_entities": 1,
         "price_locked": True,
+        # No trial: the Founder rate is a limited spot claimed by paying for
+        # it, which is what the design's "Pay $49 and claim my spot" says.
+        "trial_days": 0,
     },
     PlanCode.STANDARD: {
         "name": "Standard",
@@ -87,6 +96,8 @@ PLAN_SPECS = {
         "free_checks_per_month": 5,
         "included_entities": 1,
         "price_locked": False,
+        # "Free 14-day trial on the Business plan" — Standard is that tier.
+        "trial_days": 14,
     },
     PlanCode.ENTERPRISE: {
         "name": "Enterprise",
@@ -97,5 +108,7 @@ PLAN_SPECS = {
         "free_checks_per_month": 5,
         "included_entities": 3,
         "price_locked": False,
+        # Sales-led and negotiated; a self-serve trial does not apply.
+        "trial_days": 0,
     },
 }

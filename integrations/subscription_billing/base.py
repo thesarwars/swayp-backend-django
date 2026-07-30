@@ -90,8 +90,11 @@ class SubscriptionBillingProvider(ABC):
     @abstractmethod
     def create_subscription(self, *, customer_id: str, price_id: str,
                             payment_method_id: str = "",
+                            trial_days: int = 0,
                             idempotency_key: str = "") -> SubscriptionRef:
-        ...
+        """``trial_days`` holds the first charge. A trialling subscription is
+        valid without a payment method, which is what makes the signup
+        screen's "no card needed" true."""
 
     @abstractmethod
     def change_plan(self, *, subscription_id: str,

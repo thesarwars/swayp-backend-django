@@ -46,10 +46,11 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
         )
 
     def create_subscription(self, *, customer_id, price_id,
-                            payment_method_id="", idempotency_key=""):
+                            payment_method_id="", trial_days=0,
+                            idempotency_key=""):
         return SubscriptionRef(
             id=_stable("sub", customer_id, price_id),
-            status="active",
+            status="trialing" if trial_days else "active",
         )
 
     def change_plan(self, *, subscription_id, price_id):

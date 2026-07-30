@@ -22,7 +22,19 @@ from apps.users.models.profile import AccountType, Profile
 #: phone: both are login identifiers and both are verified by OTP, so changing
 #: one is an authentication flow rather than a profile edit.
 PROFILE_FIELDS = ("full_name", "address")
-BUSINESS_FIELDS = ("business_name", "poc_name", "billing_address")
+BUSINESS_FIELDS = (
+    "business_name",
+    "poc_name",
+    "billing_address",
+    # Onboarding Step 1 and the Create Account screen. Registration no
+    # longer demands these, so this is where they actually get set.
+    "industry",
+    "business_size",
+    "trading_name",
+    "business_type",
+    "website",
+    "ein",
+)
 INDIVIDUAL_FIELDS = ("billing_address",)
 
 
@@ -84,6 +96,12 @@ class ProfileService:
             # existence of a key.
             "business_name": getattr(branch, "business_name", None),
             "poc_name": getattr(branch, "poc_name", None),
+            "industry": getattr(branch, "industry", None),
+            "business_size": getattr(branch, "business_size", None),
+            "trading_name": getattr(branch, "trading_name", None),
+            "business_type": getattr(branch, "business_type", None),
+            "website": getattr(branch, "website", None),
+            "ein": getattr(branch, "ein", None),
         }
 
         return data

@@ -27,6 +27,12 @@ class ProfileSerializer(serializers.Serializer):
     # render one form without branching on whether the key exists.
     business_name = serializers.CharField(allow_null=True)
     poc_name = serializers.CharField(allow_null=True)
+    industry = serializers.CharField(allow_null=True)
+    business_size = serializers.CharField(allow_null=True)
+    trading_name = serializers.CharField(allow_null=True)
+    business_type = serializers.CharField(allow_null=True)
+    website = serializers.CharField(allow_null=True)
+    ein = serializers.CharField(allow_null=True)
 
 
 class ProfileUpdateSerializer(serializers.Serializer):
@@ -45,6 +51,27 @@ class ProfileUpdateSerializer(serializers.Serializer):
     )
     poc_name = serializers.CharField(
         max_length=255, required=False, allow_blank=False
+    )
+
+    # Onboarding Step 1: "You can update these details anytime in Settings",
+    # which is this endpoint.
+    industry = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
+    business_size = serializers.CharField(
+        max_length=50, required=False, allow_blank=True
+    )
+    trading_name = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+    business_type = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
+    website = serializers.CharField(
+        max_length=255, required=False, allow_blank=True
+    )
+    ein = serializers.CharField(
+        max_length=20, required=False, allow_blank=True
     )
 
     def validate(self, attrs):

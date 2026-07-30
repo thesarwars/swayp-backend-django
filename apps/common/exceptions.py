@@ -49,27 +49,6 @@ class ChannelNotAvailableException(APIException):
     default_code = "channel_not_available"
 
 
-class ExportNotSupportedException(APIException):
-    """Report export is not built yet (E8-S2).
-
-    The output format — table vs CSV vs PDF, and which columns — is an open
-    product question (PRD §10-Q4). Shipping a guessed CSV would create a
-    contract clients then depend on, so the endpoint refuses.
-
-    405 is what the epic pins. 501 would read better and
-    ChannelNotAvailableException above is this codebase's precedent for it —
-    but the epic says 405, so 405 it is. DRF sets no ``Allow`` header on this
-    one, because it is not really a method problem.
-    """
-
-    status_code = status.HTTP_405_METHOD_NOT_ALLOWED
-    default_detail = (
-        "Report export is not supported yet. Read the JSON table from "
-        "GET /api/v1/reports/ instead."
-    )
-    default_code = "export_not_supported"
-
-
 class OTPThrottledException(APIException):
     """OTP resend rate limit (E2-S2). Carries a Retry-After header."""
 

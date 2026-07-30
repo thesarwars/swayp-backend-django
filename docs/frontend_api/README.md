@@ -79,7 +79,6 @@ const unwrap = (body) =>
 | **402** | **plan limit reached** | **upgrade prompt** |
 | **403** | **your role forbids it** | **"ask your admin"** |
 | 404 | not found, **or owned by someone else** | not found |
-| 405 | not supported yet (report export) | the message |
 | 409 | idempotency conflict / state conflict | the message |
 | 422 | QR unreadable | "scan again" |
 | 429 | rate limited | honour `Retry-After` |
@@ -117,7 +116,6 @@ data. See [E10](e10-teams.md).
 | SMS OTP | Designed, deferred (BRD §1.2). `channel=SMS` returns **501**. |
 | SSO (Google / Microsoft / Windows Hello) | On the Sign In design, not built. |
 | Accountant portal | On the Sign In design, not built. |
-| Report export | Format undecided; `?export=` returns **405**. |
 | Approval workflows, ERP sync | E10-S4, deferred beyond R4. Add-ons sell but are inert. |
 | Proration | A mid-cycle plan change takes effect at the new price with no credit. |
 | Invoice history | Current cycle preview only. No past invoices, no PDF. |

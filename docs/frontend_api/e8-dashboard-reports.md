@@ -93,19 +93,33 @@ figure at the top of the table stays right as the user pages.
 that rather than from your own state, and a stale query string can't lie to
 the user.
 
-### Export is refused on purpose ⚠️
+### Export — CSV and PDF
 
 ```
-GET /api/v1/reports/?export=csv     → 405
+GET /api/v1/reports/?export=csv     → text/csv,        swayp-payments.csv
+GET /api/v1/reports/?export=pdf     → application/pdf, swayp-payments.pdf
 ```
+
+Both come back as **file downloads** (`Content-Disposition: attachment`), not
+JSON. Trigger them with a link or `window.location`, not your `fetch` wrapper
+— the unwrap helper will choke on a PDF.
+
+⚠️ **An export ignores pagination and returns the whole filtered set**, capped
+at 10,000 rows. `page` and `pageSize` are ignored; every other filter is
+respected, so "export what I'm looking at" works by sending the same query
+string minus the paging.
+
+If the cap is hit, the file itself carries a note saying so — a truncated
+export that looks complete is worse than one that admits it.
+
+**An unknown format is a 400, never a silent fallback:**
 
 ```json
-{ "success": false,
-  "message": "Report export is not supported yet. Read the JSON table from GET /api/v1/reports/ instead." }
+{ "success": false, "message": "Validation failed.",
+  "errors": { "export": ["Unsupported export format. Use one of: csv, pdf."] } }
 ```
 
-The format is undecided (CSV vs PDF), so the hook refuses rather than guessing.
-**Hide the export button** until it ships.
+`?export=` with no value is refused too — it is still someone asking for one.
 
 ---
 
@@ -113,6 +127,7 @@ The format is undecided (CSV vs PDF), so the hook refuses rather than guessing.
 
 ```
 GET /api/v1/reports/1099/?year=2026
+GET /api/v1/reports/1099/?export=csv|pdf
 ```
 
 ```json
@@ -133,6 +148,10 @@ Note this is a **403 with an upgrade message**, not a 402 — the message names
 the plan, so display it verbatim. Gate the menu item on the plan code from
 [`billing/subscription/`](e9-billing.md) so the user doesn't discover it by
 clicking.
+
+The exported 1099 discloses `unattributed` on the file itself and states
+that it is a data view rather than an IRS form — the caveat has to travel
+with the file, because the file is what gets emailed to an accountant.
 
 **`unattributed` matters.** It is spend that could not be tied to a vendor
 with tax details. Show it as a separate warning row — a 1099 that silently

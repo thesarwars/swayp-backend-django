@@ -1,9 +1,12 @@
 """Where a signup got to (E2-S6).
 
-Every onboarding screen is labelled "Step n of 5", which promises that
-stopping halfway and coming back returns you to the same place. Nothing
-recorded that, so a customer who closed the tab on the payment step had no way
-back to it and the client would have had to guess by probing.
+Onboarding is four steps, and its progress bar promises that stopping
+halfway and coming back returns you to the same place. Nothing recorded that,
+so a customer who closed the tab on the payment step had no way back to it and
+the client would have had to guess by probing.
+
+(The Figma bar reads "of 5" on every screen. Product confirmed that is a
+design error — there are four steps and there was never a fifth.)
 
 **Derived, not stored.** Each step's completion is read from the thing the
 step actually creates — a business name, a subscription, a payment method, a
@@ -22,11 +25,11 @@ from apps.billing.services.subscription_service import SubscriptionService
 from apps.users.models.profile import AccountType
 from apps.users.services.profile_service import ProfileService
 
-#: The design's progress bar says five. Four are designed and served; the
-#: fifth has never been specified, so it is declared rather than invented —
-#: a client showing "of 5" needs the real total, and guessing at a step is
-#: how a wizard ends up with a screen nobody asked for.
-TOTAL_STEPS = 5
+#: Four. The Figma progress bar reads "Step n of 5" on every onboarding
+#: screen, which is a design error confirmed with product on 2026-07-30 —
+#: there is no fifth step and there never was. The number lives here so a
+#: client renders "of 4" from the API rather than from the artwork.
+TOTAL_STEPS = 4
 
 
 class OnboardingService:
@@ -136,7 +139,6 @@ class OnboardingService:
 
         return {
             "total_steps": TOTAL_STEPS,
-            "designed_steps": len(steps),
             "current_step": outstanding[0]["step"] if outstanding else None,
             "complete": not outstanding,
             "steps": steps,

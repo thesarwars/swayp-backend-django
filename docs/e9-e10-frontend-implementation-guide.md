@@ -160,7 +160,7 @@ GET /api/v1/users/onboarding/
 ```
 
 ```json
-{ "total_steps": 5, "designed_steps": 4, "current_step": 3,
+{ "total_steps": 4, "current_step": 3,
   "complete": false,
   "steps": [
     { "step": 1, "key": "business", "complete": true },
@@ -182,8 +182,8 @@ without it the wizard would return the user to a step they refused on every
 sign-in. A skipped step reports `skipped: true` with `complete: false`, so you
 can still offer it again later.
 
-> `designed_steps` is 4 while `total_steps` is 5 — the progress bar says five
-> and the fifth has never been specified. Render "of 5" from `total_steps`.
+> ⚠️ **The Figma progress bar says "Step n of 5". It is wrong** — there are
+> four steps. Render `total_steps` from this response, not from the design.
 
 ---
 

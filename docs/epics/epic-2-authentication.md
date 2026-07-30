@@ -95,11 +95,10 @@ reuses E5's Plaid screens.
 |---|---|---|---|
 | — | Create Account | `POST auth/register/` | E2 |
 | — | Choose / Enter OTP | `POST auth/resend-otp/`, `auth/verify-otp/` | E2-S1 |
-| 1 of 5 | Business details | `PATCH users/profile/` | E2-S6 |
-| 2 of 5 | Choose plan | `GET billing/plans/`, `POST billing/subscription/` | E9-S1 |
-| 3 of 5 | Payment method | `POST billing/payment-method/setup/` | E9-S1 |
-| 4 of 5 | Connect bank | `POST banking/link/token/`, `link/exchange/` | E5-S2 |
-| 5 of 5 | **unspecified** | — | — |
+| 1 of 4 | Business details | `PATCH users/profile/` | E2-S6 |
+| 2 of 4 | Choose plan | `GET billing/plans/`, `POST billing/subscription/` | E9-S1 |
+| 3 of 4 | Payment method | `POST billing/payment-method/setup/` | E9-S1 |
+| 4 of 4 | Connect bank | `POST banking/link/token/`, `link/exchange/` | E5-S2 |
 
 **Resolved while building:**
 
@@ -121,7 +120,11 @@ reuses E5's Plaid screens.
 - [x] The Create Account payload registers with no extra fields
 - [x] Step 1 fields persist and are re-editable in Settings
 - [x] Progress survives a drop-out (`GET users/onboarding/`)
-- [ ] Step 5 identified — the progress bar says five, four are designed
+- [x] Step count settled — **four**. The Figma progress bar reads "of 5"
+      on every onboarding screen; product confirmed on 2026-07-30 that
+      this is a design error and there is no fifth step. `total_steps`
+      comes from the API so a client never reads it off the artwork.
+      **The Figma bars still need correcting.**
 
 **Known conflicts with BRD §6.2, resolved in the BRD's favour:**
 the plan cards show a Solo $29 tier and "unlimited team members" on every

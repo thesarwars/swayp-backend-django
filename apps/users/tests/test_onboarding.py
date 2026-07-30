@@ -1,9 +1,11 @@
 """Onboarding progress survives a drop-out (E2-S6).
 
-Every onboarding screen says "Step n of 5", which promises that closing the
-tab and coming back returns you to the same place. Nothing recorded it, so a
+Onboarding is four steps, and its progress bar promises that closing the tab
+and coming back returns you to the same place. Nothing recorded it, so a
 customer who stopped on the payment step had no way back and the client would
 have had to guess by probing.
+
+(The Figma bar reads "of 5". Product confirmed that is a design error.)
 
 Progress is derived from what each step actually creates rather than stored as
 a counter, so it cannot drift: connecting a bank from Settings completes step
@@ -107,13 +109,15 @@ class OnboardingProgressTests(TestCase):
 
         self.assertEqual(fresh.get(URL).data["data"]["current_step"], 4)
 
-    def test_the_declared_total_matches_the_progress_bar(self):
+    def test_there_are_four_steps(self):
+        """The Figma progress bar says "of 5" on every screen. That is a
+        design error — product confirmed there is no fifth step — so the
+        count comes from here and a client must not read it off the artwork.
+        """
         state = self.state()
 
-        self.assertEqual(state["total_steps"], 5)
-        # Four are designed and served; the fifth has never been specified,
-        # so it is declared rather than invented.
-        self.assertEqual(state["designed_steps"], 4)
+        self.assertEqual(state["total_steps"], 4)
+        self.assertEqual(len(state["steps"]), 4)
 
 
 class SkipTests(TestCase):

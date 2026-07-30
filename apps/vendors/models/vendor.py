@@ -16,6 +16,17 @@ class Vendor(BaseModel):
 
     user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="vendors")
 
+    # Multi-entity scoping (E10-S3). Nullable and PROTECT: a single-entity
+    # account leaves it null and is unaffected, and an entity is archived
+    # rather than deleted precisely so this never dangles.
+    entity = models.ForeignKey(
+        "teams.Entity",
+        on_delete=models.PROTECT,
+        related_name="vendors",
+        null=True,
+        blank=True,
+    )
+
     name = models.CharField(
         max_length=150
     )

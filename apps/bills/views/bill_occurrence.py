@@ -7,9 +7,10 @@ from apps.bills.serializers.bill_payment_serializer import BillPaymentSerializer
 from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from apps.teams.access import AccountScopedMixin
 
 
-class UpcomingBillOccurrenceAPIView(APIView):
+class UpcomingBillOccurrenceAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -18,7 +19,7 @@ class UpcomingBillOccurrenceAPIView(APIView):
 
     def get(self, request):
         occurrences = self.service.get_upcoming_occurrences(
-            request.user
+            self.account(request)
         )
 
         serializer = BillOccurrenceSerializer(
@@ -35,7 +36,7 @@ class UpcomingBillOccurrenceAPIView(APIView):
         )
 
 
-class MarkBillOccurrencePaidAPIView(APIView):
+class MarkBillOccurrencePaidAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -49,7 +50,7 @@ class MarkBillOccurrencePaidAPIView(APIView):
         occurrence = get_object_or_404(
             BillOccurrence,
             id=occurrence_id,
-            bill__user=request.user,
+            bill__user=self.account(request),
         )
 
         self.service.mark_as_paid(

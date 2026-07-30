@@ -11,6 +11,10 @@ urlpatterns = [
         include("apps.bill_categories.urls"),
     ),
     path(
+        "billing/",
+        include("apps.billing.api.urls"),
+    ),
+    path(
         "banking/",
         include("apps.banking.api.urls"),
     ),
@@ -49,5 +53,9 @@ urlpatterns = [
     path(
         "reports/",
         include("apps.reports.api.urls"),
+    ),
+    path(
+        "teams/",
+        include("apps.teams.api.urls"),
     ),
 ]

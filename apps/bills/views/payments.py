@@ -10,6 +10,7 @@ from apps.bills.serializers.bill_payment_history_serializer import (
 from apps.bills.services.bill_service import BillService
 from apps.common.pagination import StandardPagination
 from apps.common.responses import ApiResponse
+from apps.teams.access import AccountScopedMixin
 
 
 @extend_schema(
@@ -22,7 +23,7 @@ from apps.common.responses import ApiResponse
     ),
     responses={200: BillPaymentHistorySerializer(many=True)},
 )
-class BillPaymentHistoryAPIView(APIView):
+class BillPaymentHistoryAPIView(AccountScopedMixin, APIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -33,7 +34,7 @@ class BillPaymentHistoryAPIView(APIView):
     def get(self, request, bill_id):
         queryset = self.service.payment_history(
             bill_id=bill_id,
-            user=request.user,
+            user=self.account(request),
         )
 
         paginator = StandardPagination()

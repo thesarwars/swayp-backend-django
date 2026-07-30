@@ -1,9 +1,16 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.bill_categories.models import BillCategory
 from apps.common.enums import VendorSource
 from apps.vendors.models.vendor import Vendor
+from apps.vendors.selectors.vendor_selector import VendorSelector
 
+
+#: Distinguishes "the queryset did not annotate this" from "it annotated
+#: None", which is a real value meaning the vendor has no upcoming bill.
+_MISSING = object()
 
 class VendorListSerializer(serializers.ModelSerializer):
 
@@ -28,35 +35,78 @@ class VendorListSerializer(serializers.ModelSerializer):
             "next_due",
         )
 
+    # Each of these reads work the selector already batched. Doing it per row
+    # instead cost three queries per vendor — a list of 30 vendors issued 90
+    # extra queries, and the page got slower the more successful the customer
+    # was.
+
     def get_payment_rail(self, obj):
+        # ``primary_methods`` is the Prefetch(to_attr=...) from
+        # VendorSelector.list. Calling obj.payment_methods.filter() here would
+        # ignore that prefetch and re-query — which is exactly what it used to
+        # do, with the prefetch sitting unused right beside it.
+        primary = getattr(obj, "primary_methods", None)
 
-        primary = obj.payment_methods.filter(
-            is_primary=True
-        ).first()
+        if primary is not None:
+            return primary[0].method_type if primary else None
 
-        if primary:
-            return primary.method_type
+        # Detail and other callers do not annotate; fall back for them.
+        method = obj.payment_methods.filter(is_primary=True).first()
 
-        return None
+        return method.method_type if method else None
 
     def _next_occurrence(self, obj):
-        # Memoized per row so the three derived fields share one query.
+        # Memoized per row so unannotated callers share one query.
         if not hasattr(obj, "_next_occ_cache"):
             from apps.vendors.selectors.vendor_selector import VendorSelector
 
             obj._next_occ_cache = VendorSelector.next_bill(obj)
+
         return obj._next_occ_cache
 
+    def _annotated(self, obj, attr):
+        """The annotation if the queryset carried one, else a sentinel.
+
+        ``hasattr`` rather than a truth test: a vendor with no upcoming bill
+        annotates to None, which is a real answer and must not send us back to
+        the database for it.
+        """
+        return getattr(obj, attr, _MISSING)
+
     def get_recurring_amount(self, obj):
-        occ = self._next_occurrence(obj)
-        return occ.amount if occ else None
+        value = self._annotated(obj, "next_amount")
+
+        if value is _MISSING:
+            occ = self._next_occurrence(obj)
+            value = occ.amount if occ else None
+
+        if value is None:
+            return None
+
+        # A Subquery returns the number without the column's scale, so $777.00
+        # arrives as Decimal('777') and would serialise as "777". Money is a
+        # 2dp string everywhere else in the API, and a client would not notice
+        # the difference until it was reconciling to the cent.
+        return Decimal(value).quantize(Decimal("0.01"))
 
     def get_amount_period(self, obj):
+        value = self._annotated(obj, "next_frequency")
+
+        if value is not _MISSING:
+            return value
+
         occ = self._next_occurrence(obj)
+
         return occ.bill.frequency if occ else None
 
     def get_next_due(self, obj):
+        value = self._annotated(obj, "next_due_date")
+
+        if value is not _MISSING:
+            return value
+
         occ = self._next_occurrence(obj)
+
         return occ.due_date if occ else None
 
 from .vendor_payment_method import VendorPaymentMethodCreateSerializer, VendorPaymentMethodSerializer
@@ -99,18 +149,12 @@ class VendorDetailSerializer(serializers.ModelSerializer):
         )
 
     def get_total_paid(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return VendorSelector.total_paid(obj)
 
     def get_monthly_spend(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return VendorSelector.monthly_spend(obj)
 
     def get_next_bill(self, obj):
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         occurrence = VendorSelector.next_bill(obj)
 
         if occurrence is None:
@@ -125,8 +169,6 @@ class VendorDetailSerializer(serializers.ModelSerializer):
 
     def get_bills(self, obj):
         """Capped list of the vendor's bills with read-time status chips."""
-        from apps.vendors.selectors.vendor_selector import VendorSelector
-
         return [
             {
                 "occurrence_id": occ.id,

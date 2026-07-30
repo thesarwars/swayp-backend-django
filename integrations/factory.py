@@ -16,6 +16,9 @@ from integrations.llm.template import TemplateLLMProvider
 from integrations.messaging.django_email import DjangoEmailMessagingProvider
 from integrations.messaging.mock import MockMessagingProvider
 from integrations.money_movement.mock import MockMoneyMovementProvider
+from integrations.subscription_billing.mock import (
+    MockSubscriptionBillingProvider,
+)
 
 _REGISTRY = {
     "bank_data": {"mock": MockBankDataProvider},
@@ -34,6 +37,10 @@ _REGISTRY = {
         "mock": MockMessagingProvider,
         "django_email": DjangoEmailMessagingProvider,
     },
+    # "stripe" is imported lazily below: the SDK is only needed when it is
+    # actually selected, so a deployment running on mock does not require
+    # the package to be installed.
+    "subscription_billing": {"mock": MockSubscriptionBillingProvider},
 }
 
 _SETTING = {
@@ -43,6 +50,7 @@ _SETTING = {
     "check_mail": "CHECK_MAIL_PROVIDER",
     "llm": "LLM_PROVIDER",
     "messaging": "MESSAGING_PROVIDER",
+    "subscription_billing": "SUBSCRIPTION_BILLING_PROVIDER",
 }
 
 
@@ -50,6 +58,14 @@ def _resolve(domain: str):
     setting_key = _SETTING[domain]
     name = getattr(settings, setting_key, "mock") or "mock"
     providers = _REGISTRY[domain]
+
+    if domain == "subscription_billing" and name == "stripe":
+        from integrations.subscription_billing.stripe_provider import (
+            StripeSubscriptionBillingProvider,
+        )
+
+        return StripeSubscriptionBillingProvider()
+
     if name not in providers:
         raise NotImplementedError(
             f"{domain} provider '{name}' is not implemented yet; "
@@ -80,3 +96,7 @@ def get_llm_provider():
 
 def get_messaging_provider():
     return _resolve("messaging")
+
+
+def get_subscription_billing_provider():
+    return _resolve("subscription_billing")

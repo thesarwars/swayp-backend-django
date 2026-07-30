@@ -31,10 +31,14 @@ from apps.vendors.factories import UserFactory, VendorFactory
 
 REPORTS_URL = "/api/v1/reports/"
 
-#: One aggregate for the totals, one COUNT for the paginator, one page slice.
-#: Exact by design: this is the N+1 guard, so a fourth query has to be a
-#: deliberate edit to this number.
-EXPECTED_QUERIES = 3
+#: One aggregate for the totals, one COUNT for the paginator, one page slice,
+#: plus one membership lookup to resolve the acting account (E10). Exact by
+#: design: this is the N+1 guard, so a fifth query has to be a deliberate
+#: edit to this number.
+#:
+#: The membership lookup is a single indexed read, memoised per request — a
+#: constant, which is what the row-count independence test really guards.
+EXPECTED_QUERIES = 4
 
 _ZERO = Decimal("0.00")
 

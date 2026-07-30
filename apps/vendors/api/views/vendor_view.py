@@ -21,16 +21,17 @@ from rest_framework.views import APIView
 from apps.vendors.services.vendor_service import (
     VendorService,
 )
+from apps.teams.access import AccountScopedMixin
 
 
-class VendorListCreateAPIView(ListCreateAPIView):
+class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
 
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
 
         return VendorSelector.list(
-            self.request.user,
+            self.account(self.request),
             filters=self.request.query_params,
         )
 
@@ -45,7 +46,7 @@ class VendorListCreateAPIView(ListCreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        vendor = VendorService.create_vendor(user=request.user,validated_data=serializer.validated_data,)
+        vendor = VendorService.create_vendor(user=self.account(request),validated_data=serializer.validated_data,)
 
         response = VendorDetailSerializer(vendor)
 
@@ -54,13 +55,13 @@ class VendorListCreateAPIView(ListCreateAPIView):
             status=status.HTTP_201_CREATED,
         )
     
-class VendorDetailAPIView(RetrieveUpdateDestroyAPIView):
+class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "vendor_id"
 
     def get_object(self):
         return VendorSelector.detail(
-            user=self.request.user,
+            user=self.account(self.request),
             vendor_id=self.kwargs["vendor_id"],
         )
 
@@ -78,14 +79,14 @@ class VendorDetailAPIView(RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         VendorService.soft_delete(instance)
 
-class VendorSummaryAPIView(APIView):
+class VendorSummaryAPIView(AccountScopedMixin, APIView):
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
         data = VendorSelector.summary(
-            request.user,
+            self.account(request),
             filters=request.query_params,
         )
         serializer = VendorSummarySerializer(instance=data)

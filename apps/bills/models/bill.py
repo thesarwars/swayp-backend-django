@@ -22,6 +22,14 @@ class Bill(BaseModel):
     """
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,related_name="bills")
+    # Multi-entity scoping (E10-S3); null on single-entity accounts.
+    entity = models.ForeignKey(
+        "teams.Entity",
+        on_delete=models.PROTECT,
+        related_name="bills",
+        null=True,
+        blank=True,
+    )
     vendor = models.ForeignKey(Vendor,on_delete=models.PROTECT,related_name="bills")
     bill_type = models.CharField(max_length=10,choices=BillType.choices,default=BillType.FIXED)
     amount = models.DecimalField(max_digits=18,decimal_places=2)

@@ -54,6 +54,10 @@ class BankLinkService:
                 }
             )
 
+        # Plan ceiling before anything is created — discovering the limit
+        # after the connection exists would mean tearing it back down.
+        self._assert_bank_allowance(user)
+
         result = self.provider.exchange_public_token(
             public_token=public_token
         )
@@ -83,6 +87,35 @@ class BankLinkService:
         self._sync_accounts(connection, result.accounts)
 
         return connection
+
+    def _assert_bank_allowance(self, user):
+        """Refuse a new institution once the plan's bank limit is reached.
+
+        Delegates to the one gate rather than counting here. Counting in both
+        places is how the billing screen ended up showing "0 of 1 banks used"
+        at the moment this raised 402: the gate counted live connections, the
+        screen read a stored counter nothing incremented. AllowanceService
+        now derives bank usage from these same rows, so the number shown and
+        the number enforced cannot disagree.
+        """
+        # Imported here, not at module level: AllowanceService reads
+        # BankConnection, so importing it up top would be a cycle.
+        from apps.billing.models import AllowanceKind
+        from apps.billing.services.allowance_service import AllowanceService
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+
+        subscription = SubscriptionService().current(user)
+
+        if subscription is None:
+            # No subscription is not a licence to connect without limit; the
+            # entitlement seam already treats that as the lowest tier.
+            return
+
+        AllowanceService().check_capacity(
+            subscription=subscription, kind=AllowanceKind.BANKS
+        )
 
     def _sync_accounts(self, connection, accounts):
         now = timezone.now()

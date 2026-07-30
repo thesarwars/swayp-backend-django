@@ -91,6 +91,7 @@ LOCAL_APPS = [
     "apps.audit",
     "apps.bill_categories",
     "apps.banking",
+    "apps.billing",
     "apps.bills",
     "apps.providers",
     "apps.payments",
@@ -99,6 +100,7 @@ LOCAL_APPS = [
     "apps.webhooks",
     "apps.ai_advisor",
     "apps.reports",
+    "apps.teams",
 ]
 
 INSTALLED_APPS = (
@@ -261,6 +263,10 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@getswayp.com")
 SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
 
+# Where emailed links point (E10-S2 team invites). The accept page is a
+# frontend route, so the backend cannot derive this from its own host.
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
+
 # Celery (E1-S1)
 # Broker/backend read from env; beat pinned to US Eastern so daily money
 # jobs (autopay, status rolls, cutoffs) fire on the correct calendar day.
@@ -339,6 +345,15 @@ CELERY_BEAT_SCHEDULE = {
         "task": "notifications.bill_status_notifier",
         "schedule": crontab(hour=5, minute=0),
     },
+
+    # Rolls subscription cycles (E9-S1), which is what resets the free-check
+    # allowance — the metered counter is keyed on period_start, so without
+    # this a customer's free checks never come back. 00:30 Eastern so a cycle
+    # that ends today is already open before the day's payments run at 04:00.
+    "billing-renew-subscriptions": {
+        "task": "billing.renew_subscriptions",
+        "schedule": crontab(hour=0, minute=30),
+    },
 }
 
 # Per-processor webhook signing secrets (E6-S8). A processor with no
@@ -369,6 +384,21 @@ BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
 MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
+
+# Who collects subscription money (E9-S1). "mock" is entitlement-only:
+# subscriptions and fees are recorded and nothing is charged. Switching to
+# "stripe" with the keys below is the entire go-live change — no code moves,
+# and test vs live keys differ only in value.
+SUBSCRIPTION_BILLING_PROVIDER = env(
+    "SUBSCRIPTION_BILLING_PROVIDER", default="mock"
+)
+STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", default="")
+STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
+# Stripe Billing events sign with Stripe's own scheme, not the shared HMAC
+# the payment rails use, so it gets its own secret and its own endpoint.
+STRIPE_BILLING_WEBHOOK_SECRET = env(
+    "STRIPE_BILLING_WEBHOOK_SECRET", default=""
+)
 # "template" rather than "mock": if the kill switch is ever flipped on before
 # a real provider is configured, the mock's "[mock-llm] ..." echo would go
 # straight to a user. The template provider is the deterministic sentence.

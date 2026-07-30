@@ -24,6 +24,9 @@ class PaymentCreateSerializer(serializers.Serializer):
         default=PaymentRail.ACH_STANDARD,
     )
     scheduled_for = serializers.DateField(required=False, allow_null=True)
+    # Faster check delivery for $8.99 (E9-S3). Rejected on any other rail
+    # rather than ignored — see PaymentCreateService.create.
+    expedited = serializers.BooleanField(required=False, default=False)
 
 
 class ConfirmSerializer(serializers.Serializer):
@@ -76,6 +79,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "estimated_arrival",
             "cancellation_deadline",
             "scheduled_for",
+            "expedited",
             "created_at",
         )
 

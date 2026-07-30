@@ -8,20 +8,30 @@ from apps.common.serializers import PaginationQuerySerializer
 class PaymentSerializer(serializers.Serializer):
     id = serializers.UUIDField()
 
+    # provider and category are both nullable on Payment (E6-S1), so these
+    # have to tolerate None. Without allow_null they raise AttributeError
+    # while rendering and turn the whole history page into a 500 — one
+    # provider-less payment was enough to hide every other one.
     providerId = serializers.UUIDField(
-        source="provider.id"
+        source="provider.id", allow_null=True, required=False, default=None
     )
 
     providerName = serializers.CharField(
-        source="provider.provider_name"
+        source="provider.provider_name",
+        allow_null=True,
+        required=False,
+        default=None,
     )
 
     categoryId = serializers.UUIDField(
-        source="category.id"
+        source="category.id", allow_null=True, required=False, default=None
     )
 
     categoryName = serializers.CharField(
-        source="category.name"
+        source="category.name",
+        allow_null=True,
+        required=False,
+        default=None,
     )
 
     amount = serializers.DecimalField(

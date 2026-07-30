@@ -62,11 +62,19 @@ class PaymentCreateService:
 
     @transaction.atomic
     def create(self, *, user, occurrence_ids, funding_account_id=None,
-               rail=PaymentRail.ACH_STANDARD, scheduled_for=None, today=None):
+               rail=PaymentRail.ACH_STANDARD, scheduled_for=None,
+               expedited=False, today=None):
         today = today or timezone.localdate()
 
         if rail not in SELECTABLE_RAILS:
             raise ValidationError({"rail": f"Unsupported rail: {rail}."})
+
+        if expedited and rail != PaymentRail.CHECK:
+            # Refused rather than ignored: silently dropping it would take the
+            # customer's request for speed and give back the standard rail.
+            raise ValidationError(
+                {"expedited": "Only check payments can be expedited."}
+            )
 
         occurrences = self._load_occurrences(user, occurrence_ids)
         funding_account = self._load_funding_account(user, funding_account_id)
@@ -86,6 +94,7 @@ class PaymentCreateService:
                 funding_account=funding_account,
                 rail=rail,
                 scheduled_for=scheduled_for,
+                expedited=expedited,
                 batch=batch,
                 today=today,
             )
@@ -107,21 +116,21 @@ class PaymentCreateService:
         }
 
     def _create_one(self, *, user, occurrence, funding_account, rail,
-                    scheduled_for, batch, today):
+                    scheduled_for, batch, today, expedited=False):
         bill = occurrence.bill
         processor = processor_for_rail(rail)
 
         # Work back from the due date so the money lands on time; a
         # future-dated send starts from its own date instead.
         anchor = scheduled_for or occurrence.due_date
-        initiated = initiation_date(anchor, rail)
+        initiated = initiation_date(anchor, rail, expedited=expedited)
 
         if initiated < today:
             # The lead time has already passed, so the earliest honest start
             # is today rather than a date in the past.
             initiated = today
 
-        arrival = estimated_arrival(initiated, rail)
+        arrival = estimated_arrival(initiated, rail, expedited=expedited)
 
         status = (
             PaymentStatus.SCHEDULED
@@ -153,6 +162,7 @@ class PaymentCreateService:
                 estimated_arrival=arrival,
                 cancellation_deadline=self.cancellation_deadline(initiated),
                 scheduled_for=scheduled_for,
+                expedited=expedited,
             )
 
         return create_with_reference(build, today=today)

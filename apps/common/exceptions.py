@@ -140,3 +140,17 @@ class ProviderUnavailableException(
     default_message = (
         "Payment provider is unavailable."
     )
+
+
+class PlanLimitExceededException(APIException):
+    """A plan ceiling would be breached (E9-S2).
+
+    402 rather than 403: the request is authorised, it just needs a bigger
+    plan. That distinction is what lets the client show an upgrade prompt
+    instead of a permission error.
+    """
+
+    status_code = status.HTTP_402_PAYMENT_REQUIRED
+    default_detail = "This action exceeds your plan limit."
+    default_code = "plan_limit_exceeded"
+

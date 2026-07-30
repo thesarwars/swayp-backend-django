@@ -80,7 +80,8 @@ POST /api/v1/payments/
 { "occurrence_ids": ["e200c2f4-…", "71e76f76-…"],
   "funding_account_id": "optional — defaults to the funding source",
   "rail": "ACH_STANDARD",
-  "scheduled_for": "optional — YYYY-MM-DD, future-dates the send" }
+  "scheduled_for": "optional — YYYY-MM-DD, future-dates the send",
+  "expedited": "optional — CHECK rail only, $8.99" }
 ```
 
 **201:**
@@ -100,7 +101,8 @@ POST /api/v1/payments/
         "bill_occurrence": "e200c2f4-…", "batch": "38ed6ea5-…",
         "initiated_date": "2026-08-28", "estimated_arrival": "2026-09-01",
         "cancellation_deadline": "2026-08-29T03:59:00Z",
-        "scheduled_for": null, "created_at": "2026-07-28T13:07:12.729164Z" }
+        "scheduled_for": null, "expedited": false,
+        "created_at": "2026-07-28T13:07:12.729164Z" }
     ],
     "authorization_text": "I authorize Swayp to debit Chase Business Checking ****4821 for a total of $6,400.00 covering 2 bills. These transfers will be executed by Moov Financial, Inc. I understand this authorization covers every payment listed above and remains in effect until they complete or I cancel them.",
     "total": "6400.00"
@@ -120,6 +122,20 @@ reminders.
 
 Dates come from the business-day engine — `initiated_date` is worked back from
 the due date over weekends and US federal bank holidays.
+
+**`expedited` is CHECK-only and costs $8.99.** It cuts check transit from 5
+business days to 2, so a bill too close to its due date for a standard check
+can still be paid on time. On any other rail it is a 400 rather than a silent
+downgrade:
+
+```json
+{ "success": false, "message": "Validation failed.",
+  "errors": { "expedited": "Only check payments can be expedited." } }
+```
+
+The fee is charged when the payment is sent and is **auto-refunded if the check
+misses `estimated_arrival`** — the date in this response is the date guaranteed.
+See [Billing API §6-7](billing-api-documentation.md).
 
 **400 cases worth handling:**
 

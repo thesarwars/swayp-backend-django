@@ -73,10 +73,53 @@ class VendorSelector:
                     queryset=VendorPaymentMethod.objects.filter(
                         is_primary=True
                     ),
+                    # Named, so the serializer reads this list directly. A
+                    # plain ``obj.payment_methods.filter(...)`` would ignore
+                    # the prefetch and re-query per row — the prefetch was
+                    # here all along and the serializer was throwing it away.
+                    to_attr="primary_methods",
                 )
             )
+            .annotate(**VendorSelector.next_bill_annotations())
             .distinct()
         )
+
+    @staticmethod
+    def next_bill_annotations(today=None):
+        """Subqueries for the vendor's nearest unsettled occurrence.
+
+        Three annotations rather than a per-row lookup: the list screen shows
+        next due date, amount and frequency for every vendor, and fetching
+        them one vendor at a time cost three queries each. Subqueries keep the
+        whole page at a fixed cost however many vendors it holds.
+        """
+        from apps.bills.models.bill_occurrence import BillOccurrence
+        from apps.bills.selectors.occurrence_status import open_occurrences
+
+        # Eastern for the same reason next_bill() is: a UTC "today" drops an
+        # occurrence due today out of next_due for five hours each evening.
+        today = today or today_eastern()
+
+        base = open_occurrences(
+            BillOccurrence.objects.filter(
+                bill__vendor=OuterRef("pk"),
+                bill__deleted_at__isnull=True,
+                due_date__gte=today,
+            )
+        ).order_by("due_date")
+
+        return {
+            "next_due_date": Subquery(base.values("due_date")[:1]),
+            # output_field is not decoration: without it the scale is lost and
+            # $777.00 serialises as "777". Money is a 2dp string everywhere
+            # else in the API and a client parsing it would not notice the
+            # difference until a cent went missing.
+            "next_amount": Subquery(
+                base.values("amount")[:1],
+                output_field=DecimalField(max_digits=18, decimal_places=2),
+            ),
+            "next_frequency": Subquery(base.values("bill__frequency")[:1]),
+        }
 
     @staticmethod
     def detail(user, vendor_id):

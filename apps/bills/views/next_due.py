@@ -9,9 +9,10 @@ from apps.bills.serializers.next_due_serializer import (
 from apps.bills.services.bill_occurrence_service import (
     BillOccurrenceService,
 )
+from apps.teams.access import AccountScopedMixin
 
 
-class NextDueAPIView(APIView):
+class NextDueAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -20,7 +21,7 @@ class NextDueAPIView(APIView):
 
     def get(self, request):
         occurrence = self.service.get_next_due(
-            request.user
+            self.account(request)
         )
 
         if occurrence is None:

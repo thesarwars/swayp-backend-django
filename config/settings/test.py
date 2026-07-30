@@ -17,6 +17,15 @@ LLM_PROVIDER = "template"
 FLO_LLM_ENABLED = False
 ANTHROPIC_API_KEY = ""
 
+# Pinned for the same reason as the rest, and with a sharper edge: base.py
+# reads .env, so a developer with real Stripe keys configured would otherwise
+# have the whole suite create customers and subscriptions in a live account
+# on every run. Slow, flaky, and it leaves real objects behind.
+SUBSCRIPTION_BILLING_PROVIDER = "mock"
+STRIPE_SECRET_KEY = ""
+STRIPE_PUBLISHABLE_KEY = ""
+STRIPE_BILLING_WEBHOOK_SECRET = "whsec_test_secret"
+
 # The suite has to be runnable with nothing else running — no Postgres, no
 # .env. An unrunnable suite is indistinguishable from no suite, and that is
 # how four acceptance criteria that name a test ended up with none.

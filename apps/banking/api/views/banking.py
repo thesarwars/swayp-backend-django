@@ -20,6 +20,8 @@ from apps.banking.services.import_service import BillImportService
 from apps.banking.services.link_service import BankLinkService
 from apps.banking.services.scan_service import ScanService
 from apps.common.base_views import BaseAPIView
+from apps.teams.access import AccountScopedMixin, RequiresCapability
+from apps.teams.permissions import MANAGE_BANKS
 from apps.common.responses import ApiResponse
 from apps.payments.idempotency import IdempotencyMixin
 
@@ -30,12 +32,12 @@ from apps.payments.idempotency import IdempotencyMixin
     description="Short-lived token the client hands to the bank link widget.",
     responses={200: LinkTokenSerializer},
 )
-class LinkTokenAPIView(BaseAPIView):
+class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = BankLinkService
 
     def post(self, request):
-        data = self.service.create_link_token(user=request.user)
+        data = self.service.create_link_token(user=self.account(request))
 
         return ApiResponse.success(
             data=LinkTokenSerializer(data).data,
@@ -53,23 +55,28 @@ class LinkTokenAPIView(BaseAPIView):
     request=LinkExchangeSerializer,
     responses={201: BankConnectionSerializer},
 )
-class LinkExchangeAPIView(BaseAPIView):
+class LinkExchangeAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = BankLinkService
+    # Connecting a bank exposes the account's money (E10-S1).
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BANKS
 
     def post(self, request):
         serializer = LinkExchangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         connection = self.service.exchange(
-            user=request.user,
+            user=self.account(request),
             public_token=serializer.validated_data["public_token"],
             consent_accepted=serializer.validated_data["consent_accepted"],
         )
 
         # Linking a bank is only useful if we then look at it.
         scan = ScanService().start(
-            user=request.user, connection_id=connection.id
+            user=self.account(request), connection_id=connection.id
         )
 
         body = BankConnectionSerializer(connection).data
@@ -87,12 +94,12 @@ class LinkExchangeAPIView(BaseAPIView):
     summary="List bank connections",
     responses={200: BankConnectionSerializer(many=True)},
 )
-class BankConnectionListAPIView(BaseAPIView):
+class BankConnectionListAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
 
     def get(self, request):
-        connections = self.service.list_connections(request.user)
+        connections = self.service.list_connections(self.account(request))
 
         return ApiResponse.success(
             data=BankConnectionSerializer(connections, many=True).data,
@@ -109,12 +116,12 @@ class BankConnectionListAPIView(BaseAPIView):
     ),
     responses={200: BankConnectionSerializer},
 )
-class BankConnectionDetailAPIView(BaseAPIView):
+class BankConnectionDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
 
     def get(self, request, connection_id):
-        connection = self.service.get_connection(request.user, connection_id)
+        connection = self.service.get_connection(self.account(request), connection_id)
 
         return ApiResponse.success(
             data=BankConnectionSerializer(connection).data,
@@ -123,7 +130,7 @@ class BankConnectionDetailAPIView(BaseAPIView):
 
     def delete(self, request, connection_id):
         connection = self.service.disconnect(
-            user=request.user, connection_id=connection_id
+            user=self.account(request), connection_id=connection_id
         )
 
         return ApiResponse.success(
@@ -140,13 +147,13 @@ class BankConnectionDetailAPIView(BaseAPIView):
     ],
     responses={200: BankAccountSerializer(many=True)},
 )
-class BankAccountListAPIView(BaseAPIView):
+class BankAccountListAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
 
     def get(self, request):
         accounts = self.service.list_accounts(
-            request.user,
+            self.account(request),
             connection_id=request.query_params.get("connection_id"),
         )
 
@@ -161,7 +168,7 @@ class BankAccountListAPIView(BaseAPIView):
         serializer.is_valid(raise_exception=True)
 
         account = self.service.set_default_funding_source(
-            user=request.user,
+            user=self.account(request),
             account_id=serializer.validated_data["account_id"],
         )
 
@@ -177,7 +184,7 @@ class BankAccountListAPIView(BaseAPIView):
     request=StartScanSerializer,
     responses={202: TransactionScanSerializer},
 )
-class ScanStartAPIView(BaseAPIView):
+class ScanStartAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ScanService
 
@@ -186,7 +193,7 @@ class ScanStartAPIView(BaseAPIView):
         serializer.is_valid(raise_exception=True)
 
         scan = self.service.start(
-            user=request.user,
+            user=self.account(request),
             connection_id=serializer.validated_data["connection_id"],
             months=serializer.validated_data.get("months"),
         )
@@ -204,12 +211,12 @@ class ScanStartAPIView(BaseAPIView):
     description="Poll this while the onboarding progress screen is open.",
     responses={200: TransactionScanSerializer},
 )
-class ScanDetailAPIView(BaseAPIView):
+class ScanDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ScanService
 
     def get(self, request, scan_id):
-        scan = self.service.get_scan(user=request.user, scan_id=scan_id)
+        scan = self.service.get_scan(user=self.account(request), scan_id=scan_id)
 
         return ApiResponse.success(
             data=TransactionScanSerializer(scan).data,
@@ -222,13 +229,13 @@ class ScanDetailAPIView(BaseAPIView):
     summary="Detected bill candidates",
     responses={200: BillDetectionCandidateSerializer(many=True)},
 )
-class ScanCandidateListAPIView(BaseAPIView):
+class ScanCandidateListAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = BillImportService
 
     def get(self, request, scan_id):
         candidates = self.service.candidates(
-            user=request.user, scan_id=scan_id
+            user=self.account(request), scan_id=scan_id
         )
 
         return ApiResponse.success(
@@ -247,7 +254,7 @@ class ScanCandidateListAPIView(BaseAPIView):
     ),
     request=ImportCandidatesSerializer,
 )
-class ScanImportAPIView(IdempotencyMixin, BaseAPIView):
+class ScanImportAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = BillImportService
     idempotency_endpoint = "banking.scan_import"
@@ -258,7 +265,7 @@ class ScanImportAPIView(IdempotencyMixin, BaseAPIView):
 
         def handler():
             report = self.service.import_candidates(
-                user=request.user,
+                user=self.account(request),
                 scan_id=scan_id,
                 candidate_ids=serializer.validated_data.get("candidate_ids"),
                 import_all=serializer.validated_data.get("all", False),
@@ -285,10 +292,10 @@ class ScanImportAPIView(IdempotencyMixin, BaseAPIView):
         "summary uses, so they reconcile by construction."
     ),
 )
-class OnboardingSummaryAPIView(BaseAPIView):
+class OnboardingSummaryAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
         return ApiResponse.success(
-            data=OnboardingSelector().summary(request.user),
+            data=OnboardingSelector().summary(self.account(request)),
             message="Onboarding summary fetched successfully.",
         )

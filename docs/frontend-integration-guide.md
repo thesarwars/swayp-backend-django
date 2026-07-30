@@ -12,7 +12,13 @@ Per-domain reference lives in:
 | [Bills API](bills-api-documentation.md) | bill wizard, occurrence list, summary, invoice, QR |
 | [Payments API](payments-api-documentation.md) | the pay flow, batches, cancel, failure recovery, autopay |
 | [Vendors API](vendors-api-documentation.md) | payees, payment methods, lead times, directory, QR |
+| [Billing API](billing-api-documentation.md) | plans, allowances, per-transaction fees, guarantee refunds, invoice |
+| [Teams API](teams-api-documentation.md) | seats, roles, invitations, multi-entity accounts |
 | [Bill Categories API](bill-categories-api-documentation.md) | category dropdown |
+
+Building the billing or team screens? Start with
+[**E9 + E10 Frontend Implementation Guide**](e9-e10-frontend-implementation-guide.md) —
+screen-by-screen build order, the 402-vs-403 rule, and the traps that cost a day.
 
 Every response body in those guides was captured from the running API, not
 written from a spec.
@@ -302,17 +308,23 @@ so `payment_rail` stays populated.
 |---|---|
 | 400 | validation — read `errors` per field |
 | 401 | missing or expired token → refresh, then retry |
+| 402 | plan ceiling reached → **upgrade prompt**, not a permission error |
+| 403 | the caller's **role** forbids it → permission message; no upgrade helps |
 | 404 | not found, **or owned by another user** |
 | 409 | `Idempotency-Key` reused with a different body |
 | 422 | QR payload unreadable → "scan again", not a server error |
 | 429 | OTP resend or routing-validation rate limit; honour `Retry-After` |
 
-**Two nesting quirks:**
+**Three quirks:**
 
 - Vendor create nests branch errors one level deeper:
   `errors.payment_method.<field>`, not `errors.<field>`.
 - A resource owned by someone else returns **404, not 403** — the API does not
   confirm the id exists.
+- A **402 carries `message` only, no `errors` object**, and the message is
+  written to be shown to the user verbatim. Handle it globally: it surfaces
+  from whichever endpoint performs the action, not from Billing.
+  [Billing API §1.2](billing-api-documentation.md).
 
 ---
 
@@ -370,6 +382,13 @@ or the database.
 **Vendors** — `vendors/` · `vendors/<id>/` · `vendors/summary/` ·
 `vendors/<id>/payment-methods/` · `.../<mid>/` · `.../<mid>/set-primary/` ·
 `vendors/directory-search/` · `vendors/qr/decode/`
+
+**Billing** — `billing/plans/` · `billing/subscription/` (GET/POST/PATCH/DELETE) ·
+`billing/allowances/` · `billing/addons/` · `billing/invoice/` · `billing/fees/`
+
+**Teams** — `teams/me/` · `teams/members/` · `teams/members/<id>/` ·
+`teams/invite/` · `teams/invite/accept/` · `teams/entities/` ·
+`teams/entities/<id>/`
 
 **Categories** — `bill-categories/`
 

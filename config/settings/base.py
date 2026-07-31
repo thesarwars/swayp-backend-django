@@ -267,6 +267,14 @@ SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
 # frontend route, so the backend cannot derive this from its own host.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
+# CORS. Permissive here because local dev serves the frontend from a
+# different port and blocking it would just be friction; production.py
+# replaces this with an explicit allow-list and refuses to boot without
+# one. corsheaders is already in INSTALLED_APPS and MIDDLEWARE, and was
+# doing nothing at all until this existed.
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+
 # Failed-login lockout (E2). The User model has carried
 # failed_login_attempts and locked_until since the first migration with
 # nothing reading them, which left password guessing unbounded.

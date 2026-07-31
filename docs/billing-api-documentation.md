@@ -8,7 +8,7 @@ that adds it all up.
 
 Every response body below was captured from the running API.
 
-Related: [Payments API](payments-api-documentation.md) · [Banking API](banking-api-documentation.md) · [Frontend Guide](frontend-integration-guide.md)
+Related: Payments API · [Banking API](banking-api-documentation.md) · [Frontend Guide](frontend-integration-guide.md)
 
 ---
 
@@ -28,7 +28,7 @@ Stripe is wired. Whether it collects depends on one setting:
 mounting one that can never work.
 
 The request and response shapes are identical either way, so one client build
-serves both. Full flow: [Stripe Billing Setup](stripe-billing-setup.md).
+serves both. Full flow: Stripe Billing Setup.
 
 ### 1.2 402 means "upgrade", not "forbidden"
 
@@ -160,7 +160,7 @@ One endpoint, four verbs.
 
 > **Collecting a card?** `POST /billing/payment-method/setup/` first, then
 > send the resulting `payment_method_id` with the subscribe call. The card
-> never reaches Swayp. See [Stripe Billing Setup](stripe-billing-setup.md).
+> never reaches Swayp. See Stripe Billing Setup.
 
 ### 3.0 Reads are open to the team; writes are owner-only ⚠️
 
@@ -370,7 +370,7 @@ row appears in the ledger.
 
 **Hide or disable the same-day option after the cutoff** rather than offering
 it and surprising the user. Cutoff semantics and the Eastern-time trap are in
-[Payments API §1.4](payments-api-documentation.md).
+Payments API §1.4.
 
 ### 6.2 Expedited check is not an overage
 
@@ -388,7 +388,7 @@ only**. Any other rail is a 400 rather than a silent downgrade:
 
 The created payment echoes `"expedited": true` and carries a nearer
 `estimated_arrival` — 2 business days of transit instead of 5. Full request
-shape in [Payments API §2](payments-api-documentation.md).
+shape in Payments API §2.
 
 ### 6.3 `guaranteed_arrival` is the date the customer was shown
 

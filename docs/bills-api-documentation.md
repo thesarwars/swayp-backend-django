@@ -495,7 +495,7 @@ counts immediately (in the captured run `upcoming_count` went 3 → 2). Paying a
 already-paid occurrence returns an error.
 
 > **Superseded.** Real payment execution now exists — see the
-> [Payments API](payments-api-documentation.md). Use `POST /payments/` with
+> Payments API. Use `POST /payments/` with
 > this occurrence id instead; it moves money and keeps the occurrence in
 > step. This endpoint remains only for reconciling a payment made outside
 > Swayp.

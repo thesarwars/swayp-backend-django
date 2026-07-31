@@ -10,7 +10,7 @@ Per-domain reference lives in:
 |---|---|
 | [Banking API](banking-api-documentation.md) | bank link, scan, bill detection, import, onboarding, ABA validation |
 | [Bills API](bills-api-documentation.md) | bill wizard, occurrence list, summary, invoice, QR |
-| [Payments API](payments-api-documentation.md) | the pay flow, batches, cancel, failure recovery, autopay |
+| Payments API | the pay flow, batches, cancel, failure recovery, autopay |
 | [Vendors API](vendors-api-documentation.md) | payees, payment methods, lead times, directory, QR |
 | [Billing API](billing-api-documentation.md) | plans, allowances, per-transaction fees, guarantee refunds, invoice |
 | [Teams API](teams-api-documentation.md) | seats, roles, invitations, multi-entity accounts |

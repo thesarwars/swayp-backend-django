@@ -6,7 +6,7 @@ invoice.
 ← [Index](README.md) · Prev: [E8](e8-dashboard-reports.md) · Next: [E10 Teams](e10-teams.md)
 
 Full reference: [Billing API](../billing-api-documentation.md) ·
-Setup: [Stripe Billing](../stripe-billing-setup.md)
+Setup: Stripe Billing
 
 ---
 

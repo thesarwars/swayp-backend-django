@@ -6,7 +6,7 @@
 | **Version** | 2.0 — reconciled with the CEO Business Requirements Document (BRD v1.1) |
 | **Date** | 2026-07-17 |
 | **Status** | BRD resolved the prior blocking questions; remaining clarifications in §10 |
-| **Authority** | **[Swayp BRD Payments.docx.md](Swayp%20BRD%20Payments.docx.md) (CEO, authoritative for business logic) → Figma FDD screens ([figma_node.md](figma_node.md)) → [dashboard-plan.md](dashboard-plan.md) / [Part 1](third-party-services-and-production-requirements.md) (engineering planning; partially superseded — see §0.1).** Where the BRD and a screen disagree, the BRD wins and the screen is flagged as a design bug. |
+| **Authority** | **[Swayp BRD Payments.docx.md](Swayp%20BRD%20Payments.docx.md) (CEO, authoritative for business logic) → Figma FDD screens ([figma_node.md](figma_node.md)) → dashboard-plan.md / [Part 1](third-party-services-and-production-requirements.md) (engineering planning; partially superseded — see §0.1).** Where the BRD and a screen disagree, the BRD wins and the screen is flagged as a design bug. |
 | **Backlog** | [epics/](epics/README.md) |
 
 ---
@@ -214,7 +214,7 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 12. Invoice OCR / auto-import — pending CEO decision (BRD §6).
 
 ## 11. Design bugs to return to the design team
-From [dashboard-plan.md §9](dashboard-plan.md) plus BRD conflicts:
+From dashboard-plan.md §9 plus BRD conflicts:
 - ⟳ Payment/authorization copy names **GoCardless** (840:28151) and screens imply **Dwolla/Stripe Treasury** — all superseded; the model is **Stripe + Moov**. Update copy.
 - ⟳ Bank-connect screens say **"24 months"** (836:8984/9052) — BRD says up to **12**.
 - "Discord" → "Discard" (829:4347); State-field placeholder "Suite, unit, etc." (793:1707 etc.); "Save ACH Vendor" on the check drawer (840:16667); receipt vendor mismatch (840:28867); sign-up footer "Create Account" (1464:15936); "$33,7771" (836:8856); Reset-Password screen has no identifier input (1472:18735).

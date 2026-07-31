@@ -8,12 +8,12 @@
 | [PRD.md](PRD.md) | Product Requirements (v2.0, BRD-reconciled) — goals, personas, FR/NFR, release phasing, open questions | scoping anything; talking to the client |
 | [epics/](epics/README.md) | **Backlog** — 10 epics, ~50 stories, each with exact ORM models, endpoints, screens, acceptance criteria | cutting tickets / implementing |
 | [file-architecture.md](file-architecture.md) | Repo structure convention — per-feature packages (`serializers/user_registration.py`), layering rules, app templates, planned apps | writing any code |
-| [dashboard-plan.md](dashboard-plan.md) | Full technical plan (Part 2, BRD-reconciled) — screen→feature map, data model, complete API surface, Celery jobs, phasing | needing rationale/details behind a story |
+| dashboard-plan.md | Full technical plan (Part 2, BRD-reconciled) — screen→feature map, data model, complete API surface, Celery jobs, phasing | needing rationale/details behind a story |
 | [third-party-services-and-production-requirements.md](third-party-services-and-production-requirements.md) | Part 1 (v2.0, BRD-reconciled) — services (Plaid/Moov/Stripe/Lob/Flo), client production asks, compliance, non-custodial fund flow | vendor decisions; production readiness |
 | [figma_node.md](figma_node.md) | Authoritative list of the 68 Figma screens (node links) | tracing a screen id |
 
 ## Reading order for a new engineer
-1. [PRD.md](PRD.md) §1–3 (what we're building) → 2. [file-architecture.md](file-architecture.md) (how code is laid out) → 3. your epic in [epics/](epics/README.md) → 4. [dashboard-plan.md](dashboard-plan.md) for deep rationale.
+1. [PRD.md](PRD.md) §1–3 (what we're building) → 2. [file-architecture.md](file-architecture.md) (how code is laid out) → 3. your epic in [epics/](epics/README.md) → 4. dashboard-plan.md for deep rationale.
 
 ## Standing decisions (from the CEO BRD — do not re-litigate)
 - **Rails decided (BRD §5)** — **Stripe** (configured-account vendors) + **Moov** (ACH) + **Lob/PostGrid** (checks). **Dwolla / GoCardless / Stripe-Treasury / BILL.com / Melio are excluded on record.**

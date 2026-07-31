@@ -76,7 +76,7 @@ Returns the vendor, **all** its payment methods, and the spend panel:
   "monthly_spend": [ { "month": "2025-08", "total": "0.00" } ],
   "next_bill": null,
   "bills": []
-}
+} 
 ```
 
 `monthly_spend` is a fixed 12-month series — render it as a chart without

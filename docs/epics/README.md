@@ -1,6 +1,6 @@
 # Swayp Backend — Backlog (Epics & Stories)
 
-Derived from [PRD.md](../PRD.md) (v2.0, reconciled with the CEO **BRD**) and [dashboard-plan.md](../dashboard-plan.md). Every story is a **vertical slice** (models → service → API) and carries its exact ORM plan, endpoints, screens, and acceptance criteria — implementable without reopening the plan.
+Derived from [PRD.md](../PRD.md) (v2.0, reconciled with the CEO **BRD**) and dashboard-plan.md. Every story is a **vertical slice** (models → service → API) and carries its exact ORM plan, endpoints, screens, and acceptance criteria — implementable without reopening the plan.
 
 > ⚠️ **BRD reconciliation (2026-07-17):** rails are **Stripe (configured-account) + Moov (ACH) + Lob/PostGrid (checks)** — Dwolla/GoCardless/Stripe-Treasury excluded. Raw bank numbers are **never stored** (tokenized at Moov; masked + reference only). **Non-custodial** is a hard invariant. **USD only.** **Email only** this release. E9 (Billing) and E10 (Teams) are new. See [PRD §0](../PRD.md).
 

@@ -8,6 +8,12 @@ staticfiles/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Celery beat writes its "when did each task last run" state here. Committing
+# it would replay a developer's local schedule on the server.
+celerybeat-schedule
+celerybeat-schedule.*
+celerybeat.pid
 .idea/
 .vscode/
 # docs/

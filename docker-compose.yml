@@ -25,11 +25,13 @@ services:
   web:
     build: .
     container_name: swayp-web
-    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:5010"
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "5010:5010"
+    env_file:
+      - .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.local
       POSTGRES_DB: swayp_db
@@ -50,6 +52,8 @@ services:
     command: celery -A config worker -l info
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.local
       POSTGRES_DB: swayp_db
@@ -70,6 +74,8 @@ services:
     command: celery -A config beat -l info
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.local
       POSTGRES_DB: swayp_db

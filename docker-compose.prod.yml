@@ -1,0 +1,120 @@
+# Production stack.
+#
+# Differences from docker-compose.yml (which stays as the dev environment):
+#
+#   * gunicorn, not runserver — the image's default CMD.
+#   * Postgres and Redis are NOT published to the host. Nothing outside this
+#     network has any business reaching the database, and publishing 5432 on a
+#     public server is how a database ends up on Shodan.
+#   * The app binds to 127.0.0.1 by default, because TLS is terminated by a
+#     reverse proxy on the host. Set APP_BIND=0.0.0.0 only if a load balancer
+#     on another machine reaches this port directly.
+#   * No source bind-mount — the image is the artifact.
+#   * Migrations run once as their own service, not on every replica: with
+#     more than one web container they would race.
+#   * Restart policies, so a crash does not become an outage.
+#
+# Usage:  docker compose -f docker-compose.prod.yml up -d --build
+
+x-django: &django
+  build: .
+  image: swayp-backend:latest
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    DJANGO_SETTINGS_MODULE: config.settings.production
+    POSTGRES_HOST: db
+    POSTGRES_PORT: 5432
+    REDIS_URL: redis://redis:6379/0
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: swayp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: swayp-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Runs to completion, then exits. `web` waits for it, so a deploy cannot
+  # serve traffic against a schema that has not been migrated.
+  migrate:
+    <<: *django
+    container_name: swayp-migrate
+    restart: "no"
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput"
+
+  web:
+    <<: *django
+    container_name: swayp-web
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${APP_PORT:-5010}:5010"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  celery-worker:
+    <<: *django
+    container_name: swayp-celery-worker
+    command: celery -A config worker -l info --concurrency=${CELERY_CONCURRENCY:-4}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  celery-beat:
+    <<: *django
+    container_name: swayp-celery-beat
+    # The beat schedule file lives on a volume: losing it makes beat re-fire
+    # jobs it has already run, and the daily money jobs are not idempotent
+    # about being run twice in a day.
+    command: celery -A config beat -l info --schedule /beat/celerybeat-schedule
+    volumes:
+      - beat_data:/beat
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
+  redis_data:
+  beat_data:

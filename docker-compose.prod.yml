@@ -71,12 +71,23 @@ services:
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py collectstatic --noinput"
+    # static_data is shared with web on purpose. collectstatic writes into
+    # this container's own filesystem, which is thrown away when it exits —
+    # so without the volume web serves nothing, and with DEBUG=False Django
+    # does not serve static files itself: the admin and the API docs render
+    # unstyled with no error anywhere to explain it.
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
 
   web:
     <<: *django
     container_name: swayp-web
     ports:
       - "${APP_BIND:-127.0.0.1}:${APP_PORT:-5010}:5010"
+    volumes:
+      - static_data:/app/staticfiles
+      - media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -89,6 +100,8 @@ services:
     <<: *django
     container_name: swayp-celery-worker
     command: celery -A config worker -l info --concurrency=${CELERY_CONCURRENCY:-4}
+    volumes:
+      - media_data:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -103,9 +116,15 @@ services:
     # The beat schedule file lives on a volume: losing it makes beat re-fire
     # jobs it has already run, and the daily money jobs are not idempotent
     # about being run twice in a day.
-    command: celery -A config beat -l info --schedule /beat/celerybeat-schedule
+    #
+    # The path is /var/lib/celery because the image creates and owns it. Docker
+    # seeds a named volume from the image directory beneath it and creates it
+    # root-owned when there is none — so mounting at an invented path made beat
+    # start and then die on Permission denied, which is the silent kind of
+    # failure: no request errors, the nightly jobs simply never run.
+    command: celery -A config beat -l info --schedule /var/lib/celery/celerybeat-schedule
     volumes:
-      - beat_data:/beat
+      - beat_data:/var/lib/celery
     depends_on:
       db:
         condition: service_healthy
@@ -118,3 +137,9 @@ volumes:
   postgres_data:
   redis_data:
   beat_data:
+  static_data:
+  # Nothing writes to MEDIA_ROOT today — the one ImageField is an upload
+  # decoded in memory, and reports stream rather than being saved. The volume
+  # is here so that stays a choice: the first model FileField added without it
+  # would lose every upload on the next deploy, silently.
+  media_data:

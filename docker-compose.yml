@@ -1,3 +1,9 @@
+# Dev stack. The app image runs as a non-root user (uid 10001), and a bind
+# mount presents the Windows host's ownership rather than the image's — so
+# every path the app writes to is a named volume instead of the host mount.
+# Without that, collectstatic dies on Permission denied and beat cannot write
+# its schedule. The source bind mount stays, since the container only reads it.
+
 services:
   db:
     image: postgres:16-alpine
@@ -28,6 +34,8 @@ services:
     command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:5010"
     volumes:
       - .:/app
+      - static_data:/app/staticfiles
+      - media_data:/app/media
     ports:
       - "5010:5010"
     env_file:
@@ -52,6 +60,7 @@ services:
     command: celery -A config worker -l info
     volumes:
       - .:/app
+      - media_data:/app/media
     env_file:
       - .env
     environment:
@@ -71,9 +80,13 @@ services:
   celery-beat:
     build: .
     container_name: swayp-celery-beat
-    command: celery -A config beat -l info
+    # --schedule puts beat's "when did each task last run" file on a volume.
+    # The default is /app/celerybeat-schedule, which is the read-only-in-effect
+    # host mount.
+    command: celery -A config beat -l info --schedule /var/lib/celery/celerybeat-schedule
     volumes:
       - .:/app
+      - beat_data:/var/lib/celery
     env_file:
       - .env
     environment:
@@ -92,3 +105,6 @@ services:
 
 volumes:
   postgres_data:
+  static_data:
+  media_data:
+  beat_data:

@@ -24,9 +24,14 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # Not root. A container that is compromised should not also be privileged.
+#
+# /var/lib/celery is created here rather than left to the volume mount. Docker
+# seeds a named volume with the ownership of the image directory underneath it,
+# and creates it root-owned when there is no such directory — so beat would
+# start, then die on Permission denied writing its schedule.
 RUN useradd --create-home --uid 10001 swayp \
-    && mkdir -p /app/staticfiles /app/media \
-    && chown -R swayp:swayp /app
+    && mkdir -p /app/staticfiles /app/media /var/lib/celery \
+    && chown -R swayp:swayp /app /var/lib/celery
 USER swayp
 
 EXPOSE 5010

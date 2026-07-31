@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.urls import path,include
+from django.views.generic import RedirectView
 
 from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
 from apps.common.api_health import LivenessAPIView, ReadinessAPIView
@@ -12,6 +13,16 @@ from drf_spectacular.views import (
 )
 
 urlpatterns = [
+    # The root is otherwise a 404, which reads as "the service is down" to
+    # anyone opening the base URL. Send them to the docs instead. Temporary
+    # (302) rather than permanent so the root stays free for a landing page
+    # or frontend later — browsers cache a 301 indefinitely.
+    path(
+        "",
+        RedirectView.as_view(pattern_name="swagger-ui", permanent=False),
+        name="root",
+    ),
+
     # Probes, versionless and unauthenticated — a load balancer has
     # no token and should not need to know the API version.
     path("healthz", LivenessAPIView.as_view(), name="healthz"),

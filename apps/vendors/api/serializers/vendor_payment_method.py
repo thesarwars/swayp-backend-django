@@ -96,7 +96,9 @@ class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):
         )
 
     # Raw routing/account numbers never reach the backend — the client
-    # tokenizes at Moov (Moov.js) and sends {provider_token, account_last4}.
+    # tokenizes them in the money-movement provider's browser SDK and sends
+    # {provider_token, account_last4}. Which provider that is stays out of this
+    # file on purpose (E1-S4): it is settings, not contract.
     # Changing an account is therefore just sending a fresh token. What the
     # server must refuse is a masked echo (e.g. "****4821") being stored as a
     # real value (E1-S6 / BRD §3.4). On PATCH, an omitted field stays

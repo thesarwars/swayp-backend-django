@@ -267,6 +267,12 @@ SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
 # frontend route, so the backend cannot derive this from its own host.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
+# Failed-login lockout (E2). The User model has carried
+# failed_login_attempts and locked_until since the first migration with
+# nothing reading them, which left password guessing unbounded.
+LOGIN_MAX_ATTEMPTS = int(env("LOGIN_MAX_ATTEMPTS", default="5"))
+LOGIN_LOCKOUT_MINUTES = int(env("LOGIN_LOCKOUT_MINUTES", default="15"))
+
 # Celery (E1-S1)
 # Broker/backend read from env; beat pinned to US Eastern so daily money
 # jobs (autopay, status rolls, cutoffs) fire on the correct calendar day.

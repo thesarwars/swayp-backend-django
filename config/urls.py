@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import path,include
 
 from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
+from apps.common.api_health import LivenessAPIView, ReadinessAPIView
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
@@ -11,6 +12,11 @@ from drf_spectacular.views import (
 )
 
 urlpatterns = [
+    # Probes, versionless and unauthenticated — a load balancer has
+    # no token and should not need to know the API version.
+    path("healthz", LivenessAPIView.as_view(), name="healthz"),
+    path("readyz", ReadinessAPIView.as_view(), name="readyz"),
+
     path("admin/", admin.site.urls),
 
       path(

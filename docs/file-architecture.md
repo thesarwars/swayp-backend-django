@@ -101,7 +101,7 @@ apps/<app>/
 
 **Migration policy:** don't do a big-bang rewrite. Whichever epic first touches an app converts it to the template in the same PR (the change is mechanical: split by feature, add re-exporting `__init__.py`s, keep route names).
 
-## 4. Planned new apps (from [dashboard-plan.md](dashboard-plan.md))
+## 4. Planned new apps (from dashboard-plan.md)
 
 | App | Feature files (api/serializers|views|urls) | Entities (models/) |
 |---|---|---|

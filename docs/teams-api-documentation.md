@@ -7,7 +7,7 @@ Team members, seats, roles, invitations, and multi-entity accounts.
 
 Every response body below was captured from the running API.
 
-Related: [Billing API](billing-api-documentation.md) · [Payments API](payments-api-documentation.md) · [Frontend Guide](frontend-integration-guide.md)
+Related: [Billing API](billing-api-documentation.md) · Payments API · [Frontend Guide](frontend-integration-guide.md)
 
 ---
 

@@ -6,7 +6,7 @@
 - **Version:** 2.0 — **reconciled with the CEO BRD v1.1** ([Swayp BRD Payments.docx.md](Swayp%20BRD%20Payments.docx.md))
 - **Date:** 2026-07-17
 - **Basis:** Figma *Swayp Finance App Redesign* screens (§2) + the BRD, cross-checked against `swyape-backend`.
-- **Companion docs:** [PRD.md](PRD.md) (v2.0), [dashboard-plan.md](dashboard-plan.md) (Part 2 technical plan), [epics/](epics/README.md) (backlog).
+- **Companion docs:** [PRD.md](PRD.md) (v2.0), dashboard-plan.md (Part 2 technical plan), [epics/](epics/README.md) (backlog).
 
 > ✅ **BRD reconciliation banner.** The CEO BRD resolved the questions the v1.0 of this doc left open. **Rails are decided: Plaid (bank data) + Stripe (configured-account vendors) + Moov (ACH) + Lob/PostGrid (checks).** **Dwolla, GoCardless, and Stripe Treasury are excluded on record.** **BILL.com and Melio are rejected** (competitor exclusion, BRD §7). The product is **non-custodial** (funds never rest in a Swayp balance) and **USD-only**. Raw bank numbers are **never stored** (tokenized at the provider). **Vendor/payee sanctions + fraud screening is the provider's responsibility, not Swayp's** — Swayp does only lightweight verification of its own paying customers at sign-up. This doc has been updated to reflect all of that; anything that still reads as "open" is genuinely open (§6).
 
@@ -297,10 +297,10 @@ Repo: **Django 6 + DRF + SimpleJWT + Celery/Redis (packages only, not wired) + P
 ## 8. Suggested next steps
 
 1. **Start the long poles now** (BRD §6.1): submit the **Moov platform application** and **engage the attorney for the non-custodial legal opinion**; begin **Plaid production + LEI + security questionnaire**; enable **Stripe Connect**; set up **Lob/PostGrid**; sign the **Anthropic DPA**.
-2. **Ship the safe, non-blocked work immediately** (all against mock providers — see [dashboard-plan.md §8](dashboard-plan.md) / [epics](epics/README.md)): wire Celery; fix `Payment`/`Wallet` currency → **USD**; scaffold Plaid link/exchange/webhook in sandbox; build deterministic recurring detection; stand up the business-day engine, secrets/observability, and the **no-raw-storage tokenization** utilities.
+2. **Ship the safe, non-blocked work immediately** (all against mock providers — see dashboard-plan.md §8 / [epics](epics/README.md)): wire Celery; fix `Payment`/`Wallet` currency → **USD**; scaffold Plaid link/exchange/webhook in sandbox; build deterministic recurring detection; stand up the business-day engine, secrets/observability, and the **no-raw-storage tokenization** utilities.
 3. **Resolve the remaining open items (§6)** — especially Stripe configured-account **discovery** and the exact **cutoff/SLA** for same-day/expedited (drives billing auto-refunds).
 4. **Build R1–R3 entirely on mocks**; wire real rails (Stripe/Moov/Lob) at **R4**, gated on the Moov application + legal opinion.
-5. Track full scope in **[PRD.md](PRD.md)**, **[dashboard-plan.md](dashboard-plan.md)**, and the **[epics backlog](epics/README.md)** (incl. new **E9 Billing** + **E10 Teams**).
+5. Track full scope in **[PRD.md](PRD.md)**, **dashboard-plan.md**, and the **[epics backlog](epics/README.md)** (incl. new **E9 Billing** + **E10 Teams**).
 
 ---
 

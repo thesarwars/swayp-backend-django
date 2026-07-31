@@ -6,10 +6,10 @@ from rest_framework.settings import api_settings
 from apps.common.dates import today_eastern
 from apps.common.exceptions import (
     BadRequestException,
-    ExportNotSupportedException,
     UnprocessableEntityException,
 )
 from apps.common.serializers import PaginationQuerySerializer
+from apps.reports.services.export_service import SUPPORTED_FORMATS
 
 #: Earliest tax year a 1099 can be asked for. Swayp moved no money before this,
 #: so anything older is a typo rather than a request.
@@ -21,31 +21,39 @@ MIN_REPORT_YEAR = 2000
 _NON_FILTER_PARAMS = frozenset({api_settings.URL_FORMAT_OVERRIDE} - {None})
 
 
-class _ExportRejectingSerializer(serializers.Serializer):
-    """Declares ``export`` for the sole purpose of refusing it (E8-S2).
+class _ExportSerializer(serializers.Serializer):
+    """Declares ``export`` (E8-S2; PRD §10-Q4 resolved — CSV and PDF).
 
-    Output format is an open product question (PRD §10-Q4), so guessing a CSV
-    would create a contract clients then depend on. Every report query
-    serializer inherits this, so a new report endpoint cannot quietly start
-    accepting one; and because ExportNotSupportedException is an APIException
-    and NOT a DRF ValidationError, ``to_internal_value`` does not collect it
-    into the field-error dict — it propagates straight out of
-    ``is_valid(raise_exception=True)`` and reaches the handler as a 405.
+    This used to refuse every value, because guessing a format would have
+    created a contract clients then depended on. Both formats are now
+    specified, so it validates instead.
+
+    Still narrow on purpose: an unrecognised format is a 400 naming what is
+    supported, rather than a silent fallback to CSV. A client that asked for
+    xlsx and received a CSV would ship it to a user as an xlsx.
+
+    ``allow_blank`` because ``?export=`` with no value is still someone asking
+    for an export: without it, Field.get_value drops a blank optional
+    CharField before validate_export ever runs (rest_framework/fields.py:424)
+    and the value reaches the view unvalidated.
     """
 
-    # allow_blank because ``?export=`` with no value is still someone asking
-    # for an export: without it, Field.get_value drops a blank optional
-    # CharField before validate_export ever runs (rest_framework/fields.py:424)
-    # and the hook is quietly open for exactly the spelling a client trying it
-    # out would send first.
     export = serializers.CharField(required=False, allow_blank=True)
 
     def validate_export(self, value):
-        raise ExportNotSupportedException()
+        fmt = (value or "").strip().lower()
+
+        if fmt not in SUPPORTED_FORMATS:
+            raise serializers.ValidationError(
+                f"Unsupported export format. Use one of: "
+                f"{', '.join(SUPPORTED_FORMATS)}."
+            )
+
+        return fmt
 
 
 class ReportQuerySerializer(
-    _ExportRejectingSerializer, PaginationQuerySerializer
+    _ExportSerializer, PaginationQuerySerializer
 ):
     """Query params for GET reports/."""
 
@@ -65,7 +73,7 @@ class ReportQuerySerializer(
         return attrs
 
 
-class Form1099QuerySerializer(_ExportRejectingSerializer):
+class Form1099QuerySerializer(_ExportSerializer):
     """Query params for GET reports/1099/.
 
     Deliberately does not accept vendor/date_from/date_to: a 1099 is a tax

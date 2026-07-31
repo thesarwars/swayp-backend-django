@@ -31,6 +31,7 @@ class PlanSerializer(serializers.ModelSerializer):
             "free_checks_per_month",
             "included_entities",
             "price_locked",
+            "trial_days",
         )
 
 
@@ -40,12 +41,22 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     # when the processor wants the first charge confirmed (3-D Secure). Blank
     # everywhere else — it is a one-use secret, never stored.
     client_secret = serializers.SerializerMethodField()
+    # status stays ACTIVE through a trial, so a client cannot tell from it
+    # alone whether a charge has happened. These two say so directly.
+    is_trialing = serializers.SerializerMethodField()
+    trial_days_remaining = serializers.SerializerMethodField()
     effective_price = serializers.DecimalField(
         max_digits=18, decimal_places=2, read_only=True
     )
 
     def get_client_secret(self, subscription):
         return getattr(subscription, "pending_client_secret", "") or ""
+
+    def get_is_trialing(self, subscription):
+        return subscription.is_trialing()
+
+    def get_trial_days_remaining(self, subscription):
+        return subscription.trial_days_remaining()
 
     class Meta:
         model = Subscription
@@ -59,6 +70,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "effective_price",
             "provider_status",
             "client_secret",
+            "trial_end",
+            "is_trialing",
+            "trial_days_remaining",
             "created_at",
         )
 

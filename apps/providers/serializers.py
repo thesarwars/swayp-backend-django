@@ -11,8 +11,6 @@ class ProviderQuerySerializer(PaginationQuerySerializer):
     search = serializers.CharField(required=False, allow_blank=True)
 
 
-class ProviderSearchQuerySerializer(PaginationQuerySerializer):
-    q = serializers.CharField()
 
 
 class ProviderSerializer(serializers.Serializer):

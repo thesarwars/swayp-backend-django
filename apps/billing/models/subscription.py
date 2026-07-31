@@ -45,6 +45,11 @@ class Subscription(BaseModel):
 
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
+    # When the free period ends, or null if there was never one. The
+    # entitlement is ACTIVE throughout: a trial is a promise not to charge
+    # yet, not a reduced product.
+    trial_end = models.DateField(null=True, blank=True)
+
     # --- provider linkage (E9-S1) ---------------------------------------
     # Populated only when a real billing provider is collecting money.
     # Blank means the subscription is an entitlement Swayp granted and
@@ -90,6 +95,28 @@ class Subscription(BaseModel):
     @property
     def is_active(self):
         return self.status == SubscriptionStatus.ACTIVE
+
+    def is_trialing(self, today=None):
+        """Still inside the free period.
+
+        The entitlement is ACTIVE either way — this only says whether a
+        charge has happened yet, which is what the "12 days left" banner
+        needs and what a client must not infer from status alone.
+        """
+        if self.trial_end is None:
+            return False
+
+        from django.utils import timezone
+
+        return (today or timezone.localdate()) < self.trial_end
+
+    def trial_days_remaining(self, today=None):
+        if self.trial_end is None:
+            return None
+
+        from django.utils import timezone
+
+        return max((self.trial_end - (today or timezone.localdate())).days, 0)
 
     def __str__(self):
         return f"{self.account_id} → {self.plan.code} ({self.status})"

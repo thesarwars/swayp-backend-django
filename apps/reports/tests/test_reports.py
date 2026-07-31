@@ -566,21 +566,50 @@ class ReportRowTests(ReportTestCase):
 
 
 class ReportExportTests(ReportTestCase):
+    """Export is supported now (PRD §10-Q4 resolved: CSV and PDF).
 
-    def test_export_returns_405_with_a_clear_message(self):
-        for requested in ("csv", "pdf", ""):
+    These used to assert a 405. The format was an open question and guessing
+    one would have created a contract clients then depended on; both are
+    specified now, so the parameter is validated instead of refused.
+
+    File contents are covered in test_export.py. What is kept here is the
+    property the old class really guarded — that **every** report route
+    behaves the same way, so a new endpoint cannot quietly diverge.
+    """
+
+    def test_both_formats_are_served(self):
+        for requested, content_type in (
+            ("csv", "text/csv"),
+            ("pdf", "application/pdf"),
+        ):
             with self.subTest(export=requested):
-                response = self.client.get(REPORTS_URL, {"export": requested})
-
-                self.assertEqual(
-                    response.status_code,
-                    status.HTTP_405_METHOD_NOT_ALLOWED,
+                response = self.client.get(
+                    REPORTS_URL, {"export": requested}
                 )
-                self.assertFalse(response.data["success"])
-                self.assertIn("not supported yet", response.data["message"])
-                self.assertNotIn("text/csv", response["Content-Type"])
 
-    def test_export_is_refused_before_any_payment_is_read(self):
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertIn(content_type, response["Content-Type"])
+                self.assertIn(
+                    "attachment", response["Content-Disposition"]
+                )
+
+    def test_an_unknown_format_is_refused_rather_than_defaulted(self):
+        """A client that asked for xlsx and received a CSV would ship it to a
+        user as an xlsx."""
+        response = self.client.get(REPORTS_URL, {"export": "xlsx"})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data["success"])
+        self.assertNotIn("text/csv", response["Content-Type"])
+
+    def test_a_blank_export_is_refused(self):
+        """``?export=`` with no value is still someone asking for one, and it
+        is the first spelling a client trying it out would send."""
+        response = self.client.get(REPORTS_URL, {"export": ""})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_the_format_is_validated_before_any_payment_is_read(self):
         target = (
             "apps.reports.services.report_service."
             "ReportService.payments_report"
@@ -589,20 +618,14 @@ class ReportExportTests(ReportTestCase):
         with patch(target) as report:
             response = self.client.get(
                 REPORTS_URL,
-                {
-                    "export": "csv",
-                    "vendor": str(self.vendor_a.id),
-                    "date_from": self.today.isoformat(),
-                },
+                {"export": "xlsx", "vendor": str(self.vendor_a.id)},
             )
 
-        self.assertEqual(
-            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
-        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(report.called)
 
     @override_settings(DEFAULT_PLAN_CODE="ENTERPRISE")
-    def test_every_report_endpoint_refuses_export(self):
+    def test_every_report_endpoint_supports_export(self):
         from apps.reports.api.urls import urlpatterns
 
         self.assertTrue(urlpatterns)
@@ -610,16 +633,14 @@ class ReportExportTests(ReportTestCase):
         for pattern in urlpatterns:
             with self.subTest(route=pattern.name):
                 # ENTERPRISE so the 1099 plan gate cannot shadow the result:
-                # a route that stops inheriting _ExportRejectingSerializer has
-                # to fail here rather than ship an open hook.
+                # a route that stops inheriting _ExportSerializer has to fail
+                # here rather than silently lose the capability.
                 response = self.client.get(
                     reverse(pattern.name), {"export": "csv"}
                 )
 
-                self.assertEqual(
-                    response.status_code,
-                    status.HTTP_405_METHOD_NOT_ALLOWED,
-                )
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+                self.assertIn("text/csv", response["Content-Type"])
 
 
 class ReportQueryCountTests(TestCase):

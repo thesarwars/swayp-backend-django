@@ -92,6 +92,15 @@ class SubscriptionService:
         if plan.price_locked and self.founding_lock_available():
             locked_price = plan.monthly_price
 
+        # ACTIVE during the trial, deliberately. A trial is a promise not
+        # to charge yet, not a reduced product, and gating features on it
+        # would make the free period worthless for evaluating the paid one.
+        trial_end = (
+            today + dt.timedelta(days=plan.trial_days)
+            if plan.trial_days
+            else None
+        )
+
         subscription = Subscription.objects.create(
             account=account,
             plan=plan,
@@ -99,10 +108,13 @@ class SubscriptionService:
             period_start=today,
             period_end=add_month(today),
             locked_price=locked_price,
+            trial_end=trial_end,
         )
 
         self._provider().start(
-            subscription, payment_method_id=payment_method_id
+            subscription,
+            payment_method_id=payment_method_id,
+            trial_days=plan.trial_days,
         )
 
         return subscription

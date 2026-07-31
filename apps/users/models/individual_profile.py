@@ -11,7 +11,7 @@ class IndividualProfile(BaseModel):
         related_name="individual",
     )
 
-    billing_address = models.TextField()
+    billing_address = models.TextField(blank=True, default="")
 
     class Meta:
         db_table = "individual_profiles"

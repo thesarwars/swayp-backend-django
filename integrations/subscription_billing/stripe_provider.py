@@ -203,7 +203,8 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
     # --- subscriptions ----------------------------------------------------
 
     def create_subscription(self, *, customer_id, price_id,
-                            payment_method_id="", idempotency_key=""):
+                            payment_method_id="", trial_days=0,
+                            idempotency_key=""):
         if payment_method_id:
             attached = self._call(
                 self._client.v1.payment_methods.attach,
@@ -243,6 +244,18 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
             "expand": ["latest_invoice.confirmation_secret"],
             "payment_behavior": "default_incomplete",
         }
+
+        if trial_days:
+            params["trial_period_days"] = trial_days
+            # Without this, a trial reaching its end with no card silently
+            # cancels the subscription. create_invoice raises an invoice that
+            # goes unpaid instead, which fires invoice.payment_failed, which
+            # the billing webhook maps to PAST_DUE — a state the customer can
+            # recover from by adding a card. "pause" would leave them in a
+            # state this codebase has no handler for.
+            params["trial_settings"] = {
+                "end_behavior": {"missing_payment_method": "create_invoice"}
+            }
 
         options = (
             {"idempotency_key": idempotency_key} if idempotency_key else None

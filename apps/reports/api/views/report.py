@@ -14,11 +14,17 @@ from apps.reports.api.serializers.report import (
     ReportQuerySerializer,
     ReportResponseSerializer,
 )
+from apps.reports.services.export_service import (
+    MAX_EXPORT_ROWS,
+    form_1099_export,
+    payments_export,
+)
 from apps.reports.services.report_service import (
     PLAN_GATE_MESSAGE,
     ReportService,
 )
 from apps.teams.access import AccountScopedMixin
+from apps.vendors.models.vendor import Vendor
 
 
 @extend_schema(
@@ -40,7 +46,7 @@ from apps.teams.access import AccountScopedMixin
         404: OpenApiResponse(
             description="The vendor filter matches no vendor of yours"
         ),
-        405: OpenApiResponse(description="Export is not supported yet"),
+        400: OpenApiResponse(description="Unsupported export format"),
         422: OpenApiResponse(description="Inverted date range"),
     },
 )
@@ -51,19 +57,43 @@ class PaymentsReportAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
         query = ReportQuerySerializer(data=request.query_params)
-        # ?export=... raises ExportNotSupportedException here, before any
-        # service work and before any row is read.
+        # An unrecognised ?export= is a 400 here, before any service work —
+        # the format is validated rather than guessed at.
         query.is_valid(raise_exception=True)
         data = query.validated_data
 
+        fmt = data.get("export")
+        account = self.account(request)
+
         result = self.service.payments_report(
-            user=self.account(request),
+            user=account,
             vendor_id=data.get("vendor"),
             date_from=data.get("date_from"),
             date_to=data.get("date_to"),
-            page=data["page"],
-            page_size=data["pageSize"],
+            page=1 if fmt else data["page"],
+            # An export is the whole filtered set, not the page the user
+            # happened to be on. Capped, and the cap is disclosed in the file.
+            page_size=MAX_EXPORT_ROWS if fmt else data["pageSize"],
         )
+
+        if fmt:
+            vendor_id = result["filters"].get("vendor")
+
+            return payments_export(
+                fmt=fmt,
+                result=result,
+                filters={
+                    "date_from": data.get("date_from"),
+                    "date_to": data.get("date_to"),
+                    "vendor_name": (
+                        Vendor.objects.filter(id=vendor_id)
+                        .values_list("name", flat=True)
+                        .first()
+                        if vendor_id
+                        else None
+                    ),
+                },
+            )
 
         # One message for both the populated and the empty case — totals.count
         # == 0 is the signal, so a client never branches on prose.
@@ -88,7 +118,7 @@ class PaymentsReportAPIView(AccountScopedMixin, BaseAPIView):
         200: Form1099ResponseSerializer,
         401: UNAUTHORIZED_RESPONSE,
         403: OpenApiResponse(description="Plan does not include 1099 reporting"),
-        405: OpenApiResponse(description="Export is not supported yet"),
+        400: OpenApiResponse(description="Unsupported export format"),
     },
 )
 class Form1099ReportAPIView(AccountScopedMixin, BaseAPIView):
@@ -106,10 +136,14 @@ class Form1099ReportAPIView(AccountScopedMixin, BaseAPIView):
 
         query = Form1099QuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
+        fmt = query.validated_data.get("export")
 
         result = self.service.vendor_1099(
             user=self.account(request), year=query.validated_data.get("year")
         )
+
+        if fmt:
+            return form_1099_export(fmt=fmt, result=result)
 
         return ApiResponse.success(
             data=Form1099ResponseSerializer(result).data,

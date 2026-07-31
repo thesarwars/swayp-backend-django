@@ -132,7 +132,7 @@ class BillingProviderService:
     # --- subscription lifecycle -------------------------------------------
 
     @transaction.atomic
-    def start(self, subscription, *, payment_method_id=""):
+    def start(self, subscription, *, payment_method_id="", trial_days=0):
         """Open the provider-side subscription.
 
         Raises on failure, so the surrounding transaction rolls the Swayp
@@ -147,6 +147,11 @@ class BillingProviderService:
                 customer_id=self.customer_id(subscription),
                 price_id=self.price_id(subscription.plan),
                 payment_method_id=payment_method_id,
+                # Stripe holds the first charge for this many days. Passing it
+                # here rather than scheduling our own is what makes "no card
+                # needed" true: a trialling subscription is valid without a
+                # payment method until the trial ends.
+                trial_days=trial_days,
                 # One provider subscription per Swayp subscription, so a
                 # retried request cannot open a second one and bill twice.
                 idempotency_key=f"sub:{subscription.pk}",

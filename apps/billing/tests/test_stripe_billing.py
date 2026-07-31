@@ -82,11 +82,13 @@ class CollectingStub(SubscriptionBillingProvider):
         )
 
     def create_subscription(self, *, customer_id, price_id,
-                            payment_method_id="", idempotency_key=""):
+                            payment_method_id="", trial_days=0,
+                            idempotency_key=""):
         self._record(
             "create_subscription",
             price_id=price_id,
             payment_method_id=payment_method_id,
+            trial_days=trial_days,
             idempotency_key=idempotency_key,
         )
 

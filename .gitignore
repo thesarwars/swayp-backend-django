@@ -19,3 +19,4 @@ celerybeat.pid
 # docs/
 
 .DS_Store
+.claude/

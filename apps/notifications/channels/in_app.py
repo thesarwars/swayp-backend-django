@@ -1,9 +1,14 @@
+import functools
+
+from django.db import transaction
+
 from apps.notifications.channels.base import (
     IN_APP,
     SENT,
     NotificationChannel,
 )
 from apps.notifications.models import Notification
+from apps.notifications.realtime import broadcast
 
 
 class InAppChannel(NotificationChannel):
@@ -35,4 +40,38 @@ class InAppChannel(NotificationChannel):
 
         dispatch.notification = Notification.objects.create(**fields)
 
+        # The live push of this same row (E8-S5). Deliberately here rather
+        # than as its own channel: the socket is a transport for the in-app
+        # notification, not a separate destination a user could subscribe to
+        # independently. A user with in_app switched off reaches neither,
+        # which is the preference being honoured once, where it is owned.
+        #
+        # on_commit because a browser must never be shown a row that is about
+        # to be rolled back — and because broadcasting inside the transaction
+        # would put a Redis round-trip on the payment path.
+        transaction.on_commit(
+            functools.partial(
+                self._broadcast,
+                user_id=dispatch.user.pk,
+                notification=dispatch.notification,
+            )
+        )
+
         return SENT
+
+    @staticmethod
+    def _broadcast(*, user_id, notification):
+        """Serialised here, not in the consumer, so the socket payload and
+        ``GET /notifications/`` are built from one row and cannot drift."""
+        broadcast(
+            user_id=user_id,
+            payload={
+                "id": str(notification.pk),
+                "type": notification.type,
+                "title": notification.title,
+                "message": notification.message,
+                "isRead": notification.is_read,
+                "createdAt": notification.created_at.isoformat(),
+                "metadata": notification.metadata or {},
+            },
+        )

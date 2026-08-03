@@ -70,6 +70,8 @@ DJANGO_APPS = [
     # and staticfiles replaces it too. Whichever is listed first wins, so with
     # these the other way round `runserver` is WSGI and every WebSocket in
     # development fails to connect while production works.
+    "daphne",
+    "channels",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -161,7 +163,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# ASGI_APPLICATION = "config.asgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -519,6 +521,48 @@ PUSH_ENABLED = env.bool("PUSH_ENABLED", default=False)
 FCM_CREDENTIALS_JSON = env("FCM_CREDENTIALS_JSON", default="")
 FCM_CREDENTIALS_FILE = env("FCM_CREDENTIALS_FILE", default="")
 
+
+# --- Realtime (E8-S5) ------------------------------------------------------
+
+# WebSocket fan-out for live in-app updates. Off by default so the WSGI
+# deployment keeps working untouched: the socket needs an ASGI server, and a
+# stack running gunicorn alone would otherwise advertise an endpoint that
+# cannot connect.
+REALTIME_ENABLED = env.bool("REALTIME_ENABLED", default=False)
+
+# Redis carries the fan-out between processes. Without a shared layer, a
+# notification written by the Celery worker could only reach a browser
+# connected to that same process — which, with more than one worker, means
+# most of the time it reaches nobody.
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                {
+                    "address": env(
+                        "REDIS_URL", default="redis://localhost:6379/0"
+                    ),
+                    # channels_redis waits for messages with BRPOP and a
+                    # 5-second block. Without a longer socket timeout the
+                    # client's own read deadline fires first and raises
+                    # redis.TimeoutError instead of the pop simply returning
+                    # empty — which kills the consumer with a 1011 the moment
+                    # a socket sits idle for a few seconds. It survives the
+                    # handshake and every ping, so it looks like the feature
+                    # works right up until the first real notification.
+                    "socket_timeout": 20,
+                    "socket_connect_timeout": 5,
+                    # A WebSocket connection is long-lived and mostly idle,
+                    # which is exactly what NAT and cloud load balancers drop
+                    # silently.
+                    "socket_keepalive": True,
+                    "health_check_interval": 30,
+                }
+            ],
+        },
+    }
+}
 
 
 # --- Reminder + late-fee notifier (E8-S4) --------------------------------

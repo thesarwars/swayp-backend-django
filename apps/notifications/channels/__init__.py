@@ -16,18 +16,20 @@ from .base import (
 )
 from .email import EmailChannel
 from .in_app import InAppChannel
+from .push import PushChannel
 
 #: InAppChannel FIRST, and the order is load-bearing rather than stylistic:
 #: the in-app write is the durable record and, from E8-S4, the row that claims
 #: the dedupe key — so it has to resolve before any external channel is
 #: dispatched, or an email goes out for an event a unique-key collision was
 #: about to reject.
-CHANNELS = (InAppChannel(), EmailChannel())
+CHANNELS = (InAppChannel(), EmailChannel(), PushChannel())
 
 SUPPORTED_KEYS = {channel.key for channel in CHANNELS}
 
-#: Preference column -> channel, for the ones that have an adapter. SMS and
-#: push are absent by construction: there is no class to register.
+#: Preference column -> channel, for the ones that have an adapter. SMS is
+#: absent by construction: there is no class to register. Push joined in
+#: E8-S5, which is why nothing here names it — membership is derived.
 BY_FIELD = {channel.preference_field: channel for channel in CHANNELS}
 
 __all__ = [
@@ -50,4 +52,5 @@ __all__ = [
     "EmailChannel",
     "InAppChannel",
     "NotificationChannel",
+    "PushChannel",
 ]

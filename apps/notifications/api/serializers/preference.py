@@ -36,35 +36,42 @@ class NotificationPreferenceUpdateItemSerializer(serializers.Serializer):
     type = serializers.ChoiceField(choices=NotificationType.choices)
     inApp = serializers.BooleanField(source="in_app", required=False)
     email = serializers.BooleanField(required=False)
-    # sms/push are declared and refused rather than omitted: DRF drops unknown
-    # keys silently, so a client toggling SMS would get 200 and no effect —
-    # the silent-claim failure this story exists to prevent. false is accepted
-    # so a client can send its whole state back alongside inApp/email, but it
-    # cannot be the only thing an item names — see validate().
+    # sms/push are declared rather than omitted: DRF drops unknown keys
+    # silently, so a client toggling one would get 200 and no effect — the
+    # silent-claim failure this story exists to prevent. Whether switching one
+    # ON is allowed is asked of the channel registry below, never hard-coded,
+    # so registering an adapter is the single act that enables a channel.
     sms = serializers.BooleanField(required=False)
     push = serializers.BooleanField(required=False)
 
-    def validate_sms(self, value):
-        if value:
+    @staticmethod
+    def _refuse_unless_deliverable(field, label, value):
+        """Reject switching on a channel with no adapter registered.
+
+        Asked of BY_FIELD rather than written as a constant, so this guard
+        disarms itself the moment a channel is registered instead of having
+        to be found and deleted — the same reasoning as
+        dedupe_key_is_storable() in the dispatch service. Push became
+        deliverable in E8-S5 by exactly this route.
+        """
+        if value and field not in BY_FIELD:
             raise serializers.ValidationError(
-                "SMS delivery is not available in this release."
+                f"{label} delivery is not available in this release."
             )
 
         return value
+
+    def validate_sms(self, value):
+        return self._refuse_unless_deliverable("sms", "SMS", value)
 
     def validate_push(self, value):
-        if value:
-            raise serializers.ValidationError(
-                "Push delivery is not available in this release."
-            )
-
-        return value
+        return self._refuse_unless_deliverable("push", "Push", value)
 
     def validate(self, attrs):
         # At least one channel that has a delivery adapter — not merely at
-        # least one key. sms/push can only ever be false (validate_sms and
-        # validate_push refuse true), so an item naming only those is
-        # indistinguishable from an item naming no channel at all: nothing
+        # least one key. A channel with no adapter can only ever be false
+        # (validate_sms / validate_push refuse true), so an item naming only
+        # those is indistinguishable from one naming no channel at all: nothing
         # the user can perceive changes. Letting it through would still upsert
         # a row, which permanently flips isDefault to false for that type and
         # pins every other channel at today's defaults — destroying the

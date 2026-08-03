@@ -65,6 +65,11 @@ SPECTACULAR_SETTINGS = {
 }
 
 DJANGO_APPS = [
+    # Before django.contrib.staticfiles, and that order is required rather
+    # than stylistic: daphne replaces the runserver command with an ASGI one,
+    # and staticfiles replaces it too. Whichever is listed first wins, so with
+    # these the other way round `runserver` is WSGI and every WebSocket in
+    # development fails to connect while production works.
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -486,6 +491,34 @@ PASSWORD_HISTORY_KEEP = env.int("PASSWORD_HISTORY_KEEP", default=5)
 NOTIFICATION_EMAIL_ENABLED = env.bool(
     "NOTIFICATION_EMAIL_ENABLED", default=False
 )
+
+
+# --- Push notifications (E8-S5) -------------------------------------------
+
+# Firebase Cloud Messaging reaches iOS, Android and the browser Push API
+# through one integration, so there is a single provider here rather than one
+# per platform. "mock" delivers nothing and is the default, in the same
+# spirit as every other provider seam: the product runs without a Firebase
+# project, and going live is a credential in .env.
+PUSH_PROVIDER = env("PUSH_PROVIDER", default="mock")
+
+# The release switch, and it carries the SAME hard precondition as
+# NOTIFICATION_EMAIL_ENABLED above: reminder idempotency lives on the
+# Notification row, and a user with in_app switched off has no row — so with
+# this on, that user is re-pushed every single day. A NotificationDispatch
+# ledger must land before this is turned on anywhere.
+#
+# Off by default also means an unconfigured deployment cannot page a customer
+# at 3am with a test notification.
+PUSH_ENABLED = env.bool("PUSH_ENABLED", default=False)
+
+# Service-account credentials, needed only when PUSH_PROVIDER=fcm. Either an
+# inline JSON blob (platforms that only have env vars) or a path to the file
+# (servers with a mounted secret) — the two deployment styles genuinely
+# differ, and forcing one to fake the other is how credentials get committed.
+FCM_CREDENTIALS_JSON = env("FCM_CREDENTIALS_JSON", default="")
+FCM_CREDENTIALS_FILE = env("FCM_CREDENTIALS_FILE", default="")
+
 
 
 # --- Reminder + late-fee notifier (E8-S4) --------------------------------

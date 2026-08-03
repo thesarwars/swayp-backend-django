@@ -16,6 +16,7 @@ from integrations.llm.template import TemplateLLMProvider
 from integrations.messaging.django_email import DjangoEmailMessagingProvider
 from integrations.messaging.mock import MockMessagingProvider
 from integrations.money_movement.mock import MockMoneyMovementProvider
+from integrations.push.mock import MockPushProvider
 from integrations.subscription_billing.mock import (
     MockSubscriptionBillingProvider,
 )
@@ -41,6 +42,9 @@ _REGISTRY = {
     # actually selected, so a deployment running on mock does not require
     # the package to be installed.
     "subscription_billing": {"mock": MockSubscriptionBillingProvider},
+    # "fcm" is imported lazily for the same reason — firebase-admin is only
+    # needed when push is actually switched on.
+    "push": {"mock": MockPushProvider},
 }
 
 _SETTING = {
@@ -51,6 +55,7 @@ _SETTING = {
     "llm": "LLM_PROVIDER",
     "messaging": "MESSAGING_PROVIDER",
     "subscription_billing": "SUBSCRIPTION_BILLING_PROVIDER",
+    "push": "PUSH_PROVIDER",
 }
 
 
@@ -65,6 +70,11 @@ def _resolve(domain: str):
         )
 
         return StripeSubscriptionBillingProvider()
+
+    if domain == "push" and name == "fcm":
+        from integrations.push.fcm import FCMPushProvider
+
+        return FCMPushProvider()
 
     if name not in providers:
         raise NotImplementedError(
@@ -100,3 +110,7 @@ def get_messaging_provider():
 
 def get_subscription_billing_provider():
     return _resolve("subscription_billing")
+
+
+def get_push_provider():
+    return _resolve("push")

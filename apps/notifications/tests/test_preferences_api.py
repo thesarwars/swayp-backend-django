@@ -145,8 +145,8 @@ class NotificationPreferencesAPITests(TestCase):
         self.assertEqual(refused.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(NotificationPreference.objects.count(), 0)
 
-        # A client may still send its whole state back — sms/push off is fine
-        # alongside a channel that can actually change.
+        # A client may still send its whole state back — a channel with no
+        # adapter, switched off, is fine alongside one that can change.
         accepted = self.client.patch(
             PREFERENCES_URL,
             {
@@ -184,7 +184,10 @@ class NotificationPreferencesAPITests(TestCase):
         self.assertTrue(channels["email"]["supported"])
         self.assertFalse(channels["email"]["enabled"])
         self.assertFalse(channels["sms"]["supported"])
-        self.assertFalse(channels["push"]["supported"])
+        # Push has an adapter from E8-S5 and its own release gate, so it now
+        # reads the same way email does: supported, not yet enabled.
+        self.assertTrue(channels["push"]["supported"])
+        self.assertFalse(channels["push"]["enabled"])
 
     def test_patch_rejects_the_same_type_twice_in_one_payload(self):
         response = self.client.patch(
@@ -212,16 +215,20 @@ class NotificationPreferencesAPITests(TestCase):
         self.assertEqual(NotificationPreference.objects.count(), 0)
 
     def test_patch_rejects_an_item_that_could_not_change_anything(self):
-        """sms/push-only is the same request as naming no channel at all.
+        """An item naming only a channel with no adapter is the same request
+        as naming no channel at all.
 
-        Both can only ever be false, so nothing the user can perceive would
+        It can only ever be false, so nothing the user can perceive would
         change — but the upsert would still write a row, which flips
-        isDefault to false for that type forever and pins inApp and email to
-        whatever the defaults happen to be today. That is precisely the
+        isDefault to false for that type forever and pins the other channels
+        to whatever the defaults happen to be today. That is precisely the
         outcome the never-writes-on-read design exists to prevent, arrived at
         through the back door.
+
+        Only sms now: push became deliverable in E8-S5, so {"push": False} is
+        a real state change a client may legitimately send on its own.
         """
-        for payload in ({"sms": False}, {"push": False}):
+        for payload in ({"sms": False},):
             with self.subTest(payload=payload):
                 response = self.client.patch(
                     PREFERENCES_URL,

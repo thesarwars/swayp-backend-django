@@ -74,9 +74,13 @@ class ChannelRegistryTests(TestCase):
         claims the dedupe key — so it has to resolve before an email is
         queued for an event a key collision is about to reject.
         """
-        self.assertEqual(len(CHANNELS), 2)
+        # Asserted as a position, not a count: E8-S5 registered PushChannel
+        # and a count here would have failed for a change that respects the
+        # very rule this test exists to protect.
         self.assertIsInstance(CHANNELS[0], InAppChannel)
-        self.assertIsInstance(CHANNELS[1], EmailChannel)
+        self.assertIn(
+            EmailChannel, {type(channel) for channel in CHANNELS[1:]}
+        )
 
     def test_every_preference_column_has_a_channel_key(self):
         self.assertEqual(tuple(FIELD_TO_KEY), CHANNEL_FIELDS)
@@ -154,12 +158,15 @@ class NotifyTests(TestCase):
                             "IN_APP": expected_in_app[in_app],
                             "EMAIL": expected_email[email],
                             "SMS": UNSUPPORTED,
-                            "PUSH": UNSUPPORTED,
+                            # Registered in E8-S5, so no longer "no adapter".
+                            # The preference defaults to off, which is why it
+                            # is skipped rather than disabled here.
+                            "PUSH": SKIPPED_BY_PREFERENCE,
                         },
                     )
 
     @override_settings(NOTIFICATION_EMAIL_ENABLED=True)
-    def test_notify_never_reports_sms_or_push_as_sent(self):
+    def test_notify_never_reports_an_undeliverable_channel_as_sent(self):
         # Forced on at the ORM level, bypassing the API that refuses them.
         NotificationPreference.objects.create(
             user=self.user,
@@ -176,13 +183,19 @@ class NotifyTests(TestCase):
                     self.user, NotificationType.BILL_DUE, BILL_DUE_CONTEXT
                 )
 
+        # SMS still has no adapter at all. Push has one from E8-S5 but the
+        # kill switch is off by default, so it reports DISABLED — a different
+        # reason for the same guarantee: neither says "sent".
         self.assertEqual(result.outcomes["SMS"], UNSUPPORTED)
-        self.assertEqual(result.outcomes["PUSH"], UNSUPPORTED)
+        self.assertEqual(result.outcomes["PUSH"], DISABLED)
         self.assertEqual(
             {message.channel for message in provider.messages}, {"EMAIL"}
         )
         # Structural, not conditional: there is no SmsChannel to reach.
-        self.assertEqual(SUPPORTED_KEYS, {"IN_APP", "EMAIL"})
+        # PUSH joined in E8-S5. SMS is the one still absent, and its
+        # absence is the point: a key is here only when a class is registered.
+        self.assertEqual(SUPPORTED_KEYS, {"IN_APP", "EMAIL", "PUSH"})
+        self.assertNotIn("SMS", SUPPORTED_KEYS)
 
     def test_email_is_not_attempted_while_the_flag_is_off(self):
         provider = SpyMessagingProvider()

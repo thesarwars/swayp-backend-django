@@ -74,3 +74,60 @@ def bill_status_notifier():
     # bill_due + late_fee is a *send* count: an emission every channel was off
     # for lands in skipped_no_channel and is deliberately not in this number.
     return report["bill_due"] + report["late_fee"]
+
+
+@shared_task(name="notifications.send_push")
+def send_push(*, user_id, title, body, data=None, notification_type=""):
+    """Deliver one notification to every active device a user has. Never raises.
+
+    The token list is read here rather than passed in, and that is deliberate:
+    the task can run seconds after the caller committed, and a device
+    registered or signed out in between should be respected. Passing a frozen
+    list would send to a device the user has just signed out of.
+    """
+    if not settings.PUSH_ENABLED:
+        return "disabled"
+
+    # Imported inside the task for the reason given at the top of this module:
+    # the channels package imports this one, so importing it at module scope
+    # is a cycle Celery's autodiscovery would hit first.
+    from apps.notifications.services.device_service import DeviceService
+    from integrations.factory import get_push_provider
+    from integrations.push.base import PushMessage
+
+    devices = DeviceService()
+    tokens = devices.active_tokens_for_id(user_id)
+
+    if not tokens:
+        return "no_devices"
+
+    provider = get_push_provider()
+
+    if not provider.is_configured():
+        logger.error("push: provider %s is not configured", provider.name)
+        return "unconfigured"
+
+    result = provider.send(
+        PushMessage(
+            tokens=tokens,
+            title=title,
+            body=body,
+            data=data or {},
+        )
+    )
+
+    # The provider is the only party that learns a device is gone. Acting on
+    # it here is what stops the table filling with tokens that can never be
+    # delivered to and are retried on every notification forever.
+    if result.rejected_tokens:
+        deactivated = devices.deactivate_tokens(tokens=result.rejected_tokens)
+        logger.info(
+            "push: deactivated %s dead token(s) for %s",
+            deactivated,
+            notification_type,
+        )
+
+    if result.sent:
+        return "sent"
+
+    return "failed"

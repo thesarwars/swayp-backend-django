@@ -96,6 +96,34 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # WebSockets only, and deliberately a separate process from `web`.
+  #
+  # The alternative — moving `web` to an ASGI server — would put every
+  # existing sync view behind a threadpool, changing the request path of the
+  # entire API to add one feature. Splitting keeps HTTP on exactly the stack
+  # that is already tested and deployed, and means daphne falling over costs
+  # live updates rather than the product.
+  #
+  # nginx routes /ws/ here and everything else to web (see docs/deployment.md).
+  # Scaling is safe: the Redis channel layer is what lets a notification
+  # written by any process reach a browser connected to any other.
+  websocket:
+    <<: *django
+    container_name: swayp-websocket
+    command: >
+      daphne -b 0.0.0.0 -p 5011
+      --proxy-headers
+      config.asgi:application
+    ports:
+      - "${APP_BIND:-127.0.0.1}:${WS_PORT:-5011}:5011"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
   celery-worker:
     <<: *django
     container_name: swayp-celery-worker

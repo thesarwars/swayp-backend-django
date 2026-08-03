@@ -10,17 +10,25 @@ health endpoints, and the compose file were each exercised, not just written.
 
 ## 1. What runs where
 
-Five containers, one image:
+Six containers, one image:
 
 | Service | What it does | Published? |
 |---|---|---|
 | `web` | Gunicorn serving the API | `127.0.0.1:5010` only |
+| `websocket` | Daphne serving `/ws/` only | `127.0.0.1:5011` only |
 | `worker` | Celery — emails, check mailing, webhook side effects | no |
 | `beat` | Celery beat — the nightly jobs (see §7) | no |
 | `db` | Postgres 16 | **no** |
 | `redis` | Redis 7 — Celery broker | **no** |
 
-`migrate` is a sixth, short-lived service that runs once and exits.
+`migrate` is a seventh, short-lived service that runs once and exits.
+
+`websocket` is separate from `web` on purpose. Serving the whole API from an
+ASGI server would put every existing synchronous view behind a threadpool —
+changing the request path of the entire product to add one feature. Splitting
+them keeps HTTP on exactly the stack that is already tested, and means daphne
+falling over costs live updates rather than the API. It is also optional: with
+`REALTIME_ENABLED=false` you can simply not run it.
 
 **Postgres and Redis are deliberately not published to the host.** They talk to
 `web` over the private compose network, which is all they need. Publishing
@@ -44,8 +52,9 @@ the app.
 To change either half, set them in `.env` — no file edits:
 
 ```bash
-APP_PORT=5010          # host port
-APP_BIND=127.0.0.1     # host interface
+APP_PORT=5010          # host port for the API
+WS_PORT=5011           # host port for WebSockets
+APP_BIND=127.0.0.1     # host interface for both
 ```
 
 Set `APP_BIND=0.0.0.0` only if something else already terminates TLS in front
@@ -120,10 +129,12 @@ curl -s localhost:5010/readyz     # {"status":"ok","database":true}
 
 ## 5. TLS and the reverse proxy
 
-Caddy is the shorter path — it obtains and renews the certificate itself:
+Caddy is the shorter path — it obtains and renews the certificate itself,
+and needs no WebSocket-specific configuration beyond the second route:
 
 ```caddy
 api.getswayp.com {
+    reverse_proxy /ws/* 127.0.0.1:5011
     reverse_proxy 127.0.0.1:5010
 }
 ```
@@ -147,6 +158,24 @@ server {
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;   # required
     }
+
+    # WebSockets go to daphne, not gunicorn. The Upgrade and Connection
+    # headers are what turn an HTTP request into a socket; without them nginx
+    # proxies it as an ordinary request and the client sees a 400 it cannot
+    # explain. read_timeout must exceed the client's ping interval, or a quiet
+    # but healthy connection is dropped every 60 seconds.
+    location /ws/ {
+        proxy_pass http://127.0.0.1:5011;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        "upgrade";
+        proxy_set_header Host              $host;
+        proxy_set_header Origin            $http_origin;   # origin validation
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300s;
+    }
 }
 ```
 
@@ -166,6 +195,45 @@ DJANGO_HSTS_SECONDS=31536000
 Setting it early is the one mistake here that is genuinely hard to undo:
 browsers cache the instruction for the full year and will refuse plain HTTP to
 any subdomain for that long, whatever you serve afterwards.
+
+## 5b. Notifications: push and realtime
+
+Both are **off by default** and each is one variable.
+
+### Push (mobile + web)
+
+Firebase Cloud Messaging reaches iOS, Android and the browser Push API through
+one integration, so there is a single credential rather than one per platform.
+
+```bash
+PUSH_PROVIDER=fcm
+PUSH_ENABLED=true
+FCM_CREDENTIALS_FILE=/run/secrets/firebase.json   # or FCM_CREDENTIALS_JSON={...}
+```
+
+Get the file from the Firebase console: *Project settings → Service accounts →
+Generate new private key*. Mount it read-only; it is a credential, not config.
+
+**Before turning `PUSH_ENABLED` on, read the warning in `config/settings/base.py`
+above the flag.** Reminder idempotency lives on the `Notification` row, and a
+user who has in-app notifications switched off has no row — so with push on,
+that user is re-notified every single day. The same precondition already
+applies to `NOTIFICATION_EMAIL_ENABLED`.
+
+### Realtime (live in-app updates)
+
+```bash
+REALTIME_ENABLED=true
+```
+
+Then run the `websocket` service and add the `/ws/` proxy route above. Redis
+carries the fan-out, so a notification written by the Celery worker reaches a
+browser connected to the daphne process — without a shared channel layer it
+would reach nobody most of the time.
+
+With `REALTIME_ENABLED=false` the socket refuses connections with code `4503`
+rather than accepting and staying silent, so a misconfiguration is visible to
+the client instead of looking like a backend that is broken.
 
 ## 6. Health checks
 
@@ -250,7 +318,10 @@ database before you need to.
       secret in `.env`; send a test event and confirm a `200`
 - [ ] `beat` is in `docker compose ps` and stays up
 - [ ] `pg_dump` scheduled, and one restore actually tried
-- [ ] Only 22/80/443 open on the host firewall — **not 5010, 5432, or 6379**
+- [ ] Only 22/80/443 open on the host firewall — **not 5010, 5011, 5432, or 6379**
+- [ ] If realtime is on: `websocket` is up, and a browser can open
+      `wss://api.getswayp.com/ws/notifications/?token=…`
+- [ ] If push is on: a test notification arrives on a real device
 - [ ] `DJANGO_HSTS_SECONDS` set, after HTTPS is confirmed (§5)
 
 ## 10. When something is wrong

@@ -60,6 +60,15 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
+      # Dev defaults: Redis is in this stack, so the socket works without any
+      # extra setup. Production leaves both off and turns them on in .env.
+      #
+      # Set on EVERY app service, not just web. The push send runs in the
+      # Celery worker and re-checks the flag there, so setting it only here
+      # produced a task that ran, reported "disabled", and delivered nothing —
+      # with no error anywhere to say why.
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -83,6 +92,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -109,6 +120,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       REDIS_URL: redis://redis:6379/0
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy

@@ -5,6 +5,7 @@ from drf_spectacular.utils import (
 )
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
+from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.password_reset import (
     ForgotPasswordSerializer,
@@ -49,10 +50,13 @@ class ForgotPasswordView(PublicAPIView):
             serializer.user
         )
 
+        email = mask_email(serializer.user.email)
+
         return Response(
             {
                 "success": True,
-                "message": "OTP sent successfully.",
+                "message": f"OTP has been sent to {email}.",
+                "data": {"email": email},
             }
         )
 

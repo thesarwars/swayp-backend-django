@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
 from rest_framework import status
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
+from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.otp import (
     ResendOTPSerializer,
@@ -43,16 +44,21 @@ class ResendOTPView(PublicAPIView):
 
         serializer.is_valid(raise_exception=True)
 
+        user = serializer.validated_data["user"]
+
         ResendOTPService.resend(
-            serializer.validated_data["user"],
+            user,
             serializer.validated_data["purpose"],
             channel=serializer.validated_data.get("channel"),
         )
 
+        email = mask_email(user.email)
+
         return Response(
             {
                 "success": True,
-                "message": "OTP sent successfully.",
+                "message": f"OTP has been sent to {email}.",
+                "data": {"email": email},
             },
             status=status.HTTP_200_OK,
         )

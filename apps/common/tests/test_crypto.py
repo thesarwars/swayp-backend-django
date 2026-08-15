@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.common.crypto import (
     EncryptedTextField,
     SensitiveCharField,
+    mask_email,
     mask_last4,
     reject_masked_value,
 )
@@ -22,6 +23,33 @@ class MaskingTests(SimpleTestCase):
         with self.assertRaises(serializers.ValidationError):
             reject_masked_value("****0821")
         self.assertEqual(reject_masked_value("021540821"), "021540821")
+
+
+class EmailMaskingTests(SimpleTestCase):
+
+    def test_the_local_part_keeps_only_its_two_ends(self):
+        self.assertEqual(
+            mask_email("xylophone@gmail.com"), "x***e@gmail.com"
+        )
+
+    def test_the_domain_survives_whole(self):
+        # It is what tells the user which inbox to open.
+        self.assertEqual(
+            mask_email("someone@mail.getswayp.co.uk"),
+            "s***e@mail.getswayp.co.uk",
+        )
+
+    def test_a_short_local_part_keeps_only_its_first_character(self):
+        # "ab" masked to "a***b" would spell out the whole thing.
+        self.assertEqual(mask_email("ab@gmail.com"), "a***@gmail.com")
+        self.assertEqual(mask_email("a@gmail.com"), "a***@gmail.com")
+
+    def test_nothing_to_mask(self):
+        self.assertEqual(mask_email(""), "")
+        self.assertEqual(mask_email(None), "")
+
+    def test_a_value_with_no_at_sign_is_left_alone(self):
+        self.assertEqual(mask_email("not-an-address"), "not-an-address")
 
 
 class _AchSerializer(serializers.Serializer):

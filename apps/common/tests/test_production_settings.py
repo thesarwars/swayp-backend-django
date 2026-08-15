@@ -156,12 +156,34 @@ class TransportSecurityTests(SimpleTestCase):
         self.assertTrue(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
         self.assertTrue(settings.SECURE_HSTS_PRELOAD)
 
-    def test_csrf_trusted_origins_follow_cors(self):
+    def test_csrf_trusted_origins_cover_cors(self):
         """Derived rather than configured twice, so they cannot drift."""
         settings = load()
 
+        for origin in settings.CORS_ALLOWED_ORIGINS:
+            self.assertIn(origin, settings.CSRF_TRUSTED_ORIGINS)
+
+    def test_a_csrf_only_origin_is_trusted_without_widening_cors(self):
+        """The host serving the admin and the docs is same-origin.
+
+        It needs CSRF trust, and putting it in the CORS allow-list to buy
+        that would widen the setting that says who else may call this API.
+        """
+        settings = load(CSRF_TRUSTED_ORIGINS="https://swayp.jumatechs.xyz")
+
+        self.assertIn(
+            "https://swayp.jumatechs.xyz", settings.CSRF_TRUSTED_ORIGINS
+        )
+        self.assertNotIn(
+            "https://swayp.jumatechs.xyz", settings.CORS_ALLOWED_ORIGINS
+        )
+
+    def test_the_origins_are_not_duplicated(self):
+        settings = load(CSRF_TRUSTED_ORIGINS="https://app.getswayp.com")
+
         self.assertEqual(
-            settings.CSRF_TRUSTED_ORIGINS, settings.CORS_ALLOWED_ORIGINS
+            len(settings.CSRF_TRUSTED_ORIGINS),
+            len(set(settings.CSRF_TRUSTED_ORIGINS)),
         )
 
 

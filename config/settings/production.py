@@ -90,8 +90,14 @@ CORS_ALLOWED_ORIGINS = _require_list(
 )
 CORS_ALLOW_CREDENTIALS = True
 
-# Derived from the CORS list so the two cannot drift apart.
-CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+# Every CORS origin is trusted for CSRF too, so the two cannot drift apart —
+# plus whatever base.py carries, which is where a domain that needs CSRF trust
+# without CORS goes. The host serving the admin and the docs is one: it is
+# same-origin, so adding it to the CORS allow-list to buy CSRF trust would
+# widen the wrong setting.
+CSRF_TRUSTED_ORIGINS = list(
+    dict.fromkeys(CORS_ALLOWED_ORIGINS + CSRF_TRUSTED_ORIGINS)  # noqa: F405
+)
 
 # --- transport -------------------------------------------------------------
 

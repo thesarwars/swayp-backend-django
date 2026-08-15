@@ -285,6 +285,20 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# Django checks the Origin header against this list on every unsafe request
+# that arrives over HTTPS. A deployed domain missing from it fails admin
+# logins and Swagger "Try it out" POSTs with "Origin checking failed — does
+# not match any trusted origins", while curl against the same endpoint works
+# — which sends you looking at the view instead of the setting.
+#
+# Not the same list as CORS. CORS is about which *other* origins may call us;
+# this is about our own domains, and the domain serving the admin and the docs
+# is same-origin, so it never appears in a CORS allow-list.
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    default=["https://swayp.jumatechs.xyz"],
+)
+
 # Failed-login lockout (E2). The User model has carried
 # failed_login_attempts and locked_until since the first migration with
 # nothing reading them, which left password guessing unbounded.

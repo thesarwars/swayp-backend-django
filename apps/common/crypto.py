@@ -44,6 +44,33 @@ def masked_representation(value: str | None) -> str:
     return mask_last4(value)
 
 
+def mask_email(value: str | None, width: int = 3) -> str:
+    """Return an address with the local part reduced to its two ends.
+
+    ``mask_email("xylophone@gmail.com")`` -> ``"x***e@gmail.com"``. The domain
+    is kept whole: it is what tells the user *which inbox* to open, which is
+    the entire point of echoing the address back, and it is not the secret —
+    the identity in front of the ``@`` is.
+
+    A local part of two characters or fewer has no middle to hide, so only its
+    first character survives; masking it to ``a***b`` would spell the whole
+    thing out. Anything without an ``@`` is returned untouched rather than
+    guessed at.
+    """
+    if not value:
+        return ""
+
+    local, sep, domain = str(value).partition("@")
+
+    if not sep:
+        return value
+
+    if len(local) <= 2:
+        return f"{local[:1]}{MASK_CHAR * width}@{domain}"
+
+    return f"{local[0]}{MASK_CHAR * width}{local[-1]}@{domain}"
+
+
 def reject_masked_value(value: str) -> str:
     """Reject a value that looks like a masked echo (contains ``*``)."""
     if value and MASK_CHAR in value:

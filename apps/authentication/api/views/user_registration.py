@@ -6,6 +6,7 @@ from drf_spectacular.utils import (
 from rest_framework import status
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
+from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.user_registration import (
     RegisterSerializer,
@@ -50,12 +51,21 @@ class RegisterView(PublicAPIView):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        RegistrationService.register(serializer.validated_data)
+        user = RegistrationService.register(serializer.validated_data)
+
+        # Masked, and carried in ``data`` as well as the sentence: the screen
+        # needs the address to render "check x***e@gmail.com" without parsing
+        # English, and a client that echoes a full address back onto a shared
+        # screen leaks it to whoever is looking.
+        email = mask_email(user.email)
 
         return Response(
             {
                 "success": True,
-                "message": "Registration successful. OTP has been sent.",
+                "message": (
+                    f"Registration successful. OTP has been sent to {email}."
+                ),
+                "data": {"email": email},
             },
             status=status.HTTP_201_CREATED,
         )

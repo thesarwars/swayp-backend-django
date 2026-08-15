@@ -18,7 +18,7 @@ from apps.users.models.profile import AccountType, Profile
 from apps.users.services.profile_service import ProfileService
 from apps.vendors.factories import UserFactory
 
-URL = "/api/v1/users/profile/"
+URL = "/api/v1/users/profile"
 
 
 class ProfileReadTests(TestCase):

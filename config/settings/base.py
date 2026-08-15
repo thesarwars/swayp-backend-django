@@ -139,6 +139,16 @@ SIMPLE_JWT = {
 
 ROOT_URLCONF = "config.urls"
 
+# Routes carry no trailing slash, so there is nothing for CommonMiddleware to
+# append: with this left on, a request to an unmatched URL would be redirected
+# to the same URL plus a slash, which now matches nothing either — a 301 on the
+# way to a 404, and a 301 that silently turns a POST into a GET.
+#
+# It also tells the system checks that a route may legitimately begin with a
+# slash (urls.W002), which is how each app spells the separator its parent
+# ``include()`` no longer carries.
+APPEND_SLASH = False
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

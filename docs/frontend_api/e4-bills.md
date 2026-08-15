@@ -41,7 +41,7 @@ date rolls over; you never refresh to "catch up".
 ## 3. The list screen
 
 ```
-GET /api/v1/bills/occurrences/?status=&vendor=&date_from=&date_to=&page=1
+GET /api/v1/bills/occurrences?status=&vendor=&date_from=&date_to=&page=1
 ```
 
 ```json
@@ -67,7 +67,7 @@ no second request to render the list.
 ### Summary chips
 
 ```
-GET /api/v1/bills/summary/
+GET /api/v1/bills/summary
 ```
 
 ```json
@@ -81,7 +81,7 @@ GET /api/v1/bills/summary/
 ### Next due
 
 ```
-GET /api/v1/bills/next-due/
+GET /api/v1/bills/next-due
 ```
 
 ```json
@@ -95,7 +95,7 @@ error.
 ### Upcoming only
 
 ```
-GET /api/v1/bills/occurrences/upcoming/
+GET /api/v1/bills/occurrences/upcoming
 ```
 
 Excludes anything already `SCHEDULED` or `PAID`, so it is the "what still
@@ -106,7 +106,7 @@ needs paying" list rather than a date filter.
 ## 4. The bill wizard
 
 ```
-POST /api/v1/bills/create/
+POST /api/v1/bills/create
 ```
 
 ```json
@@ -155,7 +155,7 @@ arrive already generated.
 ## 5. Bill detail
 
 ```
-GET /api/v1/bills/<bill_id>/details/
+GET /api/v1/bills/<bill_id>/details
 ```
 
 ```json
@@ -173,10 +173,10 @@ decimal strings, unlike everywhere else. Coerce.
 `days_overdue` as given.
 
 ```
-PATCH  /api/v1/bills/<bill_id>/update/
-DELETE /api/v1/bills/<bill_id>/details/
-GET    /api/v1/bills/<bill_id>/payments/     ← payment history for this bill
-GET    /api/v1/bills/<bill_id>/invoice/      ← the invoice modal
+PATCH  /api/v1/bills/<bill_id>/update
+DELETE /api/v1/bills/<bill_id>/details
+GET    /api/v1/bills/<bill_id>/payments     ← payment history for this bill
+GET    /api/v1/bills/<bill_id>/invoice      ← the invoice modal
 ```
 
 Deleting is soft: **paid history is preserved**, and changing autopay
@@ -187,7 +187,7 @@ re-captures or revokes the authorization.
 ## 6. Marking a bill paid outside Swayp
 
 ```
-PATCH /api/v1/bills/occurrences/<occurrence_id>/pay/
+PATCH /api/v1/bills/occurrences/<occurrence_id>/pay
 ```
 
 ```json
@@ -205,7 +205,7 @@ This is for bills the user settled elsewhere. To pay *through* Swayp, use
 ## 7. QR
 
 ```
-POST /api/v1/bills/qr/decode/    { "payload": "…" }
+POST /api/v1/bills/qr/decode    { "payload": "…" }
 ```
 
 Same parser and the same **422-on-unreadable** rule as

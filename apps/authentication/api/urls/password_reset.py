@@ -7,13 +7,13 @@ from apps.authentication.api.views.password_reset import (
 
 urlpatterns = [
     path(
-        "forgot-password/",
+        "/forgot-password",
         ForgotPasswordView.as_view(),
         name="forgot-password",
     ),
 
     path(
-        "reset-password/",
+        "/reset-password",
         ResetPasswordView.as_view(),
         name="reset-password",
     ),

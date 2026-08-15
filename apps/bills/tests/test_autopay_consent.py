@@ -59,7 +59,7 @@ class AutopayConsentTestCase(TestCase):
 
     def create(self, **overrides):
         return self.client.post(
-            "/api/v1/bills/create/", self.payload(**overrides), format="json"
+            "/api/v1/bills/create", self.payload(**overrides), format="json"
         )
 
 
@@ -133,7 +133,7 @@ class ConsentCaptureTests(AutopayConsentTestCase):
 
     def test_forwarded_ip_wins_over_the_proxy_address(self):
         self.client.post(
-            "/api/v1/bills/create/",
+            "/api/v1/bills/create",
             self.payload(
                 autopay_mode="AUTO", autopay_consent=self.consent()
             ),
@@ -145,7 +145,7 @@ class ConsentCaptureTests(AutopayConsentTestCase):
 
     def test_authorization_records_the_user_agent(self):
         self.client.post(
-            "/api/v1/bills/create/",
+            "/api/v1/bills/create",
             self.payload(
                 autopay_mode="AUTO", autopay_consent=self.consent()
             ),
@@ -171,7 +171,7 @@ class ConsentToggleTests(AutopayConsentTestCase):
         bill_id = self.enable_autopay()
 
         response = self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"autopay_mode": "REMIND"},
             format="json",
         )
@@ -185,12 +185,12 @@ class ConsentToggleTests(AutopayConsentTestCase):
         bill_id = self.enable_autopay()
 
         self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"autopay_mode": "REMIND"},
             format="json",
         )
         self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"autopay_mode": "AUTO", "autopay_consent": self.consent()},
             format="json",
         )
@@ -209,7 +209,7 @@ class ConsentToggleTests(AutopayConsentTestCase):
         bill_id = response.data["data"]["id"]
 
         response = self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"autopay_mode": "AUTO"},
             format="json",
         )
@@ -221,7 +221,7 @@ class ConsentToggleTests(AutopayConsentTestCase):
         bill_id = self.enable_autopay()
 
         self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"notes": "renewed"},
             format="json",
         )
@@ -232,7 +232,7 @@ class ConsentToggleTests(AutopayConsentTestCase):
     def test_deleting_the_bill_revokes_the_authorization(self):
         bill_id = self.enable_autopay()
 
-        self.client.delete(f"/api/v1/bills/{bill_id}/details/")
+        self.client.delete(f"/api/v1/bills/{bill_id}/details")
 
         self.assertIsNotNone(
             StandingAuthorization.objects.get().revoked_at,
@@ -278,7 +278,7 @@ class ReviewEchoTests(AutopayConsentTestCase):
         bill_id = response.data["data"]["id"]
 
         response = self.client.patch(
-            f"/api/v1/bills/{bill_id}/update/",
+            f"/api/v1/bills/{bill_id}/update",
             {"amount": "4100.00"},
             format="json",
         )

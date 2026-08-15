@@ -85,7 +85,7 @@ class EndpointTests(TestCase):
 
     def test_valid_number_returns_the_bank(self):
         response = self.client.post(
-            "/api/v1/banking/routing/validate/",
+            "/api/v1/banking/routing/validate",
             {"routing_number": "021000021"},
             format="json",
         )
@@ -98,7 +98,7 @@ class EndpointTests(TestCase):
 
     def test_the_routing_number_is_never_echoed_back(self):
         response = self.client.post(
-            "/api/v1/banking/routing/validate/",
+            "/api/v1/banking/routing/validate",
             {"routing_number": "021000021"},
             format="json",
         )
@@ -107,7 +107,7 @@ class EndpointTests(TestCase):
 
     def test_a_masked_value_is_rejected(self):
         response = self.client.post(
-            "/api/v1/banking/routing/validate/",
+            "/api/v1/banking/routing/validate",
             {"routing_number": "*****0021"},
             format="json",
         )
@@ -116,7 +116,7 @@ class EndpointTests(TestCase):
 
     def test_authentication_is_required(self):
         response = APIClient().post(
-            "/api/v1/banking/routing/validate/",
+            "/api/v1/banking/routing/validate",
             {"routing_number": "021000021"},
             format="json",
         )

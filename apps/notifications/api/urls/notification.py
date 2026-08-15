@@ -13,12 +13,12 @@ urlpatterns = [
         name="notification-list",
     ),
     path(
-        "<uuid:notification_id>/read/",
+        "/<uuid:notification_id>/read",
         NotificationReadAPIView.as_view(),
         name="notification-read",
     ),
     path(
-        "read-all/",
+        "/read-all",
         NotificationReadAllAPIView.as_view(),
         name="notification-read-all",
     ),

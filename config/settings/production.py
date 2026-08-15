@@ -164,7 +164,7 @@ if env("SUBSCRIPTION_BILLING_PROVIDER", default="mock") == "stripe":
     _require(
         "STRIPE_BILLING_WEBHOOK_SECRET",
         hint="From the Stripe Dashboard endpoint for "
-             "/webhooks/stripe/billing/. Without it subscriptions never "
+             "/webhooks/stripe/billing. Without it subscriptions never "
              "confirm as paid.",
     )
 

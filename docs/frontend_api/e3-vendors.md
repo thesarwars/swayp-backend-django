@@ -13,7 +13,7 @@ endpoints return `{ items, pagination }` and detail/create/update return a
 ## 1. Vendor list
 
 ```
-GET /api/v1/vendors/?search=&category=&rail=&status=&page=1&pageSize=20
+GET /api/v1/vendors?search=&category=&rail=&status=&page=1&pageSize=20
 ```
 
 ```json
@@ -40,7 +40,7 @@ vendor is still readable under that filter.
 ## 2. Summary chips
 
 ```
-GET /api/v1/vendors/summary/
+GET /api/v1/vendors/summary
 ```
 
 ```json
@@ -54,7 +54,7 @@ Bare object — no `data`, no `success`.
 ## 3. Vendor detail
 
 ```
-GET /api/v1/vendors/<vendor_id>/
+GET /api/v1/vendors/<vendor_id>
 ```
 
 Returns the vendor, **all** its payment methods, and the spend panel:
@@ -93,9 +93,9 @@ will always be `false`** — don't build a trust badge that never lights up.
 ## 4. Payment methods
 
 ```
-GET  /api/v1/vendors/<vendor_id>/payment-methods/
-POST /api/v1/vendors/<vendor_id>/payment-methods/
-POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary/
+GET  /api/v1/vendors/<vendor_id>/payment-methods
+POST /api/v1/vendors/<vendor_id>/payment-methods
+POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary
 DELETE .../payment-methods/<method_id>/
 ```
 
@@ -129,7 +129,7 @@ that is ever stored, and all you can ever display.
 ### Validating a routing number first
 
 ```
-POST /api/v1/banking/routing/validate/    { "routing_number": "021000021" }
+POST /api/v1/banking/routing/validate    { "routing_number": "021000021" }
 ```
 
 ⚠️ **A bad routing number is a 200, not a 400.** The *request* succeeded; the
@@ -141,7 +141,7 @@ true. Rate limited to 30/min.
 ## 5. Directory search — the biller typeahead
 
 ```
-GET /api/v1/vendors/directory-search/?q=chase
+GET /api/v1/vendors/directory-search?q=chase
 ```
 
 Paginated `{ items, pagination }`. Results are seeded mock data, not a live
@@ -155,7 +155,7 @@ Use it to help someone add a known biller. It supersedes the old
 ## 6. QR capture
 
 ```
-POST /api/v1/vendors/qr/decode/    { "payload": "name=Acme&routing=…" }
+POST /api/v1/vendors/qr/decode    { "payload": "name=Acme&routing=…" }
 ```
 
 Bare object. **422** when the payload is unreadable — that is "scan again",
@@ -169,7 +169,7 @@ format is provisional.
 
 ## 7. Deleting
 
-`DELETE /api/v1/vendors/<id>/` is a **soft delete** — 204, and the vendor
+`DELETE /api/v1/vendors/<id>` is a **soft delete** — 204, and the vendor
 disappears from the default list but is still readable under
 `?status=DELETED`. Bills and payment history that reference it survive.
 

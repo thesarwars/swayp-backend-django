@@ -2,7 +2,7 @@
 
 Team members, seats, roles, invitations, and multi-entity accounts.
 
-**Base URL:** `/api/v1/teams/`
+**Base URL:** `/api/v1/teams`
 **Auth:** every endpoint requires `Authorization: Bearer <access_token>`.
 
 Every response body below was captured from the running API.
@@ -97,7 +97,7 @@ Hiding a button is not enforcement — the API checks every action itself.
 ## 3. Who am I?
 
 ```
-GET /api/v1/teams/me/
+GET /api/v1/teams/me
 ```
 
 **Call this on login.** It is the one request that tells you which account you
@@ -133,7 +133,7 @@ A member sees the same shape with less in it:
 ## 4. Team members
 
 ```
-GET /api/v1/teams/members/
+GET /api/v1/teams/members
 ```
 
 **200** — the owner is always included:
@@ -187,7 +187,7 @@ against this endpoint; there is nothing to copy.
 ### 5.1 Send
 
 ```
-POST /api/v1/teams/invite/
+POST /api/v1/teams/invite
 ```
 
 ```json
@@ -251,7 +251,7 @@ again.
 ### 5.3 Accept
 
 ```
-POST /api/v1/teams/invite/accept/
+POST /api/v1/teams/invite/accept
 ```
 
 ```json
@@ -284,8 +284,8 @@ time rather than honoured blindly.
 ### 5.4 Change a role, or remove someone
 
 ```
-PATCH  /api/v1/teams/members/<member_id>/     { "role": "ADMIN" }
-DELETE /api/v1/teams/members/<member_id>/
+PATCH  /api/v1/teams/members/<member_id>     { "role": "ADMIN" }
+DELETE /api/v1/teams/members/<member_id>
 ```
 
 Both return **200** with the member. DELETE sets `status: "REMOVED"` rather
@@ -300,7 +300,7 @@ The owner cannot be removed and their role cannot be changed; both are 400.
 Seats are a plan allowance, so they appear in the Billing API:
 
 ```
-GET /api/v1/billing/allowances/
+GET /api/v1/billing/allowances
 ```
 
 ```json
@@ -332,8 +332,8 @@ exactly one and never see this feature.
 ### 7.1 The first is free; the second needs Enterprise
 
 ```
-GET  /api/v1/teams/entities/
-POST /api/v1/teams/entities/
+GET  /api/v1/teams/entities
+POST /api/v1/teams/entities
 ```
 
 ```json
@@ -372,7 +372,7 @@ validated as a tax identifier and is not what E8's 1099 reporting files.
 ### 7.2 Archiving, not deleting
 
 ```
-DELETE /api/v1/teams/entities/<entity_id>/
+DELETE /api/v1/teams/entities/<entity_id>
 ```
 
 Returns **200** with `status: "ARCHIVED"`. Bills and payments reference
@@ -433,13 +433,13 @@ wrong company.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/v1/teams/me/` | caller's account, role and capabilities |
-| GET | `/api/v1/teams/members/` | everyone on the account |
-| POST | `/api/v1/teams/invite/` | invite, or re-send |
-| POST | `/api/v1/teams/invite/accept/` | accept an invitation |
-| PATCH | `/api/v1/teams/members/<id>/` | change a role |
-| DELETE | `/api/v1/teams/members/<id>/` | remove a member, freeing the seat |
-| GET | `/api/v1/teams/entities/` | active entities |
-| POST | `/api/v1/teams/entities/` | create an entity |
-| PATCH | `/api/v1/teams/entities/<id>/` | rename, or set the EIN |
-| DELETE | `/api/v1/teams/entities/<id>/` | archive |
+| GET | `/api/v1/teams/me` | caller's account, role and capabilities |
+| GET | `/api/v1/teams/members` | everyone on the account |
+| POST | `/api/v1/teams/invite` | invite, or re-send |
+| POST | `/api/v1/teams/invite/accept` | accept an invitation |
+| PATCH | `/api/v1/teams/members/<id>` | change a role |
+| DELETE | `/api/v1/teams/members/<id>` | remove a member, freeing the seat |
+| GET | `/api/v1/teams/entities` | active entities |
+| POST | `/api/v1/teams/entities` | create an entity |
+| PATCH | `/api/v1/teams/entities/<id>` | rename, or set the EIN |
+| DELETE | `/api/v1/teams/entities/<id>` | archive |

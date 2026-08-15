@@ -4,7 +4,7 @@ The onboarding journey: connect a bank read-only, scan up to 12 months of
 history, review the recurring bills we found, and import them as real bills.
 Plus ABA routing validation for the vendor ACH form.
 
-**Base URL:** `/api/v1/banking/`
+**Base URL:** `/api/v1/banking`
 **Auth:** every endpoint requires `Authorization: Bearer <access_token>`.
 
 Every response body below was captured from the running API.
@@ -65,7 +65,7 @@ GET  onboarding-summary/     →  the done screen
 ### Step 1 — Get a link token
 
 ```
-POST /api/v1/banking/link/token/
+POST /api/v1/banking/link/token
 ```
 
 ```json
@@ -80,7 +80,7 @@ Short-lived. Hand `link_token` to the bank link widget; it returns a
 ### Step 2 — Exchange the public token
 
 ```
-POST /api/v1/banking/link/exchange/
+POST /api/v1/banking/link/exchange
 ```
 
 ```json
@@ -138,7 +138,7 @@ savings accounts cannot fund ACH debits.
 ### Step 3 — Poll the scan
 
 ```
-GET /api/v1/banking/scans/<scan_id>/
+GET /api/v1/banking/scans/<scan_id>
 ```
 
 ```json
@@ -170,7 +170,7 @@ the number climbs rather than jumping at the end.
 ### Step 4 — Review the candidates
 
 ```
-GET /api/v1/banking/scans/<scan_id>/candidates/
+GET /api/v1/banking/scans/<scan_id>/candidates
 ```
 
 ```json
@@ -216,7 +216,7 @@ Edison above) reports a representative figure rather than the latest one.
 ### Step 5 — Import
 
 ```
-POST /api/v1/banking/scans/<scan_id>/import/
+POST /api/v1/banking/scans/<scan_id>/import
 ```
 
 Everything: `{ "all": true }` — the *"Add All 17 Bills"* button.
@@ -269,7 +269,7 @@ replays the first response verbatim.
 ### Step 6 — The done screen
 
 ```
-GET /api/v1/banking/onboarding-summary/
+GET /api/v1/banking/onboarding-summary
 ```
 
 ```json
@@ -310,7 +310,7 @@ check details is the natural follow-on from onboarding.
 ### 3.1 List
 
 ```
-GET /api/v1/banking/connections/
+GET /api/v1/banking/connections
 ```
 
 Returns every connection including `DISCONNECTED` ones, each with its
@@ -319,13 +319,13 @@ Returns every connection including `DISCONNECTED` ones, each with its
 ### 3.2 Detail
 
 ```
-GET /api/v1/banking/connections/<connection_id>/
+GET /api/v1/banking/connections/<connection_id>
 ```
 
 ### 3.3 Disconnect
 
 ```
-DELETE /api/v1/banking/connections/<connection_id>/
+DELETE /api/v1/banking/connections/<connection_id>
 ```
 
 **200** with the updated connection: `status` becomes `DISCONNECTED` and every
@@ -353,7 +353,7 @@ Note this is **200 with a body**, not 204 — the vendor delete endpoint returns
 ### 4.1 List
 
 ```
-GET /api/v1/banking/accounts/?connection_id=<optional>
+GET /api/v1/banking/accounts?connection_id=<optional>
 ```
 
 Only accounts on **ACTIVE** connections. Sorted funding-source first.
@@ -361,7 +361,7 @@ Only accounts on **ACTIVE** connections. Sorted funding-source first.
 ### 4.2 Change the funding source
 
 ```
-POST /api/v1/banking/accounts/    { "account_id": "578e047d-…" }
+POST /api/v1/banking/accounts    { "account_id": "578e047d-…" }
 ```
 
 **200** with the updated account. Atomic — exactly one account is the funding
@@ -372,7 +372,7 @@ source at a time.
 ## 5. Re-scanning
 
 ```
-POST /api/v1/banking/scans/    { "connection_id": "…", "months": 12 }
+POST /api/v1/banking/scans    { "connection_id": "…", "months": 12 }
 ```
 
 **202** with a scan object; poll it as in step 3.
@@ -392,7 +392,7 @@ reports the scan's full total, not just what this pass added.
 Used by the vendor ACH form rather than onboarding, but it lives here.
 
 ```
-POST /api/v1/banking/routing/validate/    { "routing_number": "021000021" }
+POST /api/v1/banking/routing/validate    { "routing_number": "021000021" }
 ```
 
 ```json

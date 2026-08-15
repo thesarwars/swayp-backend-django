@@ -3,7 +3,7 @@
 Vendors are the user's payees. Each one holds one or more payment methods —
 `NETWORK`, `ACH`, or `CHECK` — and is what a bill is paid to.
 
-**Base URL:** `/api/v1/vendors/`
+**Base URL:** `/api/v1/vendors`
 **Auth:** every endpoint requires `Authorization: Bearer <access_token>`.
 
 Every response body below was captured from the running API.
@@ -41,14 +41,14 @@ Render that. There is no endpoint that returns a full account number, by design.
 
 Vendor responses return `"category": "d8ef16db-…"`. (The bills API returns
 category *names*.) Resolve it against
-`GET /api/v1/bill-categories/`.
+`GET /api/v1/bill-categories`.
 
 ---
 
 ## 2. List vendors
 
 ```
-GET /api/v1/vendors/
+GET /api/v1/vendors
 ```
 
 ```json
@@ -85,7 +85,7 @@ Sorted by name.
 ## 3. Create a vendor
 
 ```
-POST /api/v1/vendors/
+POST /api/v1/vendors
 ```
 
 One endpoint, three branches. `payment_method.method_type` picks the branch and
@@ -176,7 +176,7 @@ Note the extra level of nesting — `errors.payment_method.<field>`, not
 ### 4.1 Detail
 
 ```
-GET /api/v1/vendors/<vendor_id>/
+GET /api/v1/vendors/<vendor_id>
 ```
 
 Returns the same bare object as §3's 201, including `payment_methods`, plus a
@@ -212,7 +212,7 @@ detail per row.
 ### 4.2 Update
 
 ```
-PATCH /api/v1/vendors/<vendor_id>/
+PATCH /api/v1/vendors/<vendor_id>
 ```
 
 Only three fields are editable:
@@ -235,7 +235,7 @@ this one.
 ### 4.3 Delete
 
 ```
-DELETE /api/v1/vendors/<vendor_id>/
+DELETE /api/v1/vendors/<vendor_id>
 ```
 
 **204**, empty body. This is a **soft** delete: the vendor's status becomes
@@ -254,7 +254,7 @@ A vendor may hold several — e.g. ACH *and* CHECK — with exactly one primary.
 ### 5.1 List
 
 ```
-GET /api/v1/vendors/<vendor_id>/payment-methods/
+GET /api/v1/vendors/<vendor_id>/payment-methods
 ```
 
 ```json
@@ -277,7 +277,7 @@ Sorted primary-first, then by type.
 #### Lead times — pass `due_date`
 
 ```
-GET /api/v1/vendors/<vendor_id>/payment-methods/?due_date=2026-11-30&amount=3200.00
+GET /api/v1/vendors/<vendor_id>/payment-methods?due_date=2026-11-30&amount=3200.00
 ```
 
 Each row's `schedule` fills in (it is `null` without `due_date`):
@@ -304,7 +304,7 @@ This is what the bill wizard's method step calls.
 ### 5.2 Add
 
 ```
-POST /api/v1/vendors/<vendor_id>/payment-methods/
+POST /api/v1/vendors/<vendor_id>/payment-methods
 ```
 
 Same per-branch required fields as §3. **201** returns the bare method.
@@ -315,7 +315,7 @@ Same per-branch required fields as §3. **201** returns the bare method.
 ### 5.3 Retrieve / update / delete one
 
 ```
-GET|PUT|PATCH|DELETE /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/
+GET|PUT|PATCH|DELETE /api/v1/vendors/<vendor_id>/payment-methods/<method_id>
 ```
 
 `GET` returns the bare method. `DELETE` returns **204** with an empty body.
@@ -327,7 +327,7 @@ last method leaves none, and `payment_rail` in §2 becomes `null`.
 ### 5.4 Set primary
 
 ```
-POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary/
+POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary
 ```
 
 ```json
@@ -342,7 +342,7 @@ never has two.
 ## 6. Directory search
 
 ```
-GET /api/v1/vendors/directory-search/?q=veri
+GET /api/v1/vendors/directory-search?q=veri
 ```
 
 ```json
@@ -369,7 +369,7 @@ to prefill §3 with `source: "DIRECTORY"`.
 ## 7. QR decode
 
 ```
-POST /api/v1/vendors/qr/decode/
+POST /api/v1/vendors/qr/decode
 ```
 
 Accepts JSON `{"payload": "..."}` or a multipart `image` upload. Returns a
@@ -413,7 +413,7 @@ finalised, so expect `guessed` results for unfamiliar codes.
 ## 8b. ABA routing validation
 
 ```
-POST /api/v1/banking/routing/validate/   { "routing_number": "021000021" }
+POST /api/v1/banking/routing/validate   { "routing_number": "021000021" }
 ```
 
 ```json
@@ -493,7 +493,7 @@ confirm that the id exists.
 ### Summary endpoint
 
 ```
-GET /api/v1/vendors/summary/
+GET /api/v1/vendors/summary
 ```
 
 ```json

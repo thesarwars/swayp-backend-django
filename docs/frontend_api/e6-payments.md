@@ -53,7 +53,7 @@ GET  /payments/<id>/                   → receipt
 ### Step 1 — create
 
 ```
-POST /api/v1/payments/
+POST /api/v1/payments
 ```
 
 ```json
@@ -111,8 +111,8 @@ downgrade. It cuts check transit from 5 business days to 2.
 ### Step 2 — confirm
 
 ```
-POST /api/v1/payments/batches/<batch_id>/confirm/
-POST /api/v1/payments/<payment_id>/confirm/        ← only when batch_id was null
+POST /api/v1/payments/batches/<batch_id>/confirm
+POST /api/v1/payments/<payment_id>/confirm        ← only when batch_id was null
 ```
 
 ```json
@@ -128,8 +128,8 @@ prepare a payment but not authorize it. See [E10](e10-teams.md).
 ### Step 3 — poll
 
 ```
-GET /api/v1/payments/batches/<batch_id>/status/
-GET /api/v1/payments/<payment_id>/status/
+GET /api/v1/payments/batches/<batch_id>/status
+GET /api/v1/payments/<payment_id>/status
 ```
 
 Returns an ordered stage checklist plus `progress`. Poll while the drawer is
@@ -138,7 +138,7 @@ open; stop when `in_flight` reaches 0.
 ### Step 4 — receipt
 
 ```
-GET /api/v1/payments/<payment_id>/
+GET /api/v1/payments/<payment_id>
 ```
 
 Full detail with `stages`, `receipt`, `failure` and `progress`.
@@ -148,8 +148,8 @@ Full detail with `stages`, `receipt`, `failure` and `progress`.
 ## 3. Cancelling
 
 ```
-POST /api/v1/payments/<payment_id>/cancel/
-POST /api/v1/payments/batches/<batch_id>/cancel/
+POST /api/v1/payments/<payment_id>/cancel
+POST /api/v1/payments/batches/<batch_id>/cancel
 ```
 
 Allowed **until `cancellation_deadline`**, including while the payment is
@@ -170,8 +170,8 @@ a user in California is told the wrong hour. See [E1](e1-foundations.md).
 ## 4. Failure recovery
 
 ```
-GET  /api/v1/payments/<payment_id>/failure/
-POST /api/v1/payments/<payment_id>/resolve/
+GET  /api/v1/payments/<payment_id>/failure
+POST /api/v1/payments/<payment_id>/resolve
 ```
 
 `failure/` returns a human explanation and the actions available. It is a
@@ -190,7 +190,7 @@ the result to link the two in the history.
 ## 5. History
 
 ```
-GET /api/v1/payments/history/?status=&providerId=&categoryId=&page=1
+GET /api/v1/payments/history?status=&providerId=&categoryId=&page=1
 ```
 
 `data` + `pagination` at the top level. `providerId`, `providerName`,

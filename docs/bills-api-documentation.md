@@ -4,7 +4,7 @@ Everything the bill-management screens need: the create wizard, the bills list,
 occurrence status, autopay consent, and the vendor endpoints the wizard depends
 on.
 
-**Base URL:** `/api/v1/`
+**Base URL:** `/api/v1`
 **Auth:** every endpoint requires `Authorization: Bearer <access_token>`.
 
 All responses in this document were captured from the running API, not written
@@ -81,7 +81,7 @@ whole wizard runs before anything is saved.
 ### Step 1 — Pick a vendor
 
 ```
-GET /api/v1/vendors/?search=wew&pageSize=20
+GET /api/v1/vendors?search=wew&pageSize=20
 ```
 
 ```json
@@ -111,7 +111,7 @@ vendor's **primary** method, for the rail chip.
 ### Step 2 — Pick a category
 
 ```
-GET /api/v1/bill-categories/
+GET /api/v1/bill-categories
 ```
 
 ```json
@@ -137,7 +137,7 @@ Apr 30 — the 31st comes back once the month is long enough.
 ### Step 4 — Pick a payment method (and see when it must start)
 
 ```
-GET /api/v1/vendors/<vendor_id>/payment-methods/?due_date=2026-11-30&amount=3200.00
+GET /api/v1/vendors/<vendor_id>/payment-methods?due_date=2026-11-30&amount=3200.00
 ```
 
 Pass the `anchor_date` from step 3 as `due_date`. Each method comes back with a
@@ -237,7 +237,7 @@ you see that error, check your proxy is forwarding `X-Forwarded-For`.
 ### 4.1 Create a bill
 
 ```
-POST /api/v1/bills/create/
+POST /api/v1/bills/create
 ```
 
 | Field | Type | Required | Notes |
@@ -293,7 +293,7 @@ returns.
 ### 4.2 List bills
 
 ```
-GET /api/v1/bills/
+GET /api/v1/bills
 ```
 
 ```json
@@ -312,7 +312,7 @@ GET /api/v1/bills/
 ### 4.3 Occurrences — the rows for the list screen ⭐
 
 ```
-GET /api/v1/bills/occurrences/?status=&vendor=&date_from=&date_to=&page=&pageSize=
+GET /api/v1/bills/occurrences?status=&vendor=&date_from=&date_to=&page=&pageSize=
 ```
 
 **This is the endpoint the bills list screen is built on.** Each row is one due
@@ -354,7 +354,7 @@ Soft-deleted bills drop out automatically.
 ### 4.3b Upcoming occurrences (narrow convenience view)
 
 ```
-GET /api/v1/bills/occurrences/upcoming/
+GET /api/v1/bills/occurrences/upcoming
 ```
 
 Unsettled occurrences due today or later, unpaginated, with fewer fields.
@@ -363,7 +363,7 @@ Fine for a small "what's next" widget; use §4.3 for the list screen.
 ### 4.4 Summary — the tab counts
 
 ```
-GET /api/v1/bills/summary/
+GET /api/v1/bills/summary
 ```
 
 ```json
@@ -398,7 +398,7 @@ tomorrow's answer. `GET /banking/onboarding-summary/` and
 ### 4.5 Next due
 
 ```
-GET /api/v1/bills/next-due/
+GET /api/v1/bills/next-due
 ```
 
 ```json
@@ -420,7 +420,7 @@ Powers *"Next up: Verizon $389 due Dec 15"*. Skips anything paid or scheduled.
 ### 4.6 Bill detail
 
 ```
-GET /api/v1/bills/<bill_id>/details/
+GET /api/v1/bills/<bill_id>/details
 ```
 
 ```json
@@ -445,7 +445,7 @@ is late.
 ### 4.7 Update a bill
 
 ```
-PATCH /api/v1/bills/<bill_id>/update/
+PATCH /api/v1/bills/<bill_id>/update
 ```
 
 Every wizard field is editable. Send only what changed. The response is the
@@ -465,7 +465,7 @@ to `AUTO` (§3).
 ### 4.8 Delete a bill
 
 ```
-DELETE /api/v1/bills/<bill_id>/details/
+DELETE /api/v1/bills/<bill_id>/details
 ```
 
 ```json
@@ -479,7 +479,7 @@ totals and reports stay correct. The bill disappears from all listings.
 ### 4.9 Mark an occurrence paid
 
 ```
-PATCH /api/v1/bills/occurrences/<occurrence_id>/pay/
+PATCH /api/v1/bills/occurrences/<occurrence_id>/pay
 ```
 
 ```json
@@ -503,7 +503,7 @@ already-paid occurrence returns an error.
 ### 4.10 Payment history
 
 ```
-GET /api/v1/bills/<bill_id>/payments/
+GET /api/v1/bills/<bill_id>/payments
 ```
 
 ```json
@@ -540,7 +540,7 @@ not the occurrence status from §1.2.
 ### 4.11 Invoice
 
 ```
-GET /api/v1/bills/<bill_id>/invoice/
+GET /api/v1/bills/<bill_id>/invoice
 ```
 
 ```json
@@ -570,7 +570,7 @@ Rendered from bill data only; there is no OCR in v1.
 ### 4.12 Bill QR decode
 
 ```
-POST /api/v1/bills/qr/decode/
+POST /api/v1/bills/qr/decode
 ```
 
 Accepts JSON `{"payload": "..."}` or a multipart `image` upload. Fields are
@@ -604,7 +604,7 @@ in `data` but absent from `provenance` should be treated as unknown.
 
 Treat 422 as "scan again", not as a server error.
 
-> There is also `POST /api/v1/vendors/qr/decode/` for the add-vendor flow. It
+> There is also `POST /api/v1/vendors/qr/decode` for the add-vendor flow. It
 > shares the same parser but returns a **bare object** (no envelope) and adds
 > `directory_match`. Use the bills one in the bill wizard.
 
@@ -685,7 +685,7 @@ A bill belonging to another user returns **404**, not 403.
 Used by the vendor ACH form, not the bill wizard, but worth knowing:
 
 ```
-POST /api/v1/banking/routing/validate/   { "routing_number": "021000021" }
+POST /api/v1/banking/routing/validate   { "routing_number": "021000021" }
 ```
 
 ```json

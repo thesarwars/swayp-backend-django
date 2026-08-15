@@ -43,19 +43,19 @@ class NotificationLayoutTests(TestCase):
         notification = NotificationFactory(user=self.user)
 
         self.assertEqual(
-            reverse("notification-list"), "/api/v1/notifications/"
+            reverse("notification-list"), "/api/v1/notifications"
         )
         self.assertEqual(
             reverse("notification-read", args=[notification.id]),
-            f"/api/v1/notifications/{notification.id}/read/",
+            f"/api/v1/notifications/{notification.id}/read",
         )
         self.assertEqual(
             reverse("notification-read-all"),
-            "/api/v1/notifications/read-all/",
+            "/api/v1/notifications/read-all",
         )
         self.assertEqual(
             reverse("notification-preferences"),
-            "/api/v1/notifications/preferences/",
+            "/api/v1/notifications/preferences",
         )
 
     def test_notification_list_response_fields_are_unchanged(self):

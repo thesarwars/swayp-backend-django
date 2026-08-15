@@ -76,27 +76,27 @@ class SharedAccountDataTests(TestCase):
     # --- reads ------------------------------------------------------------
 
     def test_a_member_sees_the_accounts_bills(self):
-        response = self.member_client.get("/api/v1/bills/occurrences/")
+        response = self.member_client.get("/api/v1/bills/occurrences")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["data"]), 1)
 
     def test_a_member_sees_the_accounts_vendors(self):
-        response = self.member_client.get("/api/v1/vendors/")
+        response = self.member_client.get("/api/v1/vendors")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["items"]), 1)
         self.assertEqual(response.data["items"][0]["name"], "WeWork")
 
     def test_a_member_sees_the_accounts_banks(self):
-        response = self.member_client.get("/api/v1/banking/accounts/")
+        response = self.member_client.get("/api/v1/banking/accounts")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["data"]), 1)
 
     def test_a_member_sees_the_accounts_dashboard(self):
-        owner = self.owner_client.get("/api/v1/dashboard/home/")
-        member = self.member_client.get("/api/v1/dashboard/home/")
+        owner = self.owner_client.get("/api/v1/dashboard/home")
+        member = self.member_client.get("/api/v1/dashboard/home")
 
         self.assertEqual(member.status_code, 200)
         self.assertEqual(
@@ -104,14 +104,14 @@ class SharedAccountDataTests(TestCase):
         )
 
     def test_a_member_sees_the_accounts_bill_summary(self):
-        owner = self.owner_client.get("/api/v1/bills/summary/")
-        member = self.member_client.get("/api/v1/bills/summary/")
+        owner = self.owner_client.get("/api/v1/bills/summary")
+        member = self.member_client.get("/api/v1/bills/summary")
 
         self.assertEqual(member.data["data"], owner.data["data"])
 
     def test_a_stranger_sees_nothing(self):
         """Sharing is by membership, not by being signed in."""
-        response = self.stranger_client.get("/api/v1/bills/occurrences/")
+        response = self.stranger_client.get("/api/v1/bills/occurrences")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["data"], [])
@@ -125,7 +125,7 @@ class SharedAccountDataTests(TestCase):
         from apps.bills.models.bill import Bill
 
         response = self.member_client.post(
-            "/api/v1/bills/create/",
+            "/api/v1/bills/create",
             {
                 "vendor": str(self.bill.vendor.id),
                 "category": str(BillCategory.objects.first().id),
@@ -147,7 +147,7 @@ class SharedAccountDataTests(TestCase):
         from apps.bill_categories.models import BillCategory
 
         self.member_client.post(
-            "/api/v1/bills/create/",
+            "/api/v1/bills/create",
             {
                 "vendor": str(self.bill.vendor.id),
                 "category": str(BillCategory.objects.first().id),
@@ -160,7 +160,7 @@ class SharedAccountDataTests(TestCase):
             format="json",
         )
 
-        response = self.owner_client.get("/api/v1/bills/")
+        response = self.owner_client.get("/api/v1/bills")
 
         amounts = {str(row["amount"]) for row in response.data["data"]}
         self.assertIn("500.00", amounts)
@@ -168,7 +168,7 @@ class SharedAccountDataTests(TestCase):
     # --- billing ----------------------------------------------------------
 
     def test_a_member_sees_the_accounts_subscription(self):
-        response = self.member_client.get("/api/v1/billing/subscription/")
+        response = self.member_client.get("/api/v1/billing/subscription")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
@@ -179,7 +179,7 @@ class SharedAccountDataTests(TestCase):
         """The bug this closes: it used to create one on their own user, so
         the account would have been paying twice over."""
         response = self.member_client.post(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "ENTERPRISE"},
             format="json",
         )
@@ -193,7 +193,7 @@ class SharedAccountDataTests(TestCase):
         client.force_authenticate(user=self.admin.user)
 
         response = client.patch(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "ENTERPRISE"},
             format="json",
         )
@@ -206,15 +206,15 @@ class SharedAccountDataTests(TestCase):
         client.force_authenticate(user=self.admin.user)
 
         self.assertEqual(
-            client.get("/api/v1/billing/subscription/").status_code, 200
+            client.get("/api/v1/billing/subscription").status_code, 200
         )
         self.assertEqual(
-            client.get("/api/v1/billing/allowances/").status_code, 200
+            client.get("/api/v1/billing/allowances").status_code, 200
         )
 
     def test_the_owner_can_still_change_the_plan(self):
         response = self.owner_client.patch(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "ENTERPRISE"},
             format="json",
         )
@@ -222,7 +222,7 @@ class SharedAccountDataTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_a_member_sees_the_accounts_allowances(self):
-        response = self.member_client.get("/api/v1/billing/allowances/")
+        response = self.member_client.get("/api/v1/billing/allowances")
 
         self.assertEqual(response.status_code, 200)
         # Owner + member + admin.
@@ -236,7 +236,7 @@ class SharedAccountDataTests(TestCase):
         client.force_authenticate(user=self.admin.user)
 
         created = client.post(
-            "/api/v1/payments/",
+            "/api/v1/payments",
             {
                 "occurrence_ids": [str(self.occurrence.id)],
                 "rail": "ACH_STANDARD",
@@ -248,7 +248,7 @@ class SharedAccountDataTests(TestCase):
 
         payment_id = created.data["data"]["payments"][0]["id"]
         confirmed = client.post(
-            f"/api/v1/payments/{payment_id}/confirm/",
+            f"/api/v1/payments/{payment_id}/confirm",
             {
                 "authorization_text": created.data["data"][
                     "authorization_text"
@@ -264,7 +264,7 @@ class SharedAccountDataTests(TestCase):
         client.force_authenticate(user=self.admin.user)
 
         client.post(
-            "/api/v1/payments/",
+            "/api/v1/payments",
             {
                 "occurrence_ids": [str(self.occurrence.id)],
                 "rail": "ACH_STANDARD",
@@ -272,14 +272,14 @@ class SharedAccountDataTests(TestCase):
             format="json",
         )
 
-        response = self.owner_client.get("/api/v1/payments/history/")
+        response = self.owner_client.get("/api/v1/payments/history")
 
         self.assertEqual(response.status_code, 200)
         self.assertGreaterEqual(response.data["pagination"]["totalItems"], 1)
 
     def test_a_member_can_prepare_but_not_authorize(self):
         created = self.member_client.post(
-            "/api/v1/payments/",
+            "/api/v1/payments",
             {
                 "occurrence_ids": [str(self.occurrence.id)],
                 "rail": "ACH_STANDARD",
@@ -291,7 +291,7 @@ class SharedAccountDataTests(TestCase):
 
         payment_id = created.data["data"]["payments"][0]["id"]
         confirmed = self.member_client.post(
-            f"/api/v1/payments/{payment_id}/confirm/",
+            f"/api/v1/payments/{payment_id}/confirm",
             {"authorization_text": "I authorize this payment."},
             format="json",
         )
@@ -319,20 +319,20 @@ class SoloAccountUnaffectedTests(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_a_solo_user_sees_their_own_data(self):
-        response = self.client.get("/api/v1/bills/occurrences/")
+        response = self.client.get("/api/v1/bills/occurrences")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["data"]), 1)
 
     def test_a_solo_user_is_the_owner_and_holds_every_capability(self):
-        response = self.client.get("/api/v1/teams/me/")
+        response = self.client.get("/api/v1/teams/me")
 
         self.assertTrue(response.data["data"]["is_owner"])
         self.assertIn("send_money", response.data["data"]["capabilities"])
 
     def test_a_solo_user_can_still_change_their_plan(self):
         response = self.client.patch(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "STANDARD"},
             format="json",
         )
@@ -341,7 +341,7 @@ class SoloAccountUnaffectedTests(TestCase):
 
     def test_a_solo_user_can_still_connect_a_bank(self):
         response = self.client.post(
-            "/api/v1/banking/link/exchange/",
+            "/api/v1/banking/link/exchange",
             {"public_token": "public-mock-chase", "consent_accepted": True},
             format="json",
         )

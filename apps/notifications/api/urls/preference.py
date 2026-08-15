@@ -6,7 +6,7 @@ from apps.notifications.api.views.preference import (
 
 urlpatterns = [
     path(
-        "preferences/",
+        "/preferences",
         NotificationPreferenceAPIView.as_view(),
         name="notification-preferences",
     ),

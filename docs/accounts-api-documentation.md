@@ -3,7 +3,7 @@
 This document covers the account-related APIs under the authentication module.
 
 Base URL:
-- `/api/v1/auth/`
+- `/api/v1/auth`
 
 ## Overview
 
@@ -29,7 +29,7 @@ All of these endpoints are public and do not require a bearer token.
 ## 1. Register Account
 
 ### Endpoint
-- `POST /api/v1/auth/register/`
+- `POST /api/v1/auth/register`
 
 ### Purpose
 Create a new user account.
@@ -72,7 +72,7 @@ Create a new user account.
 ## 2. Verify Registration OTP
 
 ### Endpoint
-- `POST /api/v1/auth/verify-otp/`
+- `POST /api/v1/auth/verify-otp`
 
 ### Purpose
 Verify the OTP sent after account registration.
@@ -102,7 +102,7 @@ Verify the OTP sent after account registration.
 ## 3. Login
 
 ### Endpoint
-- `POST /api/v1/auth/login/`
+- `POST /api/v1/auth/login`
 
 ### Purpose
 Authenticate user credentials and send a login OTP.
@@ -128,7 +128,7 @@ Authenticate user credentials and send a login OTP.
 ## 4. Verify Login OTP
 
 ### Endpoint
-- `POST /api/v1/auth/login/verify/`
+- `POST /api/v1/auth/login/verify`
 
 ### Purpose
 Verify the login OTP and issue JWT tokens.
@@ -158,7 +158,7 @@ Verify the login OTP and issue JWT tokens.
 ## 5. Resend OTP
 
 ### Endpoint
-- `POST /api/v1/auth/resend-otp/`
+- `POST /api/v1/auth/resend-otp`
 
 ### Purpose
 Resend an OTP for either registration or login.
@@ -209,8 +209,8 @@ A throttled resend does **not** invalidate the code the user already holds, so
 ## 5b. Phone-Number Login
 
 ### Endpoints
-- `POST /api/v1/auth/login/phone/request/`
-- `POST /api/v1/auth/login/phone/verify/`
+- `POST /api/v1/auth/login/phone/request`
+- `POST /api/v1/auth/login/phone/verify`
 
 ### Purpose
 Sign in with a phone number instead of a password.
@@ -251,7 +251,7 @@ error for unknown number, wrong code and expired code alike.
 ## 6. Refresh Access Token
 
 ### Endpoint
-- `POST /api/v1/auth/refresh/`
+- `POST /api/v1/auth/refresh`
 
 ### Purpose
 Generate a new access token using a refresh token.
@@ -279,7 +279,7 @@ Generate a new access token using a refresh token.
 ## 7. Logout
 
 ### Endpoint
-- `POST /api/v1/auth/logout/`
+- `POST /api/v1/auth/logout`
 
 ### Purpose
 Logout the current session by invalidating the refresh token.
@@ -299,7 +299,7 @@ Logout the current session by invalidating the refresh token.
 ## 8. Forgot Password
 
 ### Endpoint
-- `POST /api/v1/auth/forgot-password/`
+- `POST /api/v1/auth/forgot-password`
 
 ### Purpose
 Send a password reset OTP to the user email.
@@ -324,7 +324,7 @@ Send a password reset OTP to the user email.
 ## 9. Reset Password
 
 ### Endpoint
-- `POST /api/v1/auth/reset-password/`
+- `POST /api/v1/auth/reset-password`
 
 ### Purpose
 Reset the user password using the OTP received via email.

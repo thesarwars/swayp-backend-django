@@ -64,7 +64,7 @@ class ExpeditedCheckTests(TestCase):
         }
         payload.update(kwargs)
 
-        return self.client.post("/api/v1/payments/", payload, format="json")
+        return self.client.post("/api/v1/payments", payload, format="json")
 
     # --- the API accepts it ----------------------------------------------
 

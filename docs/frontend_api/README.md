@@ -18,7 +18,7 @@ Every response body in these files was captured from the running API.
 | **E9** | [Billing](e9-billing.md) | plans, trial, card collection, allowances, fees, invoice |
 | **E10** | [Teams](e10-teams.md) | seats, roles, invitations, entities |
 
-**Base URL:** `/api/v1/` · **Interactive schema:** `/api/docs/`
+**Base URL:** `/api/v1` · **Interactive schema:** `/api/docs`
 
 ---
 

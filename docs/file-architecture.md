@@ -113,9 +113,9 @@ apps/<app>/
 | `reports` | `reports.py` | — (query-time) |
 | `billing` (E9) | `plans.py`, `subscription.py`, `allowances.py`, `fees.py`, `addons.py` | `plan.py`, `subscription.py`, `allowance_counter.py`, `fee_charge.py`, `enterprise_addon.py` |
 | `teams` (E10) | `members.py`, `invitations.py`, `entities.py` | `team_member.py`, `entity.py` |
-| `webhooks` | `plaid.py`, `moov.py`, `stripe.py`, `lob.py` (urls mounted at `/webhooks/`, versionless) | — (uses `payments.WebhookEvent`) |
+| `webhooks` | `plaid.py`, `moov.py`, `stripe.py`, `lob.py` (urls mounted at `/webhooks`, versionless) | — (uses `payments.WebhookEvent`) |
 
-`api/v1/urls.py` gains: `banking/`, `vendors/`, `bills/`, `ai/`, `reports/`, `billing/`, `teams/`. `config/urls.py` gains: `webhooks/`. Provider `integrations/money_movement/` = `stripe.py` + `moov.py` (BRD §5); `check_mail/` = `lob.py`/`postgrid.py`. **No `dwolla.py`/`gocardless.py`.**
+`api/v1/urls.py` gains: `/banking`, `/vendors`, `/bills`, `/ai`, `/reports`, `/billing`, `/teams`. `config/urls.py` gains: `webhooks`. Provider `integrations/money_movement/` = `stripe.py` + `moov.py` (BRD §5); `check_mail/` = `lob.py`/`postgrid.py`. **No `dwolla.py`/`gocardless.py`.**
 
 ## 5. Worked example (authentication — as shipped)
 

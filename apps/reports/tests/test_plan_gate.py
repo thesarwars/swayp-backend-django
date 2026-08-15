@@ -24,7 +24,7 @@ from apps.payments.factories import PaymentFactory
 from apps.reports.tests.test_reports import backdate, et_evening
 from apps.vendors.factories import UserFactory, VendorFactory
 
-REPORT_1099_URL = "/api/v1/reports/1099/"
+REPORT_1099_URL = "/api/v1/reports/1099"
 
 _ZERO = Decimal("0.00")
 

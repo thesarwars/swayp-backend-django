@@ -257,7 +257,7 @@ class WebhookEndpointTests(TestCase):
         body = json.dumps(payload).encode()
 
         return self.client.post(
-            "/webhooks/mock/",
+            "/webhooks/mock",
             data=body,
             content_type="application/json",
             HTTP_X_SWAYP_SIGNATURE=(
@@ -307,5 +307,5 @@ class WebhookEndpointTests(TestCase):
     def test_the_mount_is_versionless(self):
         from django.urls import reverse
 
-        self.assertEqual(reverse("webhook-moov"), "/webhooks/moov/")
-        self.assertNotIn("/api/v1/", reverse("webhook-stripe"))
+        self.assertEqual(reverse("webhook-moov"), "/webhooks/moov")
+        self.assertNotIn("/api/v1", reverse("webhook-stripe"))

@@ -26,7 +26,7 @@ from apps.common.enums import (
 )
 from apps.payments.factories import PaymentFactory
 
-PROJECTION_URL = "/api/v1/ai/balance-projection/"
+PROJECTION_URL = "/api/v1/ai/balance-projection"
 
 
 class ProjectionServiceTests(TestCase):

@@ -270,7 +270,7 @@ class WebhookGuaranteeTests(TestCase):
         body = json.dumps(payload).encode()
 
         return self.client.post(
-            "/webhooks/mock/",
+            "/webhooks/mock",
             data=body,
             content_type="application/json",
             HTTP_X_SWAYP_SIGNATURE=self.sign(body),

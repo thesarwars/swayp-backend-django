@@ -3,7 +3,7 @@
 This document covers the bill categories endpoint under the bill categories module.
 
 Base URL:
-- `/api/v1/bill-categories/`
+- `/api/v1/bill-categories`
 
 ## Overview
 
@@ -16,7 +16,7 @@ All bill category endpoints require authentication via a valid access token.
 ## 1. List Bill Categories
 
 ### Endpoint
-- `GET /api/v1/bill-categories/`
+- `GET /api/v1/bill-categories`
 
 ### Purpose
 Retrieve all active bill categories.
@@ -57,7 +57,7 @@ Retrieve all active bill categories.
 
 ### Example Request
 ```bash
-curl -X GET "http://127.0.0.1:8000/api/v1/bill-categories/" \
+curl -X GET "http://127.0.0.1:8000/api/v1/bill-categories" \
   -H "Authorization: Bearer <access_token>"
 ```
 

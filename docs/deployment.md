@@ -246,7 +246,7 @@ database before you need to.
 - [ ] `curl https://api.getswayp.com/readyz` returns `ok` **over HTTPS**
 - [ ] The frontend can log in from a browser — this is the real CORS test
 - [ ] `FIELD_ENCRYPTION_KEYS` backed up off the server
-- [ ] Stripe webhook endpoint registered at `/webhooks/stripe/billing/` and its
+- [ ] Stripe webhook endpoint registered at `/webhooks/stripe/billing` and its
       secret in `.env`; send a test event and confirm a `200`
 - [ ] `beat` is in `docker compose ps` and stays up
 - [ ] `pg_dump` scheduled, and one restore actually tried
@@ -262,5 +262,5 @@ database before you need to.
 | `DisallowedHost` | Add the domain to `DJANGO_ALLOWED_HOSTS` |
 | Infinite HTTPS redirect | Proxy is not sending `X-Forwarded-Proto` (§5) |
 | `/readyz` is `503`, `/healthz` is `200` | App is fine, database is not: `$C logs db` |
-| Subscriptions stick at `incomplete` | Webhook not reaching `/webhooks/stripe/billing/`, or wrong secret |
+| Subscriptions stick at `incomplete` | Webhook not reaching `/webhooks/stripe/billing`, or wrong secret |
 | Free check counts never reset | `beat` is not running (§7) |

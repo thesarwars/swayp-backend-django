@@ -11,22 +11,22 @@ from apps.teams.api.views.team import (
 )
 
 urlpatterns = [
-    path("members/", TeamMemberListAPIView.as_view(), name="team-members"),
+    path("/members", TeamMemberListAPIView.as_view(), name="team-members"),
     path(
-        "members/<uuid:member_id>/",
+        "/members/<uuid:member_id>",
         TeamMemberDetailAPIView.as_view(),
         name="team-member-detail",
     ),
-    path("me/", MyRoleAPIView.as_view(), name="team-my-role"),
-    path("invite/", TeamInviteAPIView.as_view(), name="team-invite"),
+    path("/me", MyRoleAPIView.as_view(), name="team-my-role"),
+    path("/invite", TeamInviteAPIView.as_view(), name="team-invite"),
     path(
-        "invite/accept/",
+        "/invite/accept",
         TeamInviteAcceptAPIView.as_view(),
         name="team-invite-accept",
     ),
-    path("entities/", EntityListAPIView.as_view(), name="team-entities"),
+    path("/entities", EntityListAPIView.as_view(), name="team-entities"),
     path(
-        "entities/<uuid:entity_id>/",
+        "/entities/<uuid:entity_id>",
         EntityDetailAPIView.as_view(),
         name="team-entity-detail",
     ),

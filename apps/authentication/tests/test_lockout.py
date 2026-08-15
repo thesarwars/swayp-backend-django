@@ -16,7 +16,7 @@ from apps.authentication.services.lockout_service import LockoutService
 from apps.users.models.user import User
 from apps.vendors.factories import UserFactory
 
-URL = "/api/v1/auth/login/"
+URL = "/api/v1/auth/login"
 PASSWORD = "Str0ng!Passphrase1"
 
 

@@ -42,7 +42,7 @@ The same cutoff decides whether same-day ACH is still offered today (see
 Endpoints that create money-moving work accept an `Idempotency-Key` header:
 
 ```
-POST /api/v1/payments/
+POST /api/v1/payments
 Idempotency-Key: 8f14e45f-ceea-467a-9f1c-1b8a4a2f0a11
 ```
 
@@ -58,7 +58,7 @@ timed-out request must reuse the same key, or you will create two payments.
 ## 3. Reference data you fetch once
 
 ```
-GET /api/v1/bill-categories/
+GET /api/v1/bill-categories
 ```
 
 ```json
@@ -75,7 +75,7 @@ and vendor form needs it.
 ## 4. Providers — the biller directory cache
 
 ```
-GET /api/v1/providers/?search=chase&categoryId=…&page=1&pageSize=20
+GET /api/v1/providers?search=chase&categoryId=…&page=1&pageSize=20
 ```
 
 The global catalogue of known billers. **Not the user's vendors** — those are

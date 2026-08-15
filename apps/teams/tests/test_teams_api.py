@@ -36,7 +36,7 @@ class TeamAPITests(TestCase):
         self.client.force_authenticate(user=self.owner)
 
     def test_the_member_list_includes_the_owner(self):
-        response = self.client.get("/api/v1/teams/members/")
+        response = self.client.get("/api/v1/teams/members")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["data"]), 1)
@@ -46,12 +46,12 @@ class TeamAPITests(TestCase):
         """It is a bearer credential and belongs only in the invitee's
         inbox — not in a list every teammate can read."""
         self.client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "new@example.com"},
             format="json",
         )
 
-        response = self.client.get("/api/v1/teams/members/")
+        response = self.client.get("/api/v1/teams/members")
         body = str(response.data)
 
         self.assertNotIn("invite_token", body)
@@ -61,7 +61,7 @@ class TeamAPITests(TestCase):
 
     def test_inviting_returns_201(self):
         response = self.client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "new@example.com", "role": "ADMIN"},
             format="json",
         )
@@ -71,7 +71,7 @@ class TeamAPITests(TestCase):
         self.assertEqual(response.data["data"]["role"], "ADMIN")
 
     def test_my_role_reports_capabilities(self):
-        response = self.client.get("/api/v1/teams/me/")
+        response = self.client.get("/api/v1/teams/me")
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["data"]["is_owner"])
@@ -85,7 +85,7 @@ class TeamAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=member.user)
 
-        response = client.get("/api/v1/teams/me/")
+        response = client.get("/api/v1/teams/me")
 
         self.assertEqual(response.data["data"]["role"], "MEMBER")
         self.assertFalse(response.data["data"]["is_owner"])
@@ -100,7 +100,7 @@ class TeamAPITests(TestCase):
         client = APIClient()
         client.force_authenticate(user=member.user)
 
-        response = client.get("/api/v1/teams/me/")
+        response = client.get("/api/v1/teams/me")
 
         self.assertEqual(
             str(response.data["data"]["account_id"]), str(self.owner.id)
@@ -108,7 +108,7 @@ class TeamAPITests(TestCase):
 
     def test_accepting_through_the_api(self):
         self.client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "joiner@example.com"},
             format="json",
         )
@@ -119,7 +119,7 @@ class TeamAPITests(TestCase):
         client.force_authenticate(user=joiner)
 
         response = client.post(
-            "/api/v1/teams/invite/accept/",
+            "/api/v1/teams/invite/accept",
             {"token": member.invite_token},
             format="json",
         )
@@ -131,7 +131,7 @@ class TeamAPITests(TestCase):
         member = ActiveMemberFactory(account=self.owner)
 
         response = self.client.delete(
-            f"/api/v1/teams/members/{member.id}/"
+            f"/api/v1/teams/members/{member.id}"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -143,7 +143,7 @@ class TeamAPITests(TestCase):
         member = ActiveMemberFactory(account=self.owner)
 
         response = self.client.patch(
-            f"/api/v1/teams/members/{member.id}/",
+            f"/api/v1/teams/members/{member.id}",
             {"role": "ADMIN"},
             format="json",
         )
@@ -160,7 +160,7 @@ class TeamAPITests(TestCase):
         client.force_authenticate(user=member.user)
 
         response = client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "nope@example.com"},
             format="json",
         )
@@ -173,17 +173,17 @@ class TeamAPITests(TestCase):
 
         client = APIClient()
         client.force_authenticate(user=account)
-        client.get("/api/v1/teams/members/")
+        client.get("/api/v1/teams/members")
 
         for index in range(2):
             client.post(
-                "/api/v1/teams/invite/",
+                "/api/v1/teams/invite",
                 {"email": f"seat{index}@example.com"},
                 format="json",
             )
 
         response = client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "overflow@example.com"},
             format="json",
         )
@@ -191,14 +191,14 @@ class TeamAPITests(TestCase):
         self.assertEqual(response.status_code, 402)
 
     def test_the_allowance_endpoint_reflects_the_team(self):
-        self.client.get("/api/v1/teams/members/")
+        self.client.get("/api/v1/teams/members")
         self.client.post(
-            "/api/v1/teams/invite/",
+            "/api/v1/teams/invite",
             {"email": "counted@example.com"},
             format="json",
         )
 
-        response = self.client.get("/api/v1/billing/allowances/")
+        response = self.client.get("/api/v1/billing/allowances")
 
         self.assertEqual(response.data["data"]["SEATS"]["used"], 2)
 
@@ -237,7 +237,7 @@ class MoneyGateTests(TestCase):
         client.force_authenticate(user=self.owner)
 
         response = client.post(
-            "/api/v1/payments/",
+            "/api/v1/payments",
             {
                 "occurrence_ids": [str(occurrence.id)],
                 "rail": PaymentRail.ACH_STANDARD,
@@ -251,7 +251,7 @@ class MoneyGateTests(TestCase):
         payment_id = self.a_payment()
 
         response = self.member_client.post(
-            f"/api/v1/payments/{payment_id}/confirm/",
+            f"/api/v1/payments/{payment_id}/confirm",
             {"authorization_text": "I authorize this payment."},
             format="json",
         )
@@ -260,7 +260,7 @@ class MoneyGateTests(TestCase):
 
     def test_a_member_cannot_connect_a_bank(self):
         response = self.member_client.post(
-            "/api/v1/banking/link/exchange/",
+            "/api/v1/banking/link/exchange",
             {"public_token": "public-mock-chase", "consent_accepted": True},
             format="json",
         )
@@ -277,7 +277,7 @@ class MoneyGateTests(TestCase):
         client.force_authenticate(user=admin.user)
 
         response = client.post(
-            f"/api/v1/payments/{payment_id}/confirm/",
+            f"/api/v1/payments/{payment_id}/confirm",
             {"authorization_text": "I authorize this payment."},
             format="json",
         )
@@ -293,7 +293,7 @@ class MoneyGateTests(TestCase):
         client.force_authenticate(user=self.owner)
 
         response = client.post(
-            f"/api/v1/payments/{payment_id}/confirm/",
+            f"/api/v1/payments/{payment_id}/confirm",
             {"authorization_text": "I authorize this payment."},
             format="json",
         )
@@ -314,7 +314,7 @@ class EntityAPITests(TestCase):
 
     def test_creating_an_entity(self):
         response = self.client.post(
-            "/api/v1/teams/entities/",
+            "/api/v1/teams/entities",
             {"legal_name": "Acme Holdings LLC", "ein": "12-3456789"},
             format="json",
         )
@@ -326,15 +326,15 @@ class EntityAPITests(TestCase):
 
     def test_listing_excludes_archived(self):
         created = self.client.post(
-            "/api/v1/teams/entities/",
+            "/api/v1/teams/entities",
             {"legal_name": "Gone LLC"},
             format="json",
         )
         entity_id = created.data["data"]["id"]
 
-        self.client.delete(f"/api/v1/teams/entities/{entity_id}/")
+        self.client.delete(f"/api/v1/teams/entities/{entity_id}")
 
-        response = self.client.get("/api/v1/teams/entities/")
+        response = self.client.get("/api/v1/teams/entities")
 
         self.assertEqual(response.data["data"], [])
 
@@ -345,12 +345,12 @@ class EntityAPITests(TestCase):
         client.force_authenticate(user=account)
 
         client.post(
-            "/api/v1/teams/entities/",
+            "/api/v1/teams/entities",
             {"legal_name": "First LLC"},
             format="json",
         )
         response = client.post(
-            "/api/v1/teams/entities/",
+            "/api/v1/teams/entities",
             {"legal_name": "Second LLC"},
             format="json",
         )
@@ -367,7 +367,7 @@ class EntityAPITests(TestCase):
         client.force_authenticate(user=member.user)
 
         response = client.post(
-            "/api/v1/teams/entities/",
+            "/api/v1/teams/entities",
             {"legal_name": "Sneaky LLC"},
             format="json",
         )
@@ -380,7 +380,7 @@ class EntityAPITests(TestCase):
         theirs = EntityFactory()
 
         response = self.client.patch(
-            f"/api/v1/teams/entities/{theirs.id}/",
+            f"/api/v1/teams/entities/{theirs.id}",
             {"legal_name": "Mine Now LLC"},
             format="json",
         )

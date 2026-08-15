@@ -31,13 +31,13 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
       path(
-        "api/schema/",
+        "api/schema",
         SpectacularAPIView.as_view(),
         name="schema",
     ),
 
     path(
-        "api/docs/",
+        "api/docs",
         SpectacularSwaggerView.as_view(
             url_name="schema"
         ),
@@ -45,21 +45,21 @@ urlpatterns = [
     ),
 
     path(
-        "api/redoc/",
+        "api/redoc",
         SpectacularRedocView.as_view(
             url_name="schema"
         ),
         name="redoc",
     ),
-    path("api/v1/", include("api.v1.urls")),
+    path("api/v1", include("api.v1.urls")),
     # Versionless: a processor-registered URL must never move with an
     # API version (E6-S8).
-    path("webhooks/", include("apps.webhooks.api.urls")),
+    path("webhooks", include("apps.webhooks.api.urls")),
     # Stripe Billing signs differently from the payment rails and is about
     # subscriptions rather than money movement, so it gets its own
     # versionless endpoint (E9-S1).
     path(
-        "webhooks/stripe/billing/",
+        "webhooks/stripe/billing",
         StripeBillingWebhookAPIView.as_view(),
         name="webhook-stripe-billing",
     ),

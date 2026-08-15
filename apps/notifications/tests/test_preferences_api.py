@@ -15,7 +15,7 @@ from apps.common.enums import NotificationType
 from apps.notifications.models import NotificationPreference
 from apps.vendors.factories import UserFactory
 
-PREFERENCES_URL = "/api/v1/notifications/preferences/"
+PREFERENCES_URL = "/api/v1/notifications/preferences"
 
 
 class NotificationPreferencesAPITests(TestCase):

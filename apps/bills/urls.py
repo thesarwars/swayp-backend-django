@@ -19,46 +19,46 @@ from apps.bills.views.summary import BillSummaryAPIView
 
 urlpatterns = [
     path("", BillListAPIView.as_view(), name="bill-list"),
-    path("create/", BillCreateAPIView.as_view(), name="bill-create"),
-    path("summary/", BillSummaryAPIView.as_view(), name="bill-summary"),
+    path("/create", BillCreateAPIView.as_view(), name="bill-create"),
+    path("/summary", BillSummaryAPIView.as_view(), name="bill-summary"),
     path(
-        "occurrences/",
+        "/occurrences",
         BillOccurrenceListAPIView.as_view(),
         name="bill-occurrence-list",
     ),
     path(
-        "qr/decode/",
+        "/qr/decode",
         BillQRDecodeAPIView.as_view(),
         name="bill-qr-decode",
     ),
-    path("next-due/", NextDueAPIView.as_view(), name="bill-next-due"),
+    path("/next-due", NextDueAPIView.as_view(), name="bill-next-due"),
     path(
-        "occurrences/upcoming/",
+        "/occurrences/upcoming",
         UpcomingBillOccurrenceAPIView.as_view(),
         name="upcoming-bill-occurrences",
     ),
     path(
-        "occurrences/<uuid:occurrence_id>/pay/",
+        "/occurrences/<uuid:occurrence_id>/pay",
         MarkBillOccurrencePaidAPIView.as_view(),
         name="mark-bill-occurrence-paid",
     ),
     path(
-        "<uuid:bill_id>/details/",
+        "/<uuid:bill_id>/details",
         BillDetailAPIView.as_view(),
         name="bill-detail",
     ),
     path(
-        "<uuid:bill_id>/update/",
+        "/<uuid:bill_id>/update",
         BillUpdateAPIView.as_view(),
         name="bill-update",
     ),
     path(
-        "<uuid:bill_id>/payments/",
+        "/<uuid:bill_id>/payments",
         BillPaymentHistoryAPIView.as_view(),
         name="bill-payment-history",
     ),
     path(
-        "<uuid:bill_id>/invoice/",
+        "/<uuid:bill_id>/invoice",
         BillInvoiceAPIView.as_view(),
         name="bill-invoice",
     ),

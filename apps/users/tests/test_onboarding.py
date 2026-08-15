@@ -23,8 +23,8 @@ from apps.users.models.profile import AccountType, Profile
 from apps.users.services.onboarding_service import OnboardingService
 from apps.vendors.factories import UserFactory
 
-URL = "/api/v1/users/onboarding/"
-SKIP_URL = "/api/v1/users/onboarding/skip-bank/"
+URL = "/api/v1/users/onboarding"
+SKIP_URL = "/api/v1/users/onboarding/skip-bank"
 
 
 class OnboardingProgressTests(TestCase):

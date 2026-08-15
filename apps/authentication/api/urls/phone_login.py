@@ -7,12 +7,12 @@ from apps.authentication.api.views.phone_login import (
 
 urlpatterns = [
     path(
-        "login/phone/request/",
+        "/login/phone/request",
         PhoneLoginRequestView.as_view(),
         name="login-phone-request",
     ),
     path(
-        "login/phone/verify/",
+        "/login/phone/verify",
         PhoneLoginVerifyView.as_view(),
         name="login-phone-verify",
     ),

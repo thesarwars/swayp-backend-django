@@ -30,7 +30,7 @@ D = dt.date
 #: values ride along as subqueries on the vendor page.
 EXPECTED_QUERIES = 4
 
-URL = "/api/v1/vendors/"
+URL = "/api/v1/vendors"
 
 
 class VendorListQueryCountTests(TestCase):

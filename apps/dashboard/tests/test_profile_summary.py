@@ -16,7 +16,7 @@ from rest_framework.test import APIClient
 from apps.dashboard.services.dashboard_service import DashboardService
 from apps.vendors.factories import UserFactory
 
-PROFILE_SUMMARY_URL = "/api/v1/dashboard/profile-summary/"
+PROFILE_SUMMARY_URL = "/api/v1/dashboard/profile-summary"
 
 
 class ProfileSummaryAPITests(TestCase):

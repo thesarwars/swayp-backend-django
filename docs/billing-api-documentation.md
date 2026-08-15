@@ -3,7 +3,7 @@
 Plans, what each plan lets you do, the per-transaction fees, and the invoice
 that adds it all up.
 
-**Base URL:** `/api/v1/billing/`
+**Base URL:** `/api/v1/billing`
 **Auth:** every endpoint requires `Authorization: Bearer <access_token>`.
 
 Every response body below was captured from the running API.
@@ -54,8 +54,8 @@ it. Today the live one is:
 
 | Action | Endpoint | Ceiling |
 |---|---|---|
-| Connect a bank | `POST /api/v1/banking/link/exchange/` | `bank_limit` |
-| Invite a team member | `POST /api/v1/teams/invite/` | `seat_limit` |
+| Connect a bank | `POST /api/v1/banking/link/exchange` | `bank_limit` |
+| Invite a team member | `POST /api/v1/teams/invite` | `seat_limit` |
 
 **Handle 402 globally**, in whatever wraps fetch — it will appear on more
 endpoints over time, and the message is always displayable as-is.
@@ -93,7 +93,7 @@ comes back to 0 with it.
 ## 2. The three plans
 
 ```
-GET /api/v1/billing/plans/
+GET /api/v1/billing/plans
 ```
 
 **200:**
@@ -184,7 +184,7 @@ Gate the billing settings screen on `capabilities` containing
 ### 3.1 Read
 
 ```
-GET /api/v1/billing/subscription/
+GET /api/v1/billing/subscription
 ```
 
 **200 — no subscription.** Not a 404: "this account has no subscription" is a
@@ -218,7 +218,7 @@ normal answer, and `data: null` is that answer.
 ### 3.2 Subscribe
 
 ```
-POST /api/v1/billing/subscription/
+POST /api/v1/billing/subscription
 ```
 
 ```json
@@ -245,7 +245,7 @@ again".
 ### 3.3 Change plan
 
 ```
-PATCH /api/v1/billing/subscription/
+PATCH /api/v1/billing/subscription
 ```
 
 ```json
@@ -265,7 +265,7 @@ signup subject to the 500-customer limit. Warn before the downgrade —
 ### 3.4 Cancel
 
 ```
-DELETE /api/v1/billing/subscription/
+DELETE /api/v1/billing/subscription
 ```
 
 **200.** The row is returned with `status: "CANCELLED"` — nothing is deleted,
@@ -297,7 +297,7 @@ list prices change.
 ## 5. Allowances
 
 ```
-GET /api/v1/billing/allowances/
+GET /api/v1/billing/allowances
 ```
 
 **200:**
@@ -359,7 +359,7 @@ Four things a payment can cost:
 | Standard check | `rail: "CHECK"` | free up to the plan allotment, then **$2.99** | no |
 | Expedited check | `rail: "CHECK"` + `expedited: true` | **$8.99** on every plan | yes |
 
-All four are chosen on `POST /api/v1/payments/`. Fees are charged **at send**,
+All four are chosen on `POST /api/v1/payments`. Fees are charged **at send**,
 not at arrival, and appear in the ledger (§6.4) against the payment reference.
 
 ### 6.1 After the cutoff, same-day is not sold ⚠️
@@ -378,7 +378,7 @@ $8.99 applies on every plan and is never free, regardless of how much of the
 check allotment is left. It is a separate product, not a penalty — a user with
 5 free checks remaining still pays $8.99 to expedite one.
 
-Request it with `expedited: true` on `POST /api/v1/payments/`, **CHECK rail
+Request it with `expedited: true` on `POST /api/v1/payments`, **CHECK rail
 only**. Any other rail is a 400 rather than a silent downgrade:
 
 ```json
@@ -399,7 +399,7 @@ refund in §7 will trigger on precisely the date the user was looking at.
 ### 6.4 The ledger
 
 ```
-GET /api/v1/billing/fees/
+GET /api/v1/billing/fees
 ```
 
 **200** — newest first:
@@ -499,8 +499,8 @@ with `fee_charge_id` and `payment_id` in `metadata`. No polling needed.
 ## 8. Enterprise add-ons
 
 ```
-GET  /api/v1/billing/addons/
-POST /api/v1/billing/addons/
+GET  /api/v1/billing/addons
+POST /api/v1/billing/addons
 ```
 
 | Kind | Price | Quantity |
@@ -564,7 +564,7 @@ render `unit_price` from the row, never from a hardcoded price list.
 ## 9. Invoice preview
 
 ```
-GET /api/v1/billing/invoice/
+GET /api/v1/billing/invoice
 ```
 
 Everything the customer would be billed this cycle, derived on read. Nothing is
@@ -654,13 +654,13 @@ a closed invoice and drops out of the preview.
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/api/v1/billing/plans/` | the three tiers |
-| GET | `/api/v1/billing/subscription/` | current subscription, or `null` |
-| POST | `/api/v1/billing/subscription/` | subscribe |
-| PATCH | `/api/v1/billing/subscription/` | change plan |
-| DELETE | `/api/v1/billing/subscription/` | cancel |
-| GET | `/api/v1/billing/allowances/` | usage against each ceiling |
-| GET | `/api/v1/billing/addons/` | Enterprise add-ons |
-| POST | `/api/v1/billing/addons/` | add, update, or remove (`quantity: 0`) |
-| GET | `/api/v1/billing/invoice/` | current-cycle invoice preview |
-| GET | `/api/v1/billing/fees/` | per-transaction fee ledger |
+| GET | `/api/v1/billing/plans` | the three tiers |
+| GET | `/api/v1/billing/subscription` | current subscription, or `null` |
+| POST | `/api/v1/billing/subscription` | subscribe |
+| PATCH | `/api/v1/billing/subscription` | change plan |
+| DELETE | `/api/v1/billing/subscription` | cancel |
+| GET | `/api/v1/billing/allowances` | usage against each ceiling |
+| GET | `/api/v1/billing/addons` | Enterprise add-ons |
+| POST | `/api/v1/billing/addons` | add, update, or remove (`quantity: 0`) |
+| GET | `/api/v1/billing/invoice` | current-cycle invoice preview |
+| GET | `/api/v1/billing/fees` | per-transaction fee ledger |

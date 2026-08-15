@@ -438,7 +438,7 @@ class BillingWebhookTests(TestCase):
         )
 
         return self.client.post(
-            "/webhooks/stripe/billing/",
+            "/webhooks/stripe/billing",
             data=body,
             content_type="application/json",
             HTTP_STRIPE_SIGNATURE=f"t={timestamp},v1={signature}",
@@ -457,7 +457,7 @@ class BillingWebhookTests(TestCase):
 
     def test_an_unsigned_payload_is_refused(self):
         response = self.client.post(
-            "/webhooks/stripe/billing/",
+            "/webhooks/stripe/billing",
             data=b"{}",
             content_type="application/json",
         )
@@ -572,7 +572,7 @@ class SetupIntentEndpointTests(TestCase):
         )
 
         response = self.client.post(
-            "/api/v1/billing/payment-method/setup/", {}, format="json"
+            "/api/v1/billing/payment-method/setup", {}, format="json"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -581,7 +581,7 @@ class SetupIntentEndpointTests(TestCase):
 
     def test_a_plan_is_required_first(self):
         response = self.client.post(
-            "/api/v1/billing/payment-method/setup/", {}, format="json"
+            "/api/v1/billing/payment-method/setup", {}, format="json"
         )
 
         self.assertEqual(response.status_code, 200)

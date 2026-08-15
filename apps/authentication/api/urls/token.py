@@ -7,13 +7,13 @@ from apps.authentication.api.views.token import (
 
 urlpatterns = [
     path(
-        "refresh/",
+        "/refresh",
         RefreshView.as_view(),
         name="refresh",
     ),
 
     path(
-        "logout/",
+        "/logout",
         LogoutView.as_view(),
         name="logout",
     ),

@@ -39,12 +39,12 @@ from apps.vendors.factories import (
     VendorPaymentMethodFactory,
 )
 
-HOME_URL = "/api/v1/dashboard/home/"
-BILLS_URL = "/api/v1/bills/"
-BILLS_SUMMARY_URL = "/api/v1/bills/summary/"
-OCCURRENCES_URL = "/api/v1/bills/occurrences/"
-VENDORS_URL = "/api/v1/vendors/"
-VENDORS_SUMMARY_URL = "/api/v1/vendors/summary/"
+HOME_URL = "/api/v1/dashboard/home"
+BILLS_URL = "/api/v1/bills"
+BILLS_SUMMARY_URL = "/api/v1/bills/summary"
+OCCURRENCES_URL = "/api/v1/bills/occurrences"
+VENDORS_URL = "/api/v1/vendors"
+VENDORS_SUMMARY_URL = "/api/v1/vendors/summary"
 
 #: The endpoint issues one aggregate, one bill count, one recent-bills read,
 #: one vendor-preview read and one pay-panel read — plus one membership

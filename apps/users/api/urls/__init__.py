@@ -7,14 +7,14 @@ from apps.users.api.views.onboarding import (
 from apps.users.api.views.profile import ProfileAPIView
 
 urlpatterns = [
-    path("profile/", ProfileAPIView.as_view(), name="user-profile"),
+    path("/profile", ProfileAPIView.as_view(), name="user-profile"),
     path(
-        "onboarding/",
+        "/onboarding",
         OnboardingAPIView.as_view(),
         name="user-onboarding",
     ),
     path(
-        "onboarding/skip-bank/",
+        "/onboarding/skip-bank",
         OnboardingSkipBankAPIView.as_view(),
         name="user-onboarding-skip-bank",
     ),

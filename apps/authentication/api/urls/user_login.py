@@ -7,13 +7,13 @@ from apps.authentication.api.views.user_login import (
 
 urlpatterns = [
     path(
-        "login/",
+        "/login",
         LoginView.as_view(),
         name="login",
     ),
 
     path(
-        "login/verify/",
+        "/login/verify",
         LoginVerifyOTPView.as_view(),
         name="login-verify",
     ),

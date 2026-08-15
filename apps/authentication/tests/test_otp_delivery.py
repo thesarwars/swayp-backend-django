@@ -248,7 +248,7 @@ class ThrottleTests(TestCase):
 
         client = APIClient()
         response = client.post(
-            "/api/v1/auth/resend-otp/",
+            "/api/v1/auth/resend-otp",
             {"email": "throttle@example.com", "purpose": "LOGIN"},
             format="json",
         )

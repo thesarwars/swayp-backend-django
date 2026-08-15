@@ -7,13 +7,13 @@ from apps.authentication.api.views.user_registration import (
 
 urlpatterns = [
     path(
-        "register/",
+        "/register",
         RegisterView.as_view(),
         name="register",
     ),
 
     path(
-        "verify-otp/",
+        "/verify-otp",
         VerifyOTPView.as_view(),
         name="verify-otp",
     ),

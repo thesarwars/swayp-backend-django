@@ -23,7 +23,7 @@ each. Start there; the per-domain references above are the lookup layer.
 Every response body in those guides was captured from the running API, not
 written from a spec.
 
-**Base URL:** `/api/v1/` · **Interactive schema:** `/api/docs/`
+**Base URL:** `/api/v1` · **Interactive schema:** `/api/docs`
 
 ---
 

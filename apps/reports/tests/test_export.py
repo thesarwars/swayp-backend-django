@@ -27,8 +27,8 @@ from apps.vendors.factories import UserFactory
 
 D = dt.date
 
-URL = "/api/v1/reports/"
-URL_1099 = "/api/v1/reports/1099/"
+URL = "/api/v1/reports"
+URL_1099 = "/api/v1/reports/1099"
 
 
 class ExportBase(TestCase):

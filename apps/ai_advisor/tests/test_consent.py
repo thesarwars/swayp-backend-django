@@ -16,7 +16,7 @@ from apps.audit.models import AuditLog
 from apps.banking.factories import BankAccountFactory, UserFactory
 from apps.common.exceptions import BadRequestException
 
-CONSENT_URL = "/api/v1/ai/consent/"
+CONSENT_URL = "/api/v1/ai/consent"
 CONSENT_TEXT = "I allow Flo to use my balances and bills for guidance."
 
 _PROVIDER = "apps.ai_advisor.services.cash_context_service.get_llm_provider"

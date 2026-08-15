@@ -31,13 +31,13 @@ GET  banking/onboarding-summary/      → the "here's what we set up" screen
 ## 2. Link and exchange
 
 ```
-POST /api/v1/banking/link/token/     { }
+POST /api/v1/banking/link/token     { }
 ```
 
 Returns a `link_token` for the bank widget.
 
 ```
-POST /api/v1/banking/link/exchange/
+POST /api/v1/banking/link/exchange
 ```
 
 ```json
@@ -80,7 +80,7 @@ exposed through any endpoint. Don't design a screen that shows a full number.
 ## 3. Polling the scan
 
 ```
-GET /api/v1/banking/scans/<scan_id>/
+GET /api/v1/banking/scans/<scan_id>
 ```
 
 ```json
@@ -105,7 +105,7 @@ A failed scan sets `status` and fills `error_message`; show that text.
 ## 4. Review the candidates
 
 ```
-GET /api/v1/banking/scans/<scan_id>/candidates/
+GET /api/v1/banking/scans/<scan_id>/candidates
 ```
 
 Each candidate is a detected recurring payment — vendor name, amount,
@@ -115,7 +115,7 @@ the user unticks anything wrong before importing.
 ## 5. Import
 
 ```
-POST /api/v1/banking/scans/<scan_id>/import/
+POST /api/v1/banking/scans/<scan_id>/import
 ```
 
 ```json
@@ -136,11 +136,11 @@ Send `Idempotency-Key` as well; see [E1](e1-foundations.md).
 ## 6. Connections and accounts
 
 ```
-GET    /api/v1/banking/connections/
-GET    /api/v1/banking/connections/<id>/
-DELETE /api/v1/banking/connections/<id>/     ← disconnect
-GET    /api/v1/banking/accounts/
-POST   /api/v1/banking/accounts/             ← set the default funding source
+GET    /api/v1/banking/connections
+GET    /api/v1/banking/connections/<id>
+DELETE /api/v1/banking/connections/<id>     ← disconnect
+GET    /api/v1/banking/accounts
+POST   /api/v1/banking/accounts             ← set the default funding source
 ```
 
 ### Disconnect is guarded ⚠️
@@ -174,7 +174,7 @@ connections, so `GET /billing/allowances/` and this gate can never disagree.
 ## 7. The onboarding summary screen
 
 ```
-GET /api/v1/banking/onboarding-summary/
+GET /api/v1/banking/onboarding-summary
 ```
 
 ```json

@@ -12,22 +12,22 @@ from apps.billing.api.views.billing import (
 )
 
 urlpatterns = [
-    path("plans/", PlanListAPIView.as_view(), name="billing-plan-list"),
+    path("/plans", PlanListAPIView.as_view(), name="billing-plan-list"),
     path(
-        "subscription/",
+        "/subscription",
         SubscriptionAPIView.as_view(),
         name="billing-subscription",
     ),
     path(
-        "allowances/",
+        "/allowances",
         AllowanceAPIView.as_view(),
         name="billing-allowances",
     ),
-    path("addons/", AddOnAPIView.as_view(), name="billing-addons"),
-    path("invoice/", InvoicePreviewAPIView.as_view(), name="billing-invoice"),
-    path("fees/", FeeChargeListAPIView.as_view(), name="billing-fees"),
+    path("/addons", AddOnAPIView.as_view(), name="billing-addons"),
+    path("/invoice", InvoicePreviewAPIView.as_view(), name="billing-invoice"),
+    path("/fees", FeeChargeListAPIView.as_view(), name="billing-fees"),
     path(
-        "payment-method/setup/",
+        "/payment-method/setup",
         PaymentMethodSetupAPIView.as_view(),
         name="billing-payment-method-setup",
     ),

@@ -4,7 +4,7 @@ from apps.dashboard.api.views.profile_summary import ProfileSummaryAPIView
 
 urlpatterns = [
     path(
-        "profile-summary/",
+        "/profile-summary",
         ProfileSummaryAPIView.as_view(),
         name="dashboard-profile-summary",
     ),

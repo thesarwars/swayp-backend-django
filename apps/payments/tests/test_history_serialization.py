@@ -47,7 +47,7 @@ class PaymentHistorySerializationTests(TestCase):
         payment.provider = None
         payment.save(update_fields=["provider"])
 
-        response = self.client.get("/api/v1/payments/history/")
+        response = self.client.get("/api/v1/payments/history")
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["data"][0]["providerId"])
@@ -58,7 +58,7 @@ class PaymentHistorySerializationTests(TestCase):
         payment.category = None
         payment.save(update_fields=["category"])
 
-        response = self.client.get("/api/v1/payments/history/")
+        response = self.client.get("/api/v1/payments/history")
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["data"][0]["categoryId"])
@@ -71,7 +71,7 @@ class PaymentHistorySerializationTests(TestCase):
         bare.category = None
         bare.save(update_fields=["provider", "category"])
 
-        response = self.client.get("/api/v1/payments/history/")
+        response = self.client.get("/api/v1/payments/history")
 
         self.assertEqual(response.status_code, 200)
 

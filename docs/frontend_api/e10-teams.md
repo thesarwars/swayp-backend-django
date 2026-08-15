@@ -11,7 +11,7 @@ Full reference: [Teams API](../teams-api-documentation.md)
 ## 1. Call this on login, before anything else
 
 ```
-GET /api/v1/teams/me/
+GET /api/v1/teams/me
 ```
 
 ```json
@@ -102,7 +102,7 @@ same rows the invite gate checks, so the two can never disagree.
 ## 5. Team screen
 
 ```
-GET /api/v1/teams/members/
+GET /api/v1/teams/members
 ```
 
 ```json
@@ -138,7 +138,7 @@ Row states to design: `ACTIVE`, `INVITED`, and `INVITED` with
 ## 6. Invitations
 
 ```
-POST /api/v1/teams/invite/     { "email": "sam@example.com", "role": "ADMIN" }
+POST /api/v1/teams/invite     { "email": "sam@example.com", "role": "ADMIN" }
 ```
 
 **201.** `role` is optional and defaults to `MEMBER`. `OWNER` is not a valid
@@ -169,7 +169,7 @@ again.
 The emailed link points at *your* route: `FRONTEND_URL/teams/accept?token=…`.
 
 ```
-POST /api/v1/teams/invite/accept/     { "token": "…" }
+POST /api/v1/teams/invite/accept     { "token": "…" }
 ```
 
 **The invitee must be signed in first** — the token identifies the invitation,
@@ -201,8 +201,8 @@ accepting, and the seat is re-checked at accept time.
 ### Role change and removal
 
 ```
-PATCH  /api/v1/teams/members/<id>/     { "role": "ADMIN" }
-DELETE /api/v1/teams/members/<id>/
+PATCH  /api/v1/teams/members/<id>     { "role": "ADMIN" }
+DELETE /api/v1/teams/members/<id>
 ```
 
 Both **200**. DELETE sets `status: "REMOVED"` and frees the seat immediately —
@@ -228,10 +228,10 @@ Most customers have exactly one and never see this. Gate the section on
 `subscription.plan.code === "ENTERPRISE"`.
 
 ```
-GET    /api/v1/teams/entities/
-POST   /api/v1/teams/entities/          { "legal_name": "…", "ein": "…" }
-PATCH  /api/v1/teams/entities/<id>/
-DELETE /api/v1/teams/entities/<id>/     ← archives
+GET    /api/v1/teams/entities
+POST   /api/v1/teams/entities          { "legal_name": "…", "ein": "…" }
+PATCH  /api/v1/teams/entities/<id>
+DELETE /api/v1/teams/entities/<id>     ← archives
 ```
 
 The **first** entity is free on any plan. The **second** requires Enterprise:

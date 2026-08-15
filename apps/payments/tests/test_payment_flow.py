@@ -735,7 +735,7 @@ class DeprecationTests(PayFlowTestCase):
         payment = self.create([self.occurrence()])["payments"][0]
 
         response = self.client.patch(
-            f"/api/v1/payments/{payment.id}/successful/", {}, format="json"
+            f"/api/v1/payments/{payment.id}/successful", {}, format="json"
         )
 
         self.assertEqual(response.status_code, 403)
@@ -749,17 +749,17 @@ class DeprecationTests(PayFlowTestCase):
         self.user.save(update_fields=["is_staff"])
 
         response = self.client.patch(
-            f"/api/v1/payments/{payment.id}/successful/", {}, format="json"
+            f"/api/v1/payments/{payment.id}/successful", {}, format="json"
         )
 
         self.assertEqual(response.status_code, 200)
 
     def test_the_payment_tracking_route_is_gone(self):
         self.assertEqual(
-            self.client.get("/api/v1/payment-tracking/").status_code, 404
+            self.client.get("/api/v1/payment-tracking").status_code, 404
         )
 
     def test_the_wallet_route_is_gone(self):
         self.assertEqual(
-            self.client.get("/api/v1/wallet/summary/").status_code, 404
+            self.client.get("/api/v1/wallet/summary").status_code, 404
         )

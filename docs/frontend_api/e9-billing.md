@@ -15,7 +15,7 @@ Setup: Stripe Billing
 Stripe is wired, but whether it charges is configuration:
 
 ```
-POST /api/v1/billing/payment-method/setup/
+POST /api/v1/billing/payment-method/setup
 ```
 
 ```json
@@ -63,7 +63,7 @@ is just full. It carries `message` only, written to be shown verbatim.
 ## 4. Pricing screen
 
 ```
-GET /api/v1/billing/plans/
+GET /api/v1/billing/plans
 ```
 
 ```json
@@ -107,7 +107,7 @@ invite 2. Write "3 users", never "3 teammates".
 ## 5. Subscribe, with or without a card
 
 ```
-POST /api/v1/billing/subscription/
+POST /api/v1/billing/subscription
 ```
 
 ```json
@@ -165,8 +165,8 @@ read the trial from these instead:
 ### Change plan, cancel
 
 ```
-PATCH  /api/v1/billing/subscription/   { "plan": "ENTERPRISE" }
-DELETE /api/v1/billing/subscription/
+PATCH  /api/v1/billing/subscription   { "plan": "ENTERPRISE" }
+DELETE /api/v1/billing/subscription
 ```
 
 Cycle boundaries are kept and **there is no proration** — the change takes
@@ -197,7 +197,7 @@ charged. Reads are open to the whole team. Gate the screen on
 ## 7. Allowances
 
 ```
-GET /api/v1/billing/allowances/
+GET /api/v1/billing/allowances
 ```
 
 ```json
@@ -239,7 +239,7 @@ send**, not at arrival.
 fee, no row. Hide the option rather than offering something undeliverable.
 
 ```
-GET /api/v1/billing/fees/
+GET /api/v1/billing/fees
 ```
 
 ```json
@@ -271,7 +271,7 @@ which is why its `guaranteed_arrival` is `null`.
 ## 9. Invoice preview
 
 ```
-GET /api/v1/billing/invoice/
+GET /api/v1/billing/invoice
 ```
 
 ```json
@@ -305,8 +305,8 @@ the invoice appears not to add up. `subtotal` is the sum of `total`.
 ## 10. Enterprise add-ons
 
 ```
-GET  /api/v1/billing/addons/
-POST /api/v1/billing/addons/     { "kind": "EXTRA_ENTITY", "quantity": 2 }
+GET  /api/v1/billing/addons
+POST /api/v1/billing/addons     { "kind": "EXTRA_ENTITY", "quantity": 2 }
 ```
 
 | Kind | Price | Quantity |

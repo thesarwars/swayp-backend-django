@@ -162,8 +162,8 @@ different password using the same code.
 ## 5. Profile — the Settings screen
 
 ```
-GET   /api/v1/users/profile/
-PATCH /api/v1/users/profile/
+GET   /api/v1/users/profile
+PATCH /api/v1/users/profile
 ```
 
 ```json
@@ -205,8 +205,8 @@ anytime in Settings"*.
 ## 6. The onboarding wizard
 
 ```
-GET  /api/v1/users/onboarding/
-POST /api/v1/users/onboarding/skip-bank/
+GET  /api/v1/users/onboarding
+POST /api/v1/users/onboarding/skip-bank
 ```
 
 ```json

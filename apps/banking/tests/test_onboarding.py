@@ -209,20 +209,20 @@ class OnboardingJourneyTests(TestCase):
     def link(self, public_token="public-mock-chase"):
         with self.captureOnCommitCallbacks(execute=True):
             return self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": public_token, "consent_accepted": True},
                 format="json",
             )
 
     def test_link_token_is_issued(self):
-        response = self.client.post("/api/v1/banking/link/token/")
+        response = self.client.post("/api/v1/banking/link/token")
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["data"]["link_token"])
 
     def test_exchange_without_consent_is_rejected(self):
         response = self.client.post(
-            "/api/v1/banking/link/exchange/",
+            "/api/v1/banking/link/exchange",
             {"public_token": "public-mock-chase", "consent_accepted": False},
             format="json",
         )
@@ -287,7 +287,7 @@ class OnboardingJourneyTests(TestCase):
         self.link()
         scan = TransactionScan.objects.get()
 
-        response = self.client.get(f"/api/v1/banking/scans/{scan.id}/")
+        response = self.client.get(f"/api/v1/banking/scans/{scan.id}")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["data"]["status"], ScanStatus.DONE)
@@ -299,13 +299,13 @@ class OnboardingJourneyTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/scans/",
+                "/api/v1/banking/scans",
                 {"connection_id": str(connection.id), "months": 3},
                 format="json",
             )
 
         scan = TransactionScan.objects.order_by("-created_at").first()
-        response = self.client.get(f"/api/v1/banking/scans/{scan.id}/")
+        response = self.client.get(f"/api/v1/banking/scans/{scan.id}")
 
         self.assertTrue(response.data["data"]["progress"]["thin_history"])
 
@@ -314,7 +314,7 @@ class OnboardingJourneyTests(TestCase):
         scan = TransactionScan.objects.get()
 
         response = self.client.get(
-            f"/api/v1/banking/scans/{scan.id}/candidates/"
+            f"/api/v1/banking/scans/{scan.id}/candidates"
         )
 
         self.assertEqual(len(response.data["data"]), 4)
@@ -344,7 +344,7 @@ class ImportTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": "public-mock-chase", "consent_accepted": True},
                 format="json",
             )
@@ -353,7 +353,7 @@ class ImportTests(TestCase):
 
     def import_all(self, **headers):
         return self.client.post(
-            f"/api/v1/banking/scans/{self.scan.id}/import/",
+            f"/api/v1/banking/scans/{self.scan.id}/import",
             {"all": True},
             format="json",
             **headers,
@@ -408,7 +408,7 @@ class ImportTests(TestCase):
         candidate = BillDetectionCandidate.objects.first()
 
         response = self.client.post(
-            f"/api/v1/banking/scans/{self.scan.id}/import/",
+            f"/api/v1/banking/scans/{self.scan.id}/import",
             {"candidate_ids": [str(candidate.id)]},
             format="json",
         )
@@ -440,7 +440,7 @@ class ImportTests(TestCase):
 
     def test_import_requires_a_selection(self):
         response = self.client.post(
-            f"/api/v1/banking/scans/{self.scan.id}/import/", {},
+            f"/api/v1/banking/scans/{self.scan.id}/import", {},
             format="json",
         )
 
@@ -487,7 +487,7 @@ class DisconnectTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": "public-mock-chase", "consent_accepted": True},
                 format="json",
             )
@@ -496,7 +496,7 @@ class DisconnectTests(TestCase):
 
     def test_disconnect_marks_the_connection_and_clears_funding(self):
         response = self.client.delete(
-            f"/api/v1/banking/connections/{self.connection.id}/"
+            f"/api/v1/banking/connections/{self.connection.id}"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -521,7 +521,7 @@ class DisconnectTests(TestCase):
         )
 
         response = self.client.delete(
-            f"/api/v1/banking/connections/{self.connection.id}/"
+            f"/api/v1/banking/connections/{self.connection.id}"
         )
 
         self.assertEqual(response.status_code, 400)
@@ -529,7 +529,7 @@ class DisconnectTests(TestCase):
         self.assertEqual(self.connection.status, BankConnectionStatus.ACTIVE)
 
     def test_accounts_expose_only_masks(self):
-        response = self.client.get("/api/v1/banking/accounts/")
+        response = self.client.get("/api/v1/banking/accounts")
         row = response.data["data"][0]
 
         self.assertEqual(len(row["mask"]), 4)
@@ -542,7 +542,7 @@ class DisconnectTests(TestCase):
         ).first()
 
         response = self.client.post(
-            "/api/v1/banking/accounts/",
+            "/api/v1/banking/accounts",
             {"account_id": str(savings.id)},
             format="json",
         )
@@ -570,7 +570,7 @@ class OnboardingSummaryTests(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def test_summary_before_linking_reports_no_connection(self):
-        response = self.client.get("/api/v1/banking/onboarding-summary/")
+        response = self.client.get("/api/v1/banking/onboarding-summary")
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.data["data"]["connection"])
@@ -578,7 +578,7 @@ class OnboardingSummaryTests(TestCase):
     def test_summary_after_import(self):
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": "public-mock-chase",
                  "consent_accepted": True},
                 format="json",
@@ -586,12 +586,12 @@ class OnboardingSummaryTests(TestCase):
 
         scan = TransactionScan.objects.get()
         self.client.post(
-            f"/api/v1/banking/scans/{scan.id}/import/",
+            f"/api/v1/banking/scans/{scan.id}/import",
             {"all": True}, format="json",
         )
 
         data = self.client.get(
-            "/api/v1/banking/onboarding-summary/"
+            "/api/v1/banking/onboarding-summary"
         ).data["data"]
 
         self.assertEqual(data["connection"]["institution_name"], "Chase Bank")
@@ -606,7 +606,7 @@ class OnboardingSummaryTests(TestCase):
     def test_bill_totals_reconcile_with_the_bills_summary(self):
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": "public-mock-chase",
                  "consent_accepted": True},
                 format="json",
@@ -614,14 +614,14 @@ class OnboardingSummaryTests(TestCase):
 
         scan = TransactionScan.objects.get()
         self.client.post(
-            f"/api/v1/banking/scans/{scan.id}/import/",
+            f"/api/v1/banking/scans/{scan.id}/import",
             {"all": True}, format="json",
         )
 
         onboarding = self.client.get(
-            "/api/v1/banking/onboarding-summary/"
+            "/api/v1/banking/onboarding-summary"
         ).data["data"]["bills"]
-        bills = self.client.get("/api/v1/bills/summary/").data["data"]
+        bills = self.client.get("/api/v1/bills/summary").data["data"]
 
         for key in ("overdue_count", "due_count", "upcoming_count"):
             with self.subTest(key=key):
@@ -644,7 +644,7 @@ class ScanRerunTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(
-                "/api/v1/banking/link/exchange/",
+                "/api/v1/banking/link/exchange",
                 {"public_token": "public-mock-chase", "consent_accepted": True},
                 format="json",
             )

@@ -10,7 +10,7 @@ centre.
 ## 1. Home — one call, whole screen
 
 ```
-GET /api/v1/dashboard/home/?tab=upcoming
+GET /api/v1/dashboard/home?tab=upcoming
 ```
 
 ```json
@@ -56,7 +56,7 @@ clicks.
 ### Profile summary
 
 ```
-GET /api/v1/dashboard/profile-summary/
+GET /api/v1/dashboard/profile-summary
 ```
 
 Read-only, for the account chip in the header. To **edit** anything, use
@@ -67,7 +67,7 @@ Read-only, for the account chip in the header. To **edit** anything, use
 ## 2. Payments report
 
 ```
-GET /api/v1/reports/?vendor=&date_from=&date_to=&status=&page=1
+GET /api/v1/reports?vendor=&date_from=&date_to=&status=&page=1
 ```
 
 ```json
@@ -96,8 +96,8 @@ the user.
 ### Export — CSV and PDF
 
 ```
-GET /api/v1/reports/?export=csv     → text/csv,        swayp-payments.csv
-GET /api/v1/reports/?export=pdf     → application/pdf, swayp-payments.pdf
+GET /api/v1/reports?export=csv     → text/csv,        swayp-payments.csv
+GET /api/v1/reports?export=pdf     → application/pdf, swayp-payments.pdf
 ```
 
 Both come back as **file downloads** (`Content-Disposition: attachment`), not
@@ -126,8 +126,8 @@ export that looks complete is worse than one that admits it.
 ## 3. 1099 — plan-gated
 
 ```
-GET /api/v1/reports/1099/?year=2026
-GET /api/v1/reports/1099/?export=csv|pdf
+GET /api/v1/reports/1099?year=2026
+GET /api/v1/reports/1099?export=csv|pdf
 ```
 
 ```json
@@ -162,9 +162,9 @@ omits money is worse than one that flags it.
 ## 4. Notifications
 
 ```
-GET   /api/v1/notifications/?page=1
-PATCH /api/v1/notifications/<id>/read/
-PATCH /api/v1/notifications/read-all/
+GET   /api/v1/notifications?page=1
+PATCH /api/v1/notifications/<id>/read
+PATCH /api/v1/notifications/read-all
 ```
 
 ```json
@@ -185,8 +185,8 @@ than the account.
 ### Preferences
 
 ```
-GET   /api/v1/notifications/preferences/
-PATCH /api/v1/notifications/preferences/
+GET   /api/v1/notifications/preferences
+PATCH /api/v1/notifications/preferences
 ```
 
 ```json

@@ -195,7 +195,7 @@ class TrialOnTheApiTests(TestCase):
 
     def test_the_plans_list_advertises_the_trial(self):
         rows = {p["code"]: p for p in self.client.get(
-            "/api/v1/billing/plans/"
+            "/api/v1/billing/plans"
         ).data["data"]}
 
         self.assertEqual(rows["STANDARD"]["trial_days"], 14)
@@ -203,13 +203,13 @@ class TrialOnTheApiTests(TestCase):
 
     def test_the_subscription_reports_its_trial(self):
         self.client.post(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "STANDARD"},
             format="json",
         )
 
         data = self.client.get(
-            "/api/v1/billing/subscription/"
+            "/api/v1/billing/subscription"
         ).data["data"]
 
         self.assertTrue(data["is_trialing"])
@@ -218,13 +218,13 @@ class TrialOnTheApiTests(TestCase):
 
     def test_a_non_trial_plan_reports_no_trial(self):
         self.client.post(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "FOUNDING"},
             format="json",
         )
 
         data = self.client.get(
-            "/api/v1/billing/subscription/"
+            "/api/v1/billing/subscription"
         ).data["data"]
 
         self.assertFalse(data["is_trialing"])
@@ -234,13 +234,13 @@ class TrialOnTheApiTests(TestCase):
     def test_allowances_are_full_during_a_trial(self):
         """The point of a trial is evaluating the real product."""
         self.client.post(
-            "/api/v1/billing/subscription/",
+            "/api/v1/billing/subscription",
             {"plan": "STANDARD"},
             format="json",
         )
 
         data = self.client.get(
-            "/api/v1/billing/allowances/"
+            "/api/v1/billing/allowances"
         ).data["data"]
 
         self.assertEqual(data["SEATS"]["limit"], 10)

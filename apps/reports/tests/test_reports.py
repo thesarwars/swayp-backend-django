@@ -29,7 +29,7 @@ from apps.payments.repositories import PaymentRepository
 from apps.reports.selectors.report_selector import REPORTABLE_STATUSES
 from apps.vendors.factories import UserFactory, VendorFactory
 
-REPORTS_URL = "/api/v1/reports/"
+REPORTS_URL = "/api/v1/reports"
 
 #: One aggregate for the totals, one COUNT for the paginator, one page slice,
 #: plus one membership lookup to resolve the acting account (E10). Exact by

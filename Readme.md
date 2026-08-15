@@ -140,19 +140,19 @@ http://127.0.0.1:8000/
 Swagger UI
 
 ```
-http://127.0.0.1:8000/api/docs/
+http://127.0.0.1:8000/api/docs
 ```
 
 OpenAPI Schema
 
 ```
-http://127.0.0.1:8000/api/schema/
+http://127.0.0.1:8000/api/schema
 ```
 
 ReDoc
 
 ```
-http://127.0.0.1:8000/api/redoc/
+http://127.0.0.1:8000/api/redoc
 ```
 
 ---
@@ -545,19 +545,19 @@ authentication/
 Swagger UI is available at:
 
 ```
-/api/docs/
+/api/docs
 ```
 
 OpenAPI schema:
 
 ```
-/api/schema/
+/api/schema
 ```
 
 ReDoc documentation:
 
 ```
-/api/redoc/
+/api/redoc
 ```
 
 The Swagger interface supports:

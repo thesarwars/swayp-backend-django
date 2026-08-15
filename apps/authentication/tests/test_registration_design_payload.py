@@ -22,7 +22,7 @@ from apps.users.models.individual_profile import IndividualProfile
 from apps.users.models.profile import AccountType, Profile
 from apps.users.models.user import User
 
-URL = "/api/v1/auth/register/"
+URL = "/api/v1/auth/register"
 
 PASSWORD = "Str0ng!Passphrase1"
 
@@ -310,7 +310,7 @@ class OnboardingCollectsTheRestTests(TestCase):
 
     def test_step_one_fields_can_be_set_afterwards(self):
         response = self.auth.patch(
-            "/api/v1/users/profile/",
+            "/api/v1/users/profile",
             {
                 "trading_name": "Acme",
                 "business_type": "LLC",
@@ -329,7 +329,7 @@ class OnboardingCollectsTheRestTests(TestCase):
         self.assertEqual(branch.billing_address, "1 Acme Way")
 
     def test_what_registration_captured_is_readable(self):
-        data = self.auth.get("/api/v1/users/profile/").data["data"]
+        data = self.auth.get("/api/v1/users/profile").data["data"]
 
         self.assertEqual(data["business_name"], "Acme Corporation, LLC")
         self.assertEqual(data["industry"], "Construction")

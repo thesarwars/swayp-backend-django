@@ -40,7 +40,7 @@ class PhoneLoginTests(TestCase):
     def request_code(self, phone_number):
         with self.captureOnCommitCallbacks(execute=True):
             return self.client.post(
-                "/api/v1/auth/login/phone/request/",
+                "/api/v1/auth/login/phone/request",
                 {"phone_number": phone_number},
                 format="json",
             )
@@ -84,7 +84,7 @@ class PhoneLoginTests(TestCase):
         )
 
         response = self.client.post(
-            "/api/v1/auth/login/phone/verify/",
+            "/api/v1/auth/login/phone/verify",
             {"phone_number": "+15551234567", "otp": code},
             format="json",
         )
@@ -103,12 +103,12 @@ class PhoneLoginTests(TestCase):
         )
 
         unknown = self.client.post(
-            "/api/v1/auth/login/phone/verify/",
+            "/api/v1/auth/login/phone/verify",
             {"phone_number": "+15559999999", "otp": code},
             format="json",
         )
         wrong_code = self.client.post(
-            "/api/v1/auth/login/phone/verify/",
+            "/api/v1/auth/login/phone/verify",
             {"phone_number": "+15551234567", "otp": "000000"},
             format="json",
         )
@@ -126,7 +126,7 @@ class PhoneLoginTests(TestCase):
         )
 
         response = self.client.post(
-            "/api/v1/auth/login/phone/verify/",
+            "/api/v1/auth/login/phone/verify",
             {"phone_number": "+15551234567", "otp": code},
             format="json",
         )
@@ -146,13 +146,13 @@ class PhoneLoginTests(TestCase):
 
         self.assertEqual(
             self.client.post(
-                "/api/v1/auth/login/phone/verify/", payload, format="json"
+                "/api/v1/auth/login/phone/verify", payload, format="json"
             ).status_code,
             200,
         )
         self.assertEqual(
             self.client.post(
-                "/api/v1/auth/login/phone/verify/", payload, format="json"
+                "/api/v1/auth/login/phone/verify", payload, format="json"
             ).status_code,
             400,
         )

@@ -12,9 +12,9 @@ Nothing here works until the user has consented. Ask once, store the answer,
 and let them revoke.
 
 ```
-GET    /api/v1/ai/consent/
-POST   /api/v1/ai/consent/
-DELETE /api/v1/ai/consent/
+GET    /api/v1/ai/consent
+POST   /api/v1/ai/consent
+DELETE /api/v1/ai/consent
 ```
 
 **GET:**
@@ -41,7 +41,7 @@ history is kept, so "did they ever consent" remains answerable.
 ## 2. Cash context — the line before a payment
 
 ```
-POST /api/v1/ai/cash-context/     { "amount": "500.00" }
+POST /api/v1/ai/cash-context     { "amount": "500.00" }
 ```
 
 `amount` is **required**; omitting it is a 400.
@@ -85,7 +85,7 @@ opens, not on every keystroke of the amount field.
 ## 3. Balance projection
 
 ```
-GET /api/v1/ai/balance-projection/?account=<bank_account_id>&date=2026-10-01
+GET /api/v1/ai/balance-projection?account=<bank_account_id>&date=2026-10-01
 ```
 
 Both `account` and `date` are **required** — a 400 lists them if missing.

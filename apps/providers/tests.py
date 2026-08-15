@@ -25,20 +25,20 @@ class SupersededSearchRouteTests(TestCase):
 
     def test_the_search_route_is_gone(self):
         self.assertEqual(
-            self.client.get("/api/v1/providers/search/?q=chase").status_code,
+            self.client.get("/api/v1/providers/search?q=chase").status_code,
             404,
         )
 
     def test_the_provider_list_still_works(self):
         """Kept deliberately as the directory cache."""
         self.assertEqual(
-            self.client.get("/api/v1/providers/").status_code, 200
+            self.client.get("/api/v1/providers").status_code, 200
         )
 
     def test_the_list_still_searches(self):
         """What the removed route actually did, and still available."""
         self.assertEqual(
-            self.client.get("/api/v1/providers/?search=chase").status_code,
+            self.client.get("/api/v1/providers?search=chase").status_code,
             200,
         )
 
@@ -46,7 +46,7 @@ class SupersededSearchRouteTests(TestCase):
         """E3-S7, the endpoint that supersedes it."""
         self.assertEqual(
             self.client.get(
-                "/api/v1/vendors/directory-search/?q=chase"
+                "/api/v1/vendors/directory-search?q=chase"
             ).status_code,
             200,
         )

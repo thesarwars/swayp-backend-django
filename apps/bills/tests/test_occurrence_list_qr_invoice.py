@@ -61,7 +61,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
     def test_rows_carry_vendor_and_computed_status(self):
         self.occurrence(self.bill, D(2030, 1, 1))
 
-        response = self.client.get("/api/v1/bills/occurrences/")
+        response = self.client.get("/api/v1/bills/occurrences")
         row = response.data["data"][0]
 
         self.assertEqual(response.status_code, 200)
@@ -75,7 +75,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         for day in range(1, 6):
             self.occurrence(self.bill, D(2030, 1, day))
 
-        response = self.client.get("/api/v1/bills/occurrences/?pageSize=2")
+        response = self.client.get("/api/v1/bills/occurrences?pageSize=2")
 
         self.assertEqual(len(response.data["data"]), 2)
         self.assertEqual(response.data["pagination"]["totalItems"], 5)
@@ -85,7 +85,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         self.occurrence(self.bill, D(2030, 1, 1))   # upcoming
 
         overdue = self.client.get(
-            "/api/v1/bills/occurrences/?status=OVERDUE"
+            "/api/v1/bills/occurrences?status=OVERDUE"
         )
 
         self.assertEqual(len(overdue.data["data"]), 1)
@@ -96,7 +96,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         self.occurrence(self.other_bill, D(2030, 1, 2), amount="389.00")
 
         response = self.client.get(
-            f"/api/v1/bills/occurrences/?vendor={self.other_vendor.id}"
+            f"/api/v1/bills/occurrences?vendor={self.other_vendor.id}"
         )
 
         self.assertEqual(len(response.data["data"]), 1)
@@ -108,7 +108,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         self.occurrence(self.bill, D(2030, 12, 1))
 
         response = self.client.get(
-            "/api/v1/bills/occurrences/"
+            "/api/v1/bills/occurrences"
             "?date_from=2030-05-01&date_to=2030-07-01"
         )
 
@@ -122,7 +122,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         self.bill.deleted_at = timezone.now()
         self.bill.save(update_fields=["deleted_at"])
 
-        response = self.client.get("/api/v1/bills/occurrences/")
+        response = self.client.get("/api/v1/bills/occurrences")
 
         self.assertEqual(response.data["data"], [])
 
@@ -136,7 +136,7 @@ class OccurrenceListTests(BillFixtureMixin, TestCase):
         client.force_authenticate(user=other)
 
         self.assertEqual(
-            client.get("/api/v1/bills/occurrences/").data["data"], []
+            client.get("/api/v1/bills/occurrences").data["data"], []
         )
 
 
@@ -161,7 +161,7 @@ class PaymentHistoryTests(BillFixtureMixin, TestCase):
         self.make_payment(occurrence)
 
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/payments/"
+            f"/api/v1/bills/{self.bill.id}/payments"
         )
 
         self.assertEqual(response.status_code, 200)
@@ -174,7 +174,7 @@ class PaymentHistoryTests(BillFixtureMixin, TestCase):
         self.make_payment(occurrence, PaymentStatus.SUCCESSFUL, "TX-OK")
 
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/payments/"
+            f"/api/v1/bills/{self.bill.id}/payments"
         )
 
         self.assertEqual(len(response.data["data"]), 2)
@@ -191,14 +191,14 @@ class PaymentHistoryTests(BillFixtureMixin, TestCase):
         )
 
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/payments/"
+            f"/api/v1/bills/{self.bill.id}/payments"
         )
 
         self.assertEqual(len(response.data["data"]), 1)
 
     def test_empty_history_is_an_empty_list(self):
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/payments/"
+            f"/api/v1/bills/{self.bill.id}/payments"
         )
 
         self.assertEqual(response.data["data"], [])
@@ -251,7 +251,7 @@ class InvoiceTests(BillFixtureMixin, TestCase):
         self.occurrence(self.bill, D(2026, 2, 15))
 
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/invoice/"
+            f"/api/v1/bills/{self.bill.id}/invoice"
         )
         data = response.data["data"]
 
@@ -264,7 +264,7 @@ class InvoiceTests(BillFixtureMixin, TestCase):
         self.occurrence(self.bill, D(2026, 2, 15))
 
         data = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/invoice/"
+            f"/api/v1/bills/{self.bill.id}/invoice"
         ).data["data"]
 
         self.assertTrue(data["payment_reference"].startswith("SWAYP-"))
@@ -276,7 +276,7 @@ class InvoiceTests(BillFixtureMixin, TestCase):
         occurrence.save(update_fields=["payment_reference"])
 
         data = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/invoice/"
+            f"/api/v1/bills/{self.bill.id}/invoice"
         ).data["data"]
 
         self.assertEqual(data["payment_reference"], "MOOV-TX-4417")

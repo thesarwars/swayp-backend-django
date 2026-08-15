@@ -4,7 +4,7 @@ from apps.ai_advisor.api.views.consent import AdvisorConsentAPIView
 
 urlpatterns = [
     path(
-        "consent/",
+        "/consent",
         AdvisorConsentAPIView.as_view(),
         name="ai-consent",
     ),

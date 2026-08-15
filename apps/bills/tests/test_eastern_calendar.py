@@ -43,12 +43,12 @@ from apps.vendors.selectors.vendor_selector import VendorSelector
 EASTERN_DAY = dt.date(2026, 7, 29)
 PINNED_NOW = dt.datetime(2026, 7, 30, 1, 30, tzinfo=dt.timezone.utc)
 
-BILLS_SUMMARY_URL = "/api/v1/bills/summary/"
-OCCURRENCES_URL = "/api/v1/bills/occurrences/"
-NEXT_DUE_URL = "/api/v1/bills/next-due/"
-VENDORS_URL = "/api/v1/vendors/"
-ONBOARDING_SUMMARY_URL = "/api/v1/banking/onboarding-summary/"
-HOME_URL = "/api/v1/dashboard/home/"
+BILLS_SUMMARY_URL = "/api/v1/bills/summary"
+OCCURRENCES_URL = "/api/v1/bills/occurrences"
+NEXT_DUE_URL = "/api/v1/bills/next-due"
+VENDORS_URL = "/api/v1/vendors"
+ONBOARDING_SUMMARY_URL = "/api/v1/banking/onboarding-summary"
+HOME_URL = "/api/v1/dashboard/home"
 
 
 class EasternEveningTests(TestCase):
@@ -125,7 +125,7 @@ class EasternEveningTests(TestCase):
 
     def test_bill_detail_does_not_call_it_a_day_late(self):
         response = self.client.get(
-            f"/api/v1/bills/{self.bill.id}/details/"
+            f"/api/v1/bills/{self.bill.id}/details"
         )
         data = response.data["data"]
 

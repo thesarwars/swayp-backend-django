@@ -30,7 +30,7 @@ class VendorTestCase(TestCase):
 
     def create_vendor(self, name, method):
         return self.client.post(
-            "/api/v1/vendors/",
+            "/api/v1/vendors",
             {
                 "name": name,
                 "category": str(self.category.id),
@@ -102,21 +102,21 @@ class SoftDeleteTests(VendorTestCase):
         vendor_id = self.create_vendor("Gone", self.ACH).data["id"]
 
         self.assertEqual(
-            self.client.delete(f"/api/v1/vendors/{vendor_id}/").status_code,
+            self.client.delete(f"/api/v1/vendors/{vendor_id}").status_code,
             204,
         )
         self.assertEqual(
             Vendor.objects.get(id=vendor_id).status, VendorStatus.DELETED
         )
         self.assertEqual(
-            self.client.get("/api/v1/vendors/").data["items"], []
+            self.client.get("/api/v1/vendors").data["items"], []
         )
 
     def test_a_deleted_vendor_is_visible_under_the_status_filter(self):
         vendor_id = self.create_vendor("Gone", self.ACH).data["id"]
-        self.client.delete(f"/api/v1/vendors/{vendor_id}/")
+        self.client.delete(f"/api/v1/vendors/{vendor_id}")
 
-        response = self.client.get("/api/v1/vendors/?status=DELETED")
+        response = self.client.get("/api/v1/vendors?status=DELETED")
 
         self.assertEqual(len(response.data["items"]), 1)
 
@@ -127,7 +127,7 @@ class PrimaryPromotionTests(VendorTestCase):
         super().setUp()
         self.vendor_id = self.create_vendor("WeWork", self.ACH).data["id"]
         self.client.post(
-            f"/api/v1/vendors/{self.vendor_id}/payment-methods/",
+            f"/api/v1/vendors/{self.vendor_id}/payment-methods",
             self.CHECK, format="json",
         )
 
@@ -142,7 +142,7 @@ class PrimaryPromotionTests(VendorTestCase):
         )
 
         self.client.delete(
-            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{primary.id}/"
+            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{primary.id}"
         )
 
         self.assertEqual(self.primary_count(), 1)
@@ -153,10 +153,10 @@ class PrimaryPromotionTests(VendorTestCase):
         )
 
         self.client.delete(
-            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{primary.id}/"
+            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{primary.id}"
         )
 
-        row = self.client.get("/api/v1/vendors/").data["items"][0]
+        row = self.client.get("/api/v1/vendors").data["items"][0]
         self.assertEqual(row["payment_rail"], "CHECK")
 
     def test_deleting_a_non_primary_changes_nothing(self):
@@ -165,7 +165,7 @@ class PrimaryPromotionTests(VendorTestCase):
         )
 
         self.client.delete(
-            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{secondary.id}/"
+            f"/api/v1/vendors/{self.vendor_id}/payment-methods/{secondary.id}"
         )
 
         self.assertEqual(self.primary_count(), 1)
@@ -176,7 +176,7 @@ class PrimaryPromotionTests(VendorTestCase):
         ):
             self.client.delete(
                 f"/api/v1/vendors/{self.vendor_id}"
-                f"/payment-methods/{method.id}/"
+                f"/payment-methods/{method.id}"
             )
 
         self.assertEqual(self.primary_count(), 0)
@@ -207,7 +207,7 @@ class SpendTests(VendorTestCase):
             frequency=BillFrequency.MONTHLY, anchor_date=D(2026, 3, 1),
         )
 
-        summary = self.client.get("/api/v1/vendors/summary/").data
+        summary = self.client.get("/api/v1/vendors/summary").data
 
         self.assertEqual(str(summary["check_total"]), "1500.00")
 
@@ -225,14 +225,14 @@ class SpendTests(VendorTestCase):
             deleted_at=timezone.now(),
         )
 
-        summary = self.client.get("/api/v1/vendors/summary/").data
+        summary = self.client.get("/api/v1/vendors/summary").data
 
         self.assertEqual(Decimal(summary["check_total"]), Decimal("0"))
 
     def test_vendor_detail_exposes_the_spend_panel(self):
         vendor_id = self.create_vendor("Detail", self.ACH).data["id"]
 
-        data = self.client.get(f"/api/v1/vendors/{vendor_id}/").data
+        data = self.client.get(f"/api/v1/vendors/{vendor_id}").data
 
         self.assertIn("total_paid", data)
         self.assertIn("monthly_spend", data)

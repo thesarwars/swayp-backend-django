@@ -16,24 +16,24 @@ urlpatterns = [
         name="payment-create",
     ),
     path(
-        "history/",
+        "/history",
         PaymentHistoryAPIView.as_view(),
         name="payment-history",
     ),
 
     path(
-        "<uuid:payment_id>/processing/",
+        "/<uuid:payment_id>/processing",
         PaymentProcessingAPIView.as_view(),
         name="payment-processing",
     ),
     path(
-        "<uuid:payment_id>/successful/",
+        "/<uuid:payment_id>/successful",
         PaymentSuccessAPIView.as_view(),
         name="payment-successful",
     ),
 
     path(
-        "<uuid:payment_id>/failed/",
+        "/<uuid:payment_id>/failed",
         PaymentFailedAPIView.as_view(),
         name="payment-failed",
     ),

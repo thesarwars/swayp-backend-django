@@ -26,7 +26,9 @@ class RegistrationService:
     def register(validated_data: dict):
 
         password = validated_data.pop("password")
-        validated_data.pop("confirm_password")
+        # The serializer no longer declares confirm_password, so there is
+        # nothing here to discard — popping it would raise KeyError.
+        # validated_data.pop("confirm_password")
         account_type = validated_data.pop("account_type", AccountType.BUSINESS)
         full_name = validated_data.pop("full_name")
         first_name = validated_data.pop("first_name", "")

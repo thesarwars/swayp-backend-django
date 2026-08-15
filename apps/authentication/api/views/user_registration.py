@@ -34,7 +34,7 @@ from apps.authentication.services.verify_otp_service import (
                 "email": "john@gmail.com",
                 "phone_number": "+8801712345678",
                 "password": "Password@123",
-                "confirm_password": "Password@123",
+                # "confirm_password": "Password@123",
                 "business_name": "ABC Ltd",
                 "poc_name": "John Doe",
                 "billing_address": "Dhaka",

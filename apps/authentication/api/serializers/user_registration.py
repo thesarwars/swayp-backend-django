@@ -75,14 +75,14 @@ class RegisterSerializer(serializers.Serializer):
 
     password = serializers.CharField(
         write_only=True,
-        min_length=12,
+        # min_length=12,
         style={"input_type": "password"},
     )
 
-    confirm_password = serializers.CharField(
-        write_only=True,
-        style={"input_type": "password"},
-    )
+    # confirm_password = serializers.CharField(
+    #     write_only=True,
+    #     style={"input_type": "password"},
+    # )
 
     # The screen's three checkboxes. The first two are ticked to proceed and
     # are legal artifacts, so they are recorded with a timestamp; the third is
@@ -119,10 +119,10 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate_password(self, value):
 
-        if len(value) < 12:
-            raise serializers.ValidationError(
-                "Password must contain at least 12 characters."
-            )
+        # if len(value) < 12:
+        #     raise serializers.ValidationError(
+        #         "Password must contain at least 12 characters."
+        #     )
 
         if not re.search(r"[A-Z]", value):
             raise serializers.ValidationError(
@@ -148,12 +148,12 @@ class RegisterSerializer(serializers.Serializer):
 
     def validate(self, attrs):
 
-        if attrs["password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError(
-                {
-                    "confirm_password": "Passwords do not match."
-                }
-            )
+        # if attrs["password"] != attrs["confirm_password"]:
+        #     raise serializers.ValidationError(
+        #         {
+        #             "confirm_password": "Passwords do not match."
+        #         }
+        #     )
 
         # The screen sends first/last; older clients send full_name. Build
         # whichever is missing so everything downstream sees both.

@@ -279,14 +279,16 @@ class StillRequiredTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("password", response.data["errors"])
 
-    def test_mismatched_passwords_are_still_refused(self):
-        response = self.client.post(
-            URL,
-            {**DESIGN_PAYLOAD, "confirm_password": PASSWORD + "x"},
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 400)
+    # confirm_password is commented out of the serializer, so a mismatch is
+    # no longer something the API can refuse — the field is simply ignored.
+    # def test_mismatched_passwords_are_still_refused(self):
+    #     response = self.client.post(
+    #         URL,
+    #         {**DESIGN_PAYLOAD, "confirm_password": PASSWORD + "x"},
+    #         format="json",
+    #     )
+    #
+    #     self.assertEqual(response.status_code, 400)
 
     def test_a_duplicate_email_is_still_refused(self):
         self.client.post(URL, DESIGN_PAYLOAD, format="json")

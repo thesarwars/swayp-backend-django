@@ -133,8 +133,13 @@ fails.
 ### 2.2 Login is two steps too
 
 ```
-POST auth/login/          →  200, OTP sent (no tokens yet)
-POST auth/login/verify/   →  200, tokens
+POST auth/login    →  200, OTP sent (no tokens yet)
+POST auth/verify-otp    →  200, tokens
+
+One verify endpoint serves both flows. The emailed code says nothing
+about which one issued it, so the code itself decides: send `purpose`
+(REGISTRATION or LOGIN) to narrow the search, or leave it out. The
+response echoes the `purpose` it completed.
 ```
 
 ```json
@@ -368,7 +373,7 @@ or the database.
 
 ## 9. Endpoint index
 
-**Auth** — `register/` · `verify-otp/` · `login/` · `login/verify/` ·
+**Auth** — `register` · `verify-otp` · `login` ·
 `login/phone/request/` · `login/phone/verify/` · `resend-otp/` ·
 `forgot-password/` · `reset-password/` · `refresh/` · `logout/`
 

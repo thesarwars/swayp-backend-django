@@ -3,7 +3,7 @@
 **Goal:** close the gaps between the shipped auth app and the Figma flows (channel choice, phone login, throttling, password history).
 **Release:** R1 · **Blocked by:** E1-S1 (Celery for delivery) · **Screens:** 1464:15936, 1464:16992, 1464:17675, 1472:18735, 1472:18816, 1473:18911, 1473:18992, 1464:14947, **2113:6165, 2113:6501, 2113:6795, 2113:7090** (signup + onboarding, see E2-S6)
 
-> **Already shipped (do not rebuild):** register w/ account_type + business fields; purpose-scoped OTP (`OTPPurpose` = REGISTRATION/LOGIN/RESET_PASSWORD with `expires_at`, `attempts`); two-step login (`login/` → `login/verify/`); forgot/reset password; refresh/logout. Package refactor to feature files done in commit `00a6b9a`.
+> **Already shipped (do not rebuild):** register w/ account_type + business fields; purpose-scoped OTP (`OTPPurpose` = REGISTRATION/LOGIN/RESET_PASSWORD with `expires_at`, `attempts`); two-step login (`login` → `verify-otp`, merged with the registration verify); forgot/reset password; refresh/logout. Package refactor to feature files done in commit `00a6b9a`.
 
 ---
 

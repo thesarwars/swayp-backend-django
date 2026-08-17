@@ -1,12 +1,8 @@
 import re
 
 from django.contrib.auth import get_user_model
-from django.utils import timezone
 from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
-
-from apps.authentication.models import OTP, OTPPurpose
-from apps.authentication.utils.otp import OTPService
 
 from apps.users.models import AccountType
 
@@ -200,54 +196,6 @@ class RegisterSerializer(serializers.Serializer):
         return attrs
 
 
-class VerifyOTPSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    otp = serializers.CharField(
-        min_length=6,
-        max_length=6,
-    )
-
-    def validate(self, attrs):
-        email = attrs["email"].lower()
-
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError(
-                {"email": "User does not exist."}
-            )
-
-        otp_obj = (
-            OTP.objects.filter(
-                user=user,
-                purpose=OTPPurpose.REGISTRATION,
-                used_at__isnull=True,
-            )
-            .order_by("-created_at")
-            .first()
-        )
-
-        if not otp_obj:
-            raise serializers.ValidationError(
-                {"otp": "OTP not found."}
-            )
-
-        if otp_obj.expires_at < timezone.now():
-            raise serializers.ValidationError(
-                {"otp": "OTP expired."}
-            )
-
-        if not OTPService.verify_otp(
-            attrs["otp"],
-            otp_obj.code_hash,
-        ):
-            otp_obj.attempts += 1
-            otp_obj.save(update_fields=["attempts"])
-            raise serializers.ValidationError(
-                {"otp": "Invalid OTP."}
-            )
-
-        attrs["user"] = user
-        attrs["otp_obj"] = otp_obj
-
-        return attrs
+# VerifyOTPSerializer moved to serializers/otp.py. It no longer belongs
+# here: it searches the login code as well, so one endpoint can finish
+# either flow.

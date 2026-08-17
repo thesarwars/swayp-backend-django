@@ -1,6 +1,5 @@
 from drf_spectacular.utils import (
     OpenApiExample,
-    OpenApiResponse,
     extend_schema,
 )
 from rest_framework import status
@@ -10,13 +9,9 @@ from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.user_registration import (
     RegisterSerializer,
-    VerifyOTPSerializer,
 )
 from apps.authentication.services.registration_service import (
     RegistrationService,
-)
-from apps.authentication.services.verify_otp_service import (
-    VerifyOTPService,
 )
 
 
@@ -71,42 +66,6 @@ class RegisterView(PublicAPIView):
         )
 
 
-@extend_schema(
-    tags=["Authentication"],
-    summary="Verify Registration OTP",
-    description="Verify the OTP sent after registration.",
-    request=VerifyOTPSerializer,
-    responses={
-        200: OpenApiResponse(description="Account verified."),
-        400: OpenApiResponse(description="Invalid OTP."),
-    },
-    examples=[
-        OpenApiExample(
-            "Verify Registration OTP",
-            value={
-                "email": "john@gmail.com",
-                "otp": "123456",
-            },
-            request_only=True,
-        )
-    ],
-)
-class VerifyOTPView(PublicAPIView):
-
-    def post(self, request):
-        serializer = VerifyOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        tokens = VerifyOTPService.verify(
-            serializer.validated_data["user"],
-            serializer.validated_data["otp_obj"],
-        )
-
-        return Response(
-            {
-                "success": True,
-                "message": "Account verified successfully.",
-                "data": tokens,
-            },
-            status=status.HTTP_200_OK,
-        )
+# VerifyOTPView moved to views/otp.py, where it answers for the login code as
+# well. VerifyOTPService is still what finishes a registration; the merged view
+# dispatches to it on the matched code's purpose.

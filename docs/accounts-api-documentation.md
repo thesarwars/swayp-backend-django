@@ -128,10 +128,14 @@ Authenticate user credentials and send a login OTP.
 ## 4. Verify Login OTP
 
 ### Endpoint
-- `POST /api/v1/auth/login/verify`
+- `POST /api/v1/auth/verify-otp` — the same endpoint as registration
 
 ### Purpose
-Verify the login OTP and issue JWT tokens.
+Verify the login OTP and issue JWT tokens. There is one verify
+endpoint for both flows: an emailed code carries nothing that says
+which one issued it, so the code decides. Send `purpose: "LOGIN"` to
+narrow the search, or omit it. The response echoes the `purpose` it
+completed alongside the tokens.
 
 ### Request body
 ```json

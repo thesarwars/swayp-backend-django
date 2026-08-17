@@ -1,13 +1,12 @@
-from .otp import ResendOTPView
+from .otp import ResendOTPView, VerifyOTPView
 from .password_reset import ForgotPasswordView, ResetPasswordView
 from .phone_login import PhoneLoginRequestView, PhoneLoginVerifyView
 from .token import LogoutView, RefreshView
-from .user_login import LoginVerifyOTPView, LoginView
-from .user_registration import RegisterView, VerifyOTPView
+from .user_login import LoginView
+from .user_registration import RegisterView
 
 __all__ = [
     "ForgotPasswordView",
-    "LoginVerifyOTPView",
     "LoginView",
     "LogoutView",
     "PhoneLoginRequestView",

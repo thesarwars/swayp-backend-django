@@ -8,14 +8,8 @@ from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
 from apps.common.crypto import mask_email
 
-from apps.authentication.api.serializers.user_login import (
-    LoginSerializer,
-    LoginVerifyOTPSerializer,
-)
+from apps.authentication.api.serializers.user_login import LoginSerializer
 from apps.authentication.services.login_service import LoginService
-from apps.authentication.services.login_verify_service import (
-    LoginVerifyService,
-)
 
 
 @extend_schema(
@@ -60,46 +54,6 @@ class LoginView(PublicAPIView):
         )
 
 
-@extend_schema(
-    tags=["Authentication"],
-    summary="Verify Login OTP",
-    description="Verify login OTP and return JWT tokens.",
-    request=LoginVerifyOTPSerializer,
-    responses={
-        200: OpenApiResponse(description="Login successful."),
-        400: OpenApiResponse(description="Invalid OTP."),
-    },
-    examples=[
-        OpenApiExample(
-            "Verify Login OTP",
-            value={
-                "email": "john@gmail.com",
-                "otp": "123456",
-            },
-            request_only=True,
-        )
-    ],
-)
-class LoginVerifyOTPView(PublicAPIView):
-
-    def post(self, request):
-        serializer = LoginVerifyOTPSerializer(
-            data=request.data
-        )
-
-        serializer.is_valid(raise_exception=True)
-
-        tokens = LoginVerifyService.verify(
-            serializer.validated_data["user"],
-            serializer.validated_data["otp_obj"],
-            request,
-        )
-
-        return Response(
-            {
-                "success": True,
-                "message": "Login successful.",
-                "data": tokens,
-            },
-            status=status.HTTP_200_OK,
-        )
+# LoginVerifyOTPView is gone: the login code is verified by the merged view in
+# views/otp.py, which dispatches to LoginVerifyService on a LOGIN code so the
+# refresh token is still recorded against a user agent and an IP.

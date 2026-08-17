@@ -66,8 +66,8 @@ POST auth/verify-otp/    { "email": "…", "otp": "123456" }
 ## 2. Login is two steps too
 
 ```
-POST auth/login/          →  200, OTP sent (no tokens yet)
-POST auth/login/verify/   →  200, tokens
+POST auth/login       →  200, OTP sent (no tokens yet)
+POST auth/verify-otp  →  200, tokens
 ```
 
 ```json

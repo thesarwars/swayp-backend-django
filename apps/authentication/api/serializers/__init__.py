@@ -1,4 +1,4 @@
-from .otp import ResendOTPSerializer
+from .otp import ResendOTPSerializer, VerifyOTPSerializer
 from .password_reset import (
     ForgotPasswordSerializer,
     ResetPasswordSerializer,
@@ -9,13 +9,12 @@ from .phone_login import (
     PhoneLoginVerifySerializer,
 )
 from .token import LogoutSerializer, RefreshSerializer
-from .user_login import LoginSerializer, LoginVerifyOTPSerializer
-from .user_registration import RegisterSerializer, VerifyOTPSerializer
+from .user_login import LoginSerializer
+from .user_registration import RegisterSerializer
 
 __all__ = [
     "ForgotPasswordSerializer",
     "LoginSerializer",
-    "LoginVerifyOTPSerializer",
     "LogoutSerializer",
     "PhoneLoginRequestSerializer",
     "PhoneLoginVerifySerializer",

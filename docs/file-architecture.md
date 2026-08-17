@@ -85,7 +85,7 @@ apps/<app>/
 
 ### Naming rules
 - Feature file names are **domain-first**: `user_registration.py`, `user_login.py`, `otp.py`, `password_reset.py`, `token.py` — not `serializers2.py`, not layer names.
-- URL route `name=` uses kebab-case matching the path (`login-verify`).
+- URL route `name=` uses kebab-case matching the path (`verify-otp`).
 - Views end in `View`/`APIView`; new money-facing views subclass `BaseAPIView` (`apps/common/base_views.py`) with `service_class`; webhooks subclass the planned `WebhookAPIView` (unauthenticated, signature-verified).
 - Enums live in `apps/common/enums.py` **except** app-local ones that predate this rule (`OTPPurpose` in `apps/authentication/models/otp.py` — keep, do not duplicate).
 
@@ -122,17 +122,17 @@ apps/<app>/
 ```
 apps/authentication/api/
 ├── serializers/
-│   ├── __init__.py            # re-exports all 10 serializers
-│   ├── user_registration.py   # RegisterSerializer, VerifyOTPSerializer
-│   ├── user_login.py          # LoginSerializer, LoginVerifyOTPSerializer
-│   ├── otp.py                 # ResendOTPSerializer
+│   ├── __init__.py            # re-exports every serializer
+│   ├── user_registration.py   # RegisterSerializer
+│   ├── user_login.py          # LoginSerializer
+│   ├── otp.py                 # Resend/VerifyOTPSerializer
 │   ├── password_reset.py      # Forgot/Reset(+Verify)PasswordSerializer
 │   └── token.py               # RefreshSerializer, LogoutSerializer
-├── views/                     # same five feature files, 9 views
+├── views/                     # same five feature files
 └── urls/                      # same five feature files; __init__ aggregates:
-                               # register/, verify-otp/, login/, login/verify/,
-                               # resend-otp/, refresh/, logout/,
-                               # forgot-password/, reset-password/
+                               # register, login, verify-otp,
+                               # resend-otp, refresh, logout,
+                               # forgot-password, reset-password
 ```
 
-Verified: `manage.py check` clean · all 9 routes reverse · OpenAPI schema emits all 9 auth paths.
+Verified: `manage.py check` clean · every route reverses · the OpenAPI schema emits every auth path.

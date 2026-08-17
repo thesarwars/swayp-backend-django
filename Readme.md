@@ -275,7 +275,7 @@ Send OTP
 Client
    │
    ▼
-POST /api/v1/auth/login/verify
+POST /api/v1/auth/verify-otp
    │
    ▼
 Verify OTP
@@ -354,9 +354,8 @@ The system supports two account types.
 | Method | Endpoint                       | Description                 |
 | ------ | ------------------------------ | --------------------------- |
 | POST   | `/api/v1/auth/register`        | Register new account        |
-| POST   | `/api/v1/auth/verify-otp`      | Verify registration OTP     |
+| POST   | `/api/v1/auth/verify-otp`      | Verify a registration or login OTP |
 | POST   | `/api/v1/auth/login`           | Login with email & password |
-| POST   | `/api/v1/auth/login/verify`    | Verify login OTP            |
 | POST   | `/api/v1/auth/resend-otp`      | Resend OTP                  |
 | POST   | `/api/v1/auth/refresh`         | Refresh JWT tokens          |
 | POST   | `/api/v1/auth/logout`          | Logout current session      |

@@ -10,6 +10,8 @@ Nothing here has a fallback. If a value matters in production it comes from the
 environment, or the process exits.
 """
 
+from datetime import timedelta
+
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401,F403
@@ -98,6 +100,21 @@ CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = list(
     dict.fromkeys(CORS_ALLOWED_ORIGINS + CSRF_TRUSTED_ORIGINS)  # noqa: F405
 )
+
+# base.py runs a 7-day access token so a development session does not die
+# mid-task. Inheriting that here would make a leaked token good for a week
+# against an API that moves money, and there is no way to call it back: an
+# access token carries no server-side record, so revoking the session it came
+# from does not stop it. 15 minutes is the blast radius.
+#
+# Set ACCESS_TOKEN_MINUTES in the environment to override — deliberately, and
+# knowing the above.
+SIMPLE_JWT = {
+    **SIMPLE_JWT,  # noqa: F405
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=env.int("ACCESS_TOKEN_MINUTES", default=15)
+    ),
+}
 
 # --- transport -------------------------------------------------------------
 

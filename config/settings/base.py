@@ -129,8 +129,18 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# 7 days while the app is in development: a 15-minute token expires part-way
+# through whatever is being tested, on every device it is being tested on, and
+# the re-login is not what anyone is trying to exercise.
+#
+# Env-driven rather than hardcoded because this is the one auth value that must
+# not stay generous. An access token is a bearer credential with no revocation
+# — nothing in the system can turn one off before it expires, unlike a refresh
+# token, which has a row and a revoked_at — so production.py pins it back down.
+ACCESS_TOKEN_MINUTES = env.int("ACCESS_TOKEN_MINUTES", default=60 * 24 * 7)
+
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=ACCESS_TOKEN_MINUTES),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,

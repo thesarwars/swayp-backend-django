@@ -7,6 +7,7 @@ asserts that the refusal actually happens, because a guard nobody exercises is
 a guard that has never been shown to work.
 """
 
+import datetime as dt
 import importlib
 import os
 from unittest import mock
@@ -176,6 +177,39 @@ class TransportSecurityTests(SimpleTestCase):
         )
         self.assertNotIn(
             "https://swayp.jumatechs.xyz", settings.CORS_ALLOWED_ORIGINS
+        )
+
+    def test_the_access_token_is_short_lived(self):
+        """base.py runs a 7-day token so a dev session survives a work day.
+
+        Inherited here it would make a leaked token good for a week, and
+        nothing can call one back — an access token carries no server-side
+        record, so revoking the session it came from does not stop it.
+        """
+        settings = load()
+
+        self.assertEqual(
+            settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"],
+            dt.timedelta(minutes=15),
+        )
+
+    def test_the_access_token_lifetime_is_overridable(self):
+        settings = load(ACCESS_TOKEN_MINUTES="60")
+
+        self.assertEqual(
+            settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"],
+            dt.timedelta(minutes=60),
+        )
+
+    def test_the_rest_of_the_jwt_config_is_inherited(self):
+        """Spread, not replaced — rotation and blacklisting have to survive."""
+        settings = load()
+
+        self.assertTrue(settings.SIMPLE_JWT["ROTATE_REFRESH_TOKENS"])
+        self.assertTrue(settings.SIMPLE_JWT["BLACKLIST_AFTER_ROTATION"])
+        self.assertEqual(
+            settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"],
+            dt.timedelta(days=30),
         )
 
     def test_the_origins_are_not_duplicated(self):

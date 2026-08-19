@@ -6,7 +6,6 @@ from drf_spectacular.utils import (
 from rest_framework import status
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
-from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.user_login import LoginSerializer
 from apps.authentication.services.login_service import LoginService
@@ -15,10 +14,13 @@ from apps.authentication.services.login_service import LoginService
 @extend_schema(
     tags=["Authentication"],
     summary="Login",
-    description="Validate credentials and send login OTP.",
+    description=(
+        "Validate credentials and return JWT tokens. One step: there is no "
+        "login OTP any more."
+    ),
     request=LoginSerializer,
     responses={
-        200: OpenApiResponse(description="OTP sent."),
+        200: OpenApiResponse(description="Login successful."),
         400: OpenApiResponse(description="Invalid credentials."),
     },
     examples=[
@@ -40,20 +42,20 @@ class LoginView(PublicAPIView):
 
         user = serializer.validated_data["user"]
 
-        LoginService.login(user)
-
-        email = mask_email(user.email)
+        # The serializer has already refused a locked, inactive or unverified
+        # account, so reaching here is the login.
+        tokens = LoginService.login(user, request)
 
         return Response(
             {
                 "success": True,
-                "message": f"OTP has been sent to {email}.",
-                "data": {"email": email},
+                "message": "Login successful.",
+                "data": tokens,
             },
             status=status.HTTP_200_OK,
         )
 
 
-# LoginVerifyOTPView is gone: the login code is verified by the merged view in
-# views/otp.py, which dispatches to LoginVerifyService on a LOGIN code so the
-# refresh token is still recorded against a user agent and an IP.
+# LoginVerifyOTPView is gone. It verified the emailed login code, and there is
+# no longer one to verify — /auth/verify-otp finishes registration only, and
+# the phone flow keeps its own verify at /auth/login/phone/verify.

@@ -11,7 +11,7 @@ These endpoints handle:
 - user registration
 - OTP verification
 - login
-- login OTP verification
+- login (one step — no OTP)
 - phone-number login
 - OTP resend (rate limited)
 - token refresh and logout
@@ -105,43 +105,15 @@ Verify the OTP sent after account registration.
 - `POST /api/v1/auth/login`
 
 ### Purpose
-Authenticate user credentials and send a login OTP.
+Authenticate credentials and issue JWT tokens. One step: there is no login
+OTP. The code used to arrive in the same inbox a password reset lands in, so
+it was a second step rather than a second factor.
 
 ### Request body
 ```json
 {
   "email": "john@gmail.com",
   "password": "Password@123"
-}
-```
-
-### Success response
-```json
-{
-  "success": true,
-  "message": "OTP has been sent."
-}
-```
-
----
-
-## 4. Verify Login OTP
-
-### Endpoint
-- `POST /api/v1/auth/verify-otp` — the same endpoint as registration
-
-### Purpose
-Verify the login OTP and issue JWT tokens. There is one verify
-endpoint for both flows: an emailed code carries nothing that says
-which one issued it, so the code decides. Send `purpose: "LOGIN"` to
-narrow the search, or omit it. The response echoes the `purpose` it
-completed alongside the tokens.
-
-### Request body
-```json
-{
-  "email": "john@gmail.com",
-  "otp": "123456"
 }
 ```
 
@@ -156,6 +128,24 @@ completed alongside the tokens.
   }
 }
 ```
+
+### Refusals
+A locked, inactive or unverified account is refused at the same point it was
+before — removing the OTP changed the number of round trips, not who gets in.
+
+---
+
+## 4. Verify Login OTP — removed
+
+`POST /api/v1/auth/login/verify` no longer exists and returns 404. Login
+returns its tokens directly (§3).
+
+`POST /api/v1/auth/verify-otp` finishes a **registration** and nothing else.
+It refuses a `LOGIN` code deliberately: `resend-otp` will mail one to any
+registered address, so a verify that spent it would hand out tokens for
+possession of the inbox and make the password optional again. Login codes
+still exist for the phone flow and are spent at
+`POST /api/v1/auth/login/phone/verify`, which needs the phone number too.
 
 ---
 

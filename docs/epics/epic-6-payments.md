@@ -67,22 +67,22 @@ class WebhookEvent(BaseModel):                     # dedupe: processors redelive
 (840:27360, 840:27719) `{occurrence_ids: [...], funding_account_id, rail, scheduled_for?}` → PaymentBatch (when >1) + one Payment per occurrence; marks occurrences SCHEDULED (suppresses reminders); computes initiated/arrival/cancellation deadline via date engine; returns authorization text (from provider interface). Idempotent (E1-S7).
 **AC:** [ ] batch + single paths; [ ] `scheduled_for` → status SCHEDULED (no separate schedule endpoint — 841:29742 = same payload); [ ] deadline is aware NY datetime
 
-## E6-S3 · Confirm + consent — `POST payments/batches/<id>/confirm/` (+ single alias)
+## E6-S3 · Confirm + consent — `POST payments/batches/<id>/confirm` (+ single alias)
 
 (840:28151) Records **one** `PaymentAuthorization` for the batch (text verbatim, IP, UA), transitions SCHEDULED/PENDING→PROCESSING, enqueues execution.
 **AC:** [ ] consent immutability; [ ] re-confirm replays via idempotency (no second authorization); [ ] processor name appears **only** inside authorization_text (grep gate elsewhere)
 
-## E6-S4 · Status + canonical detail — `GET payments/batches/<id>/status/`, `GET payments/<id>/status/`, `GET payments/<id>/`
+## E6-S4 · Status + canonical detail — `GET payments/batches/<id>/status`, `GET payments/<id>/status`, `GET payments/<id>`
 
 (840:28543, 840:28867, deep links from notifications) Poll endpoint: ordered stage checklist + reference. Detail: state-aware (stages; failure block when FAILED; receipt fields when SUCCESSFUL — recipient, amount, funding mask, ETA, reference).
 **AC:** [ ] receipt matches 840:28867 fields; [ ] batch status aggregates per-payment stages
 
-## E6-S5 · Cancel window — `POST payments/batches/<id>/cancel/`, `POST payments/<id>/cancel/`
+## E6-S5 · Cancel window — `POST payments/batches/<id>/cancel`, `POST payments/<id>/cancel`
 
 (840:28151 "can be cancelled before 11:59 PM EST today" — stored as NY-aware) Valid from SCHEDULED/PENDING/PROCESSING per amended machine (E1-S3); after deadline → 409.
 **AC:** [ ] boundary tests at deadline ±1min incl. DST week; [ ] processor void called via interface when already submitted
 
-## E6-S6 · Failure detail + resolution — `GET payments/<id>/failure/`, `POST payments/<id>/resolve/`
+## E6-S6 · Failure detail + resolution — `GET payments/<id>/failure`, `POST payments/<id>/resolve`
 
 (840:13131, 841:29250, 841:29742) Failure: reason (NSF), available balance at attempt, days overdue, late-fee rule + days remaining (vendor fields, E3-S1). Resolve `{action: retry|change_method|reschedule, payment_method_id?, scheduled_for?}` → **new Payment linked to the same occurrence**.
 **AC:** [ ] each action tested; [ ] occurrence keeps single live payment (old one terminal); [ ] late-fee countdown = date-engine math
@@ -104,7 +104,7 @@ AUTO bills w/ live `StandingAuthorization`: create payment at `due − lead_time
 
 ## E6-S10 · Deprecations
 
-`PATCH payments/<id>/processing|successful|failed/` → staff-only (transitions are now internal); `payment-tracking/` route removed after `PaymentStage` migration; `providers/search/` superseded by E3-S7.
+`PATCH payments/<id>/processing|successful|failed/` → staff-only (transitions are now internal); `payment-tracking/` route removed after `PaymentStage` migration; `providers/search` superseded by E3-S7.
 **AC:** [ ] staff gate tested; [ ] OpenAPI marks deprecated=true before removal
 
 ## E6-S11 · Remove the wallet (stored-balance) subsystem

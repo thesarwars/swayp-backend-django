@@ -30,7 +30,7 @@ class TeamMember(BaseModel):
 
 **As an** owner **I invite** by email; **as an** invitee **I accept** and join the account.
 
-**API:** `POST teams/invite/` (email, role) → INVITED row + email (E8 notify); `POST teams/invite/accept/` (token) → links `user`, status ACTIVE, consumes a seat. Reuses the OTP/email delivery (E2).
+**API:** `POST teams/invite` (email, role) → INVITED row + email (E8 notify); `POST teams/invite/accept` (token) → links `user`, status ACTIVE, consumes a seat. Reuses the OTP/email delivery (E2).
 **AC:** [ ] invite email sent (mock in CI); [ ] accept links the user + flips seat counter; [ ] expired/duplicate invite handled; [ ] can't accept past seat limit (edge: owner downgraded after invite)
 
 ## E10-S3 · Entity (multi-entity, Enterprise)

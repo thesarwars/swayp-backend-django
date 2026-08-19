@@ -55,8 +55,8 @@ is just full. It carries `message` only, written to be shown verbatim.
 
 | Action | Endpoint | Ceiling |
 |---|---|---|
-| Connect a bank | `POST banking/link/exchange/` | `bank_limit` |
-| Invite a member | `POST teams/invite/` | `seat_limit` |
+| Connect a bank | `POST banking/link/exchange` | `bank_limit` |
+| Invite a member | `POST teams/invite` | `seat_limit` |
 
 ---
 
@@ -178,7 +178,7 @@ effect at the new price with no credit. Don't promise one.
 **Writes are owner-only.** `POST`/`PATCH`/`DELETE` need `manage_billing` —
 **not even an admin** has it, because a plan change changes what the owner is
 charged. Reads are open to the whole team. Gate the screen on
-[`teams/me/`](e10-teams.md) capabilities.
+[`teams/me`](e10-teams.md) capabilities.
 
 ---
 

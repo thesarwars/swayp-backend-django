@@ -18,7 +18,7 @@ So on the bills screen, **"Total Bills: 6"** counts bills while
 **"Overdue 14 / Due 9 / Upcoming 14"** counts occurrences. Different
 endpoints, numbers that don't add up to each other. That is correct.
 
-> **Build the list screen on `GET /bills/occurrences/`, not `GET /bills/`.**
+> **Build the list screen on `GET /bills/occurrences`, not `GET /bills/`.**
 
 ## 2. Status is computed at read time
 
@@ -125,7 +125,7 @@ POST /api/v1/bills/create
 ### Step 4 has a trap ⚠️
 
 The payment-method step is served by
-[`GET vendors/<id>/payment-methods/`](e3-vendors.md) — **not** by anything
+[`GET vendors/<id>/payment-methods`](e3-vendors.md) — **not** by anything
 under `bills/`, and it needs no `bill_id`, because the bill does not exist
 yet. Pass `?due_date=&amount=` if you want lead-time hints.
 
@@ -209,13 +209,13 @@ POST /api/v1/bills/qr/decode    { "payload": "…" }
 ```
 
 Same parser and the same **422-on-unreadable** rule as
-[vendors/qr/decode/](e3-vendors.md). One code path, two entry points.
+[vendors/qr/decode](e3-vendors.md). One code path, two entry points.
 
 ---
 
 ## 8. Order to build
 
-1. **`GET /bills/occurrences/`** — the main list. Everything else hangs off it.
+1. **`GET /bills/occurrences`** — the main list. Everything else hangs off it.
 2. **Summary chips + next-due** — same screen, two cheap calls.
 3. **Detail** with the payments and invoice tabs.
 4. **The wizard** — vendor → category → amount → method → autopay.

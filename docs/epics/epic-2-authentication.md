@@ -3,7 +3,7 @@
 **Goal:** close the gaps between the shipped auth app and the Figma flows (channel choice, phone login, throttling, password history).
 **Release:** R1 · **Blocked by:** E1-S1 (Celery for delivery) · **Screens:** 1464:15936, 1464:16992, 1464:17675, 1472:18735, 1472:18816, 1473:18911, 1473:18992, 1464:14947, **2113:6165, 2113:6501, 2113:6795, 2113:7090** (signup + onboarding, see E2-S6)
 
-> **Already shipped (do not rebuild):** register w/ account_type + business fields; purpose-scoped OTP (`OTPPurpose` = REGISTRATION/LOGIN/RESET_PASSWORD with `expires_at`, `attempts`); two-step login (`login` → `verify-otp`, merged with the registration verify); forgot/reset password; refresh/logout. Package refactor to feature files done in commit `00a6b9a`.
+> **Already shipped (do not rebuild):** register w/ account_type + business fields; purpose-scoped OTP (`OTPPurpose` = REGISTRATION/LOGIN/RESET_PASSWORD with `expires_at`, `attempts`); one-step login (`login` returns tokens; the login OTP was removed); forgot/reset password; refresh/logout. Package refactor to feature files done in commit `00a6b9a`.
 
 ---
 
@@ -42,8 +42,8 @@ class OTP(BaseModel):
 **API (feature file `user_login.py` additions):**
 | Method & path | Behavior |
 |---|---|
-| `POST auth/login/phone/request/` | phone → user lookup → send LOGIN-purpose OTP via chosen channel (reuses existing OTP machinery) |
-| `POST auth/login/phone/verify/` | phone + code → tokens (mirrors `LoginVerifyService`) |
+| `POST auth/login/phone/request` | phone → user lookup → send LOGIN-purpose OTP via chosen channel (reuses existing OTP machinery) |
+| `POST auth/login/phone/verify` | phone + code → tokens (mirrors `LoginVerifyService`) |
 **AC:**
 - [ ] Reuses `OTPPurpose.LOGIN`; no new purpose enum
 - [ ] Unknown phone returns the same shape/timing as unknown email (no user enumeration)
@@ -93,12 +93,12 @@ reuses E5's Plaid screens.
 
 | Step | Screen | Endpoint | Epic |
 |---|---|---|---|
-| — | Create Account | `POST auth/register/` | E2 |
-| — | Choose / Enter OTP | `POST auth/resend-otp/`, `auth/verify-otp/` | E2-S1 |
-| 1 of 4 | Business details | `PATCH users/profile/` | E2-S6 |
-| 2 of 4 | Choose plan | `GET billing/plans/`, `POST billing/subscription/` | E9-S1 |
-| 3 of 4 | Payment method | `POST billing/payment-method/setup/` | E9-S1 |
-| 4 of 4 | Connect bank | `POST banking/link/token/`, `link/exchange/` | E5-S2 |
+| — | Create Account | `POST auth/register` | E2 |
+| — | Choose / Enter OTP | `POST auth/resend-otp`, `auth/verify-otp` | E2-S1 |
+| 1 of 4 | Business details | `PATCH users/profile` | E2-S6 |
+| 2 of 4 | Choose plan | `GET billing/plans`, `POST billing/subscription` | E9-S1 |
+| 3 of 4 | Payment method | `POST billing/payment-method/setup` | E9-S1 |
+| 4 of 4 | Connect bank | `POST banking/link/token`, `link/exchange/` | E5-S2 |
 
 **Resolved while building:**
 
@@ -111,7 +111,7 @@ reuses E5's Plaid screens.
   confirmation as timestamps (they are legal artifacts and "when" has to be
   answerable), the marketing box as a preference.
 * Step 1 says "You can update these details anytime in Settings" —
-  `GET/PATCH users/profile/` is that settings screen.
+  `GET/PATCH users/profile` is that settings screen.
 * "Free 14-day trial" is `Plan.trial_days`, on Standard only. The Founder card
   says "Pay $49 and claim my spot", so a limited locked-rate seat is claimed
   by paying rather than trialling. See E9-S1.
@@ -119,7 +119,7 @@ reuses E5's Plaid screens.
 **AC:**
 - [x] The Create Account payload registers with no extra fields
 - [x] Step 1 fields persist and are re-editable in Settings
-- [x] Progress survives a drop-out (`GET users/onboarding/`)
+- [x] Progress survives a drop-out (`GET users/onboarding`)
 - [x] Step count settled — **four**. The Figma progress bar reads "of 5"
       on every onboarding screen; product confirmed on 2026-07-30 that
       this is a design error and there is no fifth step. `total_steps`

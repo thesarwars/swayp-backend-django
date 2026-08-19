@@ -38,20 +38,20 @@ class ResetPasswordSerializer(serializers.Serializer):
     )
 
     password = serializers.CharField(
-        min_length=12,
+        # min_length=12,
         write_only=True,
     )
 
-    confirm_password = serializers.CharField(
-        write_only=True,
-    )
+    # confirm_password = serializers.CharField(
+    #     write_only=True,
+    # )
 
-    def validate(self, attrs):
-        if attrs["password"] != attrs["confirm_password"]:
-            raise serializers.ValidationError(
-                {
-                    "confirm_password": "Passwords do not match."
-                }
-            )
+    # def validate(self, attrs):
+    #     # if attrs["password"] != attrs["confirm_password"]:
+    #     #     raise serializers.ValidationError(
+    #     #         {
+    #     #             "confirm_password": "Passwords do not match."
+    #     #         }
+    #     #     )
 
-        return attrs
+    #     return attrs

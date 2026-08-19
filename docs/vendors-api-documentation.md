@@ -243,7 +243,7 @@ DELETE /api/v1/vendors/<vendor_id>
 history stays intact.
 
 A deleted vendor still appears under `GET /vendors/?status=DELETED`, but
-`GET /vendors/<id>/` returns **404**.
+`GET /vendors/<id>` returns **404**.
 
 ---
 
@@ -479,16 +479,16 @@ confirm that the id exists.
 |---|---|---|
 | `GET` | `/vendors/` | paginated |
 | `POST` | `/vendors/` | bare vendor · 201 |
-| `GET` | `/vendors/<id>/` | bare vendor |
-| `PATCH` | `/vendors/<id>/` | bare · editable fields only |
-| `DELETE` | `/vendors/<id>/` | 204 · soft delete |
-| `GET` | `/vendors/summary/` | bare counts |
-| `GET` | `/vendors/<id>/payment-methods/?due_date=&amount=` | paginated · `schedule` when `due_date` given |
-| `POST` | `/vendors/<id>/payment-methods/` | bare method · 201 · not primary |
-| `GET\|PUT\|PATCH\|DELETE` | `/vendors/<id>/payment-methods/<mid>/` | bare · 204 on delete |
-| `POST` | `/vendors/<id>/payment-methods/<mid>/set-primary/` | `{ "message": ... }` |
-| `GET` | `/vendors/directory-search/?q=` | paginated |
-| `POST` | `/vendors/qr/decode/` | bare object · 422 if unreadable |
+| `GET` | `/vendors/<id>` | bare vendor |
+| `PATCH` | `/vendors/<id>` | bare · editable fields only |
+| `DELETE` | `/vendors/<id>` | 204 · soft delete |
+| `GET` | `/vendors/summary` | bare counts |
+| `GET` | `/vendors/<id>/payment-methods?due_date=&amount=` | paginated · `schedule` when `due_date` given |
+| `POST` | `/vendors/<id>/payment-methods` | bare method · 201 · not primary |
+| `GET\|PUT\|PATCH\|DELETE` | `/vendors/<id>/payment-methods/<mid>` | bare · 204 on delete |
+| `POST` | `/vendors/<id>/payment-methods/<mid>/set-primary` | `{ "message": ... }` |
+| `GET` | `/vendors/directory-search?q=` | paginated |
+| `POST` | `/vendors/qr/decode` | bare object · 422 if unreadable |
 
 ### Summary endpoint
 

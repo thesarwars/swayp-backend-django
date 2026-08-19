@@ -1,9 +1,12 @@
 """Every endpoint that sends an OTP says where it went.
 
-"OTP has been sent" on its own leaves the user staring at whichever inbox
-they guessed at — and, on the login and resend screens, they may not remember
-which address they signed up with. The address comes back masked: enough to
-recognise, not enough to read off a shoulder.
+"OTP has been sent" on its own leaves the user staring at whichever inbox they
+guessed at — and on the resend and forgot-password screens they may not
+remember which address they signed up with. The address comes back masked:
+enough to recognise, not enough to read off a shoulder.
+
+Login is in here for the opposite reason. It no longer mails anything, so it
+must not claim to.
 """
 
 from django.test import TestCase, override_settings
@@ -51,7 +54,8 @@ class DestinationEchoTests(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertMasked(response)
 
-    def test_login_echoes_the_masked_address(self):
+    def test_login_has_no_address_to_echo(self):
+        """Login sends nothing now, so it names no inbox — it returns tokens."""
         self.client.post(REGISTER_URL, PAYLOAD, format="json")
         User.objects.filter(email=EMAIL).update(
             is_verified=True, is_active=True
@@ -64,7 +68,8 @@ class DestinationEchoTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertMasked(response)
+        self.assertIn("access", response.data["data"])
+        self.assertNotIn("email", response.data["data"])
 
     # The resend gap is not what this test is about, and registration has just
     # issued a code — without this the request is throttled before it answers.

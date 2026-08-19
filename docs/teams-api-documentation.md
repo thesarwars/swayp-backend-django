@@ -47,11 +47,11 @@ object, and both messages are written to be displayed verbatim.
 ### 1.4 An invited member acts on the inviting account ⚠️
 
 After accepting, a user's requests operate on the **owner's** account, not a
-private one of their own. `GET /teams/me/` returns that `account_id`.
+private one of their own. `GET /teams/me` returns that `account_id`.
 
 This is not just a label — it is what the data is keyed on. A member calling
-`GET /bills/occurrences/`, `/vendors/`, `/banking/accounts/`,
-`/dashboard/home/`, `/payments/history/` or `/billing/subscription/` sees the
+`GET /bills/occurrences`, `/vendors/`, `/banking/accounts`,
+`/dashboard/home`, `/payments/history` or `/billing/subscription` sees the
 **account's** rows, and a bill they create belongs to the account rather than
 to them. Otherwise their work would vanish the moment they closed the tab.
 
@@ -87,7 +87,7 @@ not move money.**
 is charged.
 
 **Read capabilities from the API, do not hardcode this table.** Every member
-object and `GET /teams/me/` carries a `capabilities` array; render off that and
+object and `GET /teams/me` carries a `capabilities` array; render off that and
 a future role change needs no client release.
 
 Hiding a button is not enforcement — the API checks every action itself.
@@ -407,13 +407,13 @@ wrong company.
 
 ## 8. What to build, in order
 
-1. **`GET /teams/me/` on login** — store `account_id`, `role`, `capabilities`.
+1. **`GET /teams/me` on login** — store `account_id`, `role`, `capabilities`.
 2. **Gate the UI on `capabilities`**, never on a hardcoded role check.
 3. **Global 402 vs 403 handling** — upgrade prompt vs permission message.
 4. **Team screen** — `GET /members/`, invite, resend, change role, remove.
 5. **Accept page** — a frontend route at `/teams/accept?token=…` that requires
    login and then POSTs the token.
-6. **Seats on the billing screen** — from `GET /billing/allowances/`.
+6. **Seats on the billing screen** — from `GET /billing/allowances`.
 7. **Entities** — Enterprise only; hide the section otherwise.
 
 ---

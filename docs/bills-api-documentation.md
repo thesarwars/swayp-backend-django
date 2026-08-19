@@ -60,14 +60,14 @@ The API is **not** consistent about this yet. Handle both.
 ```
 
 **Shape B — bare paginated.** Used by `/vendors/` and
-`/vendors/<id>/payment-methods/`:
+`/vendors/<id>/payment-methods`:
 
 ```json
 { "items": [ ], "pagination": { "page": 1, "pageSize": 20,
   "totalPages": 1, "totalItems": 1, "hasNext": false, "hasPrevious": false } }
 ```
 
-`POST /vendors/qr/decode/` returns a **bare object** with neither wrapper.
+`POST /vendors/qr/decode` returns a **bare object** with neither wrapper.
 
 Write one small helper that unwraps `data` / `items` and use it everywhere.
 
@@ -392,8 +392,8 @@ A `SCHEDULED` occurrence (payment in flight) is in **neither**
 
 "This month" and "today" are the *Eastern* calendar month and day, not UTC — the
 same day every other bills read uses, so an evening request does not get
-tomorrow's answer. `GET /banking/onboarding-summary/` and
-`GET /dashboard/home/` re-publish these numbers and cannot disagree with them.
+tomorrow's answer. `GET /banking/onboarding-summary` and
+`GET /dashboard/home` re-publish these numbers and cannot disagree with them.
 
 ### 4.5 Next due
 
@@ -664,21 +664,21 @@ A bill belonging to another user returns **404**, not 403.
 |---|---|---|
 | `GET` | `/bill-categories/` | envelope · category list |
 | `GET` | `/vendors/` | paginated · vendor list |
-| `GET` | `/vendors/<id>/payment-methods/?due_date=&amount=` | paginated · methods + `schedule` |
-| `POST` | `/banking/routing/validate/` | envelope · ABA check (see note) |
-| `POST` | `/bills/create/` | envelope · review summary |
+| `GET` | `/vendors/<id>/payment-methods?due_date=&amount=` | paginated · methods + `schedule` |
+| `POST` | `/banking/routing/validate` | envelope · ABA check (see note) |
+| `POST` | `/bills/create` | envelope · review summary |
 | `GET` | `/bills/` | envelope · bill rules |
-| `GET` | `/bills/occurrences/` | envelope + pagination · **the list screen** |
-| `GET` | `/bills/summary/` | envelope · tab counts |
-| `GET` | `/bills/next-due/` | envelope · one occurrence or `null` |
-| `GET` | `/bills/occurrences/upcoming/` | envelope · narrow convenience view |
-| `POST` | `/bills/qr/decode/` | envelope · prefill fields · 422 if unreadable |
-| `GET` | `/bills/<id>/details/` | envelope · bill detail |
-| `PATCH` | `/bills/<id>/update/` | envelope · review summary |
-| `DELETE` | `/bills/<id>/details/` | envelope · confirmation |
-| `GET` | `/bills/<id>/payments/` | envelope + pagination · payment history |
-| `GET` | `/bills/<id>/invoice/` | envelope · invoice + `qr_payload` |
-| `PATCH` | `/bills/occurrences/<id>/pay/` | envelope · `data: null` |
+| `GET` | `/bills/occurrences` | envelope + pagination · **the list screen** |
+| `GET` | `/bills/summary` | envelope · tab counts |
+| `GET` | `/bills/next-due` | envelope · one occurrence or `null` |
+| `GET` | `/bills/occurrences/upcoming` | envelope · narrow convenience view |
+| `POST` | `/bills/qr/decode` | envelope · prefill fields · 422 if unreadable |
+| `GET` | `/bills/<id>/details` | envelope · bill detail |
+| `PATCH` | `/bills/<id>/update` | envelope · review summary |
+| `DELETE` | `/bills/<id>/details` | envelope · confirmation |
+| `GET` | `/bills/<id>/payments` | envelope + pagination · payment history |
+| `GET` | `/bills/<id>/invoice` | envelope · invoice + `qr_payload` |
+| `PATCH` | `/bills/occurrences/<id>/pay` | envelope · `data: null` |
 
 ### ABA routing validation
 

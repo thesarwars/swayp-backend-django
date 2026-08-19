@@ -295,7 +295,7 @@ GET /api/v1/banking/onboarding-summary
 
 `connection` is **`null`** when nothing is linked — check before dereferencing.
 
-`bills` comes from the same selector as `GET /bills/summary/`, so the two
+`bills` comes from the same selector as `GET /bills/summary`, so the two
 screens cannot disagree.
 
 **`rail_readiness.needs_details` is the number that matters after import.**
@@ -483,16 +483,16 @@ median, which is why it is not a round number.
 
 | Method | Path | Returns |
 |---|---|---|
-| `POST` | `/banking/link/token/` | link token |
-| `POST` | `/banking/link/exchange/` | 201 · connection + accounts + started scan |
-| `GET` | `/banking/connections/` | connection list |
-| `GET` | `/banking/connections/<id>/` | one connection |
-| `DELETE` | `/banking/connections/<id>/` | 200 · disconnected, or 400 if payments in flight |
-| `GET` | `/banking/accounts/` | funding accounts, masks only |
-| `POST` | `/banking/accounts/` | set the default funding source |
-| `POST` | `/banking/scans/` | 202 · new scan |
-| `GET` | `/banking/scans/<id>/` | scan status — poll this |
-| `GET` | `/banking/scans/<id>/candidates/` | detected candidates |
-| `POST` | `/banking/scans/<id>/import/` | 201 · import report |
-| `GET` | `/banking/onboarding-summary/` | the done screen |
-| `POST` | `/banking/routing/validate/` | ABA check — branch on `data.valid` |
+| `POST` | `/banking/link/token` | link token |
+| `POST` | `/banking/link/exchange` | 201 · connection + accounts + started scan |
+| `GET` | `/banking/connections` | connection list |
+| `GET` | `/banking/connections/<id>` | one connection |
+| `DELETE` | `/banking/connections/<id>` | 200 · disconnected, or 400 if payments in flight |
+| `GET` | `/banking/accounts` | funding accounts, masks only |
+| `POST` | `/banking/accounts` | set the default funding source |
+| `POST` | `/banking/scans` | 202 · new scan |
+| `GET` | `/banking/scans/<id>` | scan status — poll this |
+| `GET` | `/banking/scans/<id>/candidates` | detected candidates |
+| `POST` | `/banking/scans/<id>/import` | 201 · import report |
+| `GET` | `/banking/onboarding-summary` | the done screen |
+| `POST` | `/banking/routing/validate` | ABA check — branch on `data.valid` |

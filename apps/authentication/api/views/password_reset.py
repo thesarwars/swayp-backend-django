@@ -76,7 +76,7 @@ class ForgotPasswordView(PublicAPIView):
                 "email": "john@gmail.com",
                 "otp": "123456",
                 "password": "NewPassword@123",
-                "confirm_password": "NewPassword@123",
+                # "confirm_password": "NewPassword@123",
             },
             request_only=True,
         )

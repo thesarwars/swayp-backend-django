@@ -148,7 +148,7 @@ Paginated `{ items, pagination }`. Results are seeded mock data, not a live
 directory, but the shape is final.
 
 Use it to help someone add a known biller. It supersedes the old
-`providers/search/`, which has been removed.
+`providers/search`, which has been removed.
 
 ---
 

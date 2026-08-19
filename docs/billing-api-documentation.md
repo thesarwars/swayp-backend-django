@@ -23,7 +23,7 @@ Stripe is wired. Whether it collects depends on one setting:
 | **mock** (default) | records the entitlement, charges nothing |
 | **stripe** | creates a real customer and subscription, charges the card |
 
-**Ask, do not assume.** `POST /billing/payment-method/setup/` returns
+**Ask, do not assume.** `POST /billing/payment-method/setup` returns
 `collects_money`. When it is `false`, skip the card form entirely rather than
 mounting one that can never work.
 
@@ -158,7 +158,7 @@ means Founding *offers* a lock. Whether a given customer *has* one is
 
 One endpoint, four verbs.
 
-> **Collecting a card?** `POST /billing/payment-method/setup/` first, then
+> **Collecting a card?** `POST /billing/payment-method/setup` first, then
 > send the resulting `payment_method_id` with the subscribe call. The card
 > never reaches Swayp. See Stripe Billing Setup.
 
@@ -179,7 +179,7 @@ account owner", never an upgrade prompt:
 ```
 
 Gate the billing settings screen on `capabilities` containing
-`manage_billing` from [`GET /teams/me/`](teams-api-documentation.md).
+`manage_billing` from [`GET /teams/me`](teams-api-documentation.md).
 
 ### 3.1 Read
 

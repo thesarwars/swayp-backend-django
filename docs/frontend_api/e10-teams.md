@@ -24,7 +24,7 @@ It is the one request that tells you **which account you are operating on**
 and **what to render**.
 
 ```js
-const me = await api('/teams/me/');
+const me = await api('/teams/me');
 session.accountId    = me.account_id;
 session.capabilities = new Set(me.capabilities);
 export const can = (c) => session.capabilities.has(c);
@@ -94,7 +94,7 @@ teammates".
 invitations, all apparently fine, and the failure would land on the
 thirty-first *invitee* rather than the buyer.
 
-Seat usage is in [`GET /billing/allowances/`](e9-billing.md) and counts the
+Seat usage is in [`GET /billing/allowances`](e9-billing.md) and counts the
 same rows the invite gate checks, so the two can never disagree.
 
 ---
@@ -178,9 +178,9 @@ not the person:
 ```
 /teams/accept?token=X
    ↓ not signed in? → login/register, preserving ?token=X
-POST /teams/invite/accept/ { token }        → 200
+POST /teams/invite/accept { token }        → 200
    ↓
-re-run GET /teams/me/    ← their account_id just changed
+re-run GET /teams/me    ← their account_id just changed
    ↓
 redirect to dashboard
 ```
@@ -261,7 +261,7 @@ not validated as a tax identifier and is not what the 1099 report files.
 
 ## 9. Order to build
 
-1. **`GET /teams/me/` on login** — everything else depends on it.
+1. **`GET /teams/me` on login** — everything else depends on it.
 2. **Gate the UI on `capabilities`.**
 3. **Global 402 vs 403 handling.**
 4. **Team screen** — list, invite, resend, change role, remove.

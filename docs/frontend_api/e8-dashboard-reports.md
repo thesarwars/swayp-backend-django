@@ -37,8 +37,8 @@ GET /api/v1/dashboard/home?tab=upcoming
 
 **Do not assemble this from bills + vendors + payments.** It is one aggregate
 query set, costs a fixed number of queries however much data the account has,
-and its numbers reconcile with [`bills/summary/`](e4-bills.md) and
-[`vendors/summary/`](e3-vendors.md) by construction.
+and its numbers reconcile with [`bills/summary`](e4-bills.md) and
+[`vendors/summary`](e3-vendors.md) by construction.
 
 ### The pay panel picks its own tab
 
@@ -51,7 +51,7 @@ to a tab yourself. `?tab=overdue|due|upcoming` overrides it once the user
 clicks.
 
 `pay_panel.items` rows are the same shape as
-[`bills/occurrences/`](e4-bills.md) — one row component, two screens.
+[`bills/occurrences`](e4-bills.md) — one row component, two screens.
 
 ### Profile summary
 
@@ -60,7 +60,7 @@ GET /api/v1/dashboard/profile-summary
 ```
 
 Read-only, for the account chip in the header. To **edit** anything, use
-[`users/profile/`](e2-authentication.md).
+[`users/profile`](e2-authentication.md).
 
 ---
 
@@ -146,7 +146,7 @@ GET /api/v1/reports/1099?export=csv|pdf
 
 Note this is a **403 with an upgrade message**, not a 402 — the message names
 the plan, so display it verbatim. Gate the menu item on the plan code from
-[`billing/subscription/`](e9-billing.md) so the user doesn't discover it by
+[`billing/subscription`](e9-billing.md) so the user doesn't discover it by
 clicking.
 
 The exported 1099 discloses `unattributed` on the file itself and states
@@ -219,7 +219,7 @@ bare fields is a 400.
 
 ## 5. Order to build
 
-1. **`dashboard/home/`** — one call, most of the app's first screen.
+1. **`dashboard/home`** — one call, most of the app's first screen.
 2. **Notifications list + read** — the bell.
 3. **Preferences matrix.**
 4. **Reports table** with filters and totals.

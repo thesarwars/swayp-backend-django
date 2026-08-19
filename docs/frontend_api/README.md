@@ -54,11 +54,11 @@ The API is not consistent. Write one unwrap helper and use it everywhere.
 | Shape | Where |
 |---|---|
 | `{ "success", "message", "data" }` | auth, bills, banking, billing, teams, users, categories |
-| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods/`, `directory-search/` |
-| a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode/` |
+| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods`, `directory-search/` |
+| a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode` |
 
 Some list endpoints put `data` **and** `pagination` at the top level
-(`bills/occurrences/`, `notifications/`, `payments/history/`, `reports/`).
+(`bills/occurrences`, `notifications/`, `payments/history`, `reports/`).
 
 Success responses in the second and third shapes have **no `success` field**;
 errors always do. **Branch on the HTTP status, never on the body.**
@@ -103,7 +103,7 @@ Exception: in **bill detail**, `overdue_amount`, `days_overdue` and
 ### The account is not the user
 
 After someone accepts a team invitation their requests operate on the
-**inviting account**. `GET /teams/me/` returns that `account_id` — use it as
+**inviting account**. `GET /teams/me` returns that `account_id` — use it as
 your cache key, not the user id, or two teammates will thrash each other's
 data. See [E10](e10-teams.md).
 

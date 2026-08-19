@@ -42,21 +42,21 @@ Items 1–3 are shipped; see the commit table at the bottom.
 ### 6. Review-summary echo on create
 **Missing · E4-S3** — response should echo *"Swayp will pay WeWork $3,200 on Jan 1…"*.
 
-### 7. `GET bills/<id>/payments/`
+### 7. `GET bills/<id>/payments`
 **Missing · E4-S4** — needs a `bill_occurrence` FK on [Payment](../apps/payments/models/payment.py), which doesn't exist. **Blocked on E6-S1.** Until then history can only read the occurrence's own `payment_reference`.
 
 ### 8. Days-overdue should use the date engine
 **Debt · E4-S4 · [apps/bills/serializers/bill_detail_serializer.py](../apps/bills/serializers/bill_detail_serializer.py)** — currently plain `(today - due_date).days`.
 
 ### 9. Bill QR + invoice
-**Missing · E4-S7** — `POST bills/qr/decode/` and `GET bills/<id>/invoice/`. The QR path **must** delegate to the shared [qr_strategy.py](../apps/vendors/services/qr_strategy.py) (AC: "shared parser, one code path"), not grow a second parser. Invoice renders from bill fields; no OCR in v1.
+**Missing · E4-S7** — `POST bills/qr/decode` and `GET bills/<id>/invoice`. The QR path **must** delegate to the shared [qr_strategy.py](../apps/vendors/services/qr_strategy.py) (AC: "shared parser, one code path"), not grow a second parser. Invoice renders from bill fields; no OCR in v1.
 
 ---
 
 ## P2 — E3 remaining stories
 
 ### 10. ABA routing validation
-**Missing · E3-S9** — `POST banking/routing/validate/` currently **404s**; `apps/banking` does not exist. Needs the app, mod-10 ABA checksum, bank-name lookup, rate limiting. The vendor ACH form depends on it.
+**Missing · E3-S9** — `POST banking/routing/validate` currently **404s**; `apps/banking` does not exist. Needs the app, mod-10 ABA checksum, bank-name lookup, rate limiting. The vendor ACH form depends on it.
 
 ### 11. Vendor detail has no spend history
 **Missing · E3-S4 · [apps/vendors/api/serializers/vendor.py](../apps/vendors/api/serializers/vendor.py)** — no 12-bucket monthly series, total paid (12 mo), next bill, or embedded bills with status chips. Partially blocked on E6 for payment amounts.
@@ -74,7 +74,7 @@ All five stories. Nothing here has been started.
 |---|---|---|
 | 13 | **E2-S1** OTP channel + async delivery | `OTPChannel` enum + `channel` field on [OTP](../apps/authentication/models/otp.py) + migration. Delivery is currently **synchronous** via `EmailService`; move to a Celery `send_otp` task behind a `MessagingProvider` in `integrations/`. Reject `channel=SMS` explicitly (422/501) — no silent no-op. |
 | 14 | **E2-S2** Resend throttle | 60s minimum gap + 5/hour per user+purpose; 429 with retry-after. No throttling exists. |
-| 15 | **E2-S3** Phone login | `POST auth/login/phone/request/` and `.../verify/` both **404**. Reuse `OTPPurpose.LOGIN`; unknown phone must match unknown-email shape *and timing* (no enumeration). |
+| 15 | **E2-S3** Phone login | `POST auth/login/phone/request` and `.../verify/` both **404**. Reuse `OTPPurpose.LOGIN`; unknown phone must match unknown-email shape *and timing* (no enumeration). |
 | 16 | **E2-S4** Password history | `PasswordHistory` model absent; reuse is unrestricted. Write on every set, reject match against last N, prune to 5. |
 | 17 | **E2-S5** BaseAPIView alignment | All 9 auth views subclass raw `APIView`. Needs an `AllowAny` variant of [BaseAPIView](../apps/common/base_views.py); responses must stay byte-identical. |
 

@@ -8,7 +8,7 @@
 
 ---
 
-## E7-S1 · Consent — `POST ai/consent/`, `DELETE ai/consent/`
+## E7-S1 · Consent — `POST ai/consent`, `DELETE ai/consent`
 
 **As a** user **I opt in** before any financial data reaches an AI provider (GLBA/CA/VT opt-in posture — Part 1 doc) **and can revoke**.
 
@@ -27,7 +27,7 @@ class AdvisorConsent(BaseModel):
 - [ ] Revoke stops LLM calls immediately (service-level gate, tested)
 - [ ] Consent recorded in `audit` app trail
 
-## E7-S2 · Cash context — `POST ai/cash-context/`
+## E7-S2 · Cash context — `POST ai/cash-context`
 
 **As a** user about to pay **I see** "Chase balance $41,200; after this payment $38,000 — enough to cover all 4 upcoming bills; next: Verizon $389 Dec 15" (840:27719) and the authorization context on confirm (840:28151).
 
@@ -41,7 +41,7 @@ class AdvisorConsent(BaseModel):
 - [ ] Prompt-injection-shaped vendor names cannot alter figures (figures computed pre-LLM)
 - [ ] p95 ≤ 500 ms template / ≤ 2.5 s LLM (timeout → template)
 
-## E7-S3 · Balance projection — `GET ai/balance-projection/?account=<id>&date=<d>`
+## E7-S3 · Balance projection — `GET ai/balance-projection?account=<id>&date=<d>`
 
 **As a** user scheduling a payment **I see** "Projected balance on Dec 18: $44,100 — more than enough" (841:29742).
 

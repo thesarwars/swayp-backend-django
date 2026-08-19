@@ -43,11 +43,11 @@ against the same bill, linked by `replaced_payment_id`. The failed one stays
 ```
 POST /payments/                        → payments + authorization_text
    ↓  display the text, get acceptance
-POST /payments/batches/<id>/confirm/   → authorized, execution starts
+POST /payments/batches/<id>/confirm   → authorized, execution starts
    ↓
-GET  /payments/batches/<id>/status/    → poll until in_flight is 0
+GET  /payments/batches/<id>/status    → poll until in_flight is 0
    ↓
-GET  /payments/<id>/                   → receipt
+GET  /payments/<id>                   → receipt
 ```
 
 ### Step 1 — create

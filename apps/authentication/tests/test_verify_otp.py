@@ -1,10 +1,11 @@
-"""One verify endpoint for the registration code and the login code.
+"""/auth/verify-otp — the one endpoint that spends an emailed code.
 
-There used to be two, /auth/verify-otp and /auth/login/verify, and the emailed
-code carries nothing that says which one it belongs to. Posting a login code to
-the registration endpoint answered "OTP not found." — a message about the code
-for what was really a routing mistake, and one that cost a debugging session to
-tell apart from a genuinely missing row.
+It finishes a registration and nothing else. Login used to have a code of its
+own and a second endpoint to spend it at; both are gone, and the test that used
+to prove a login code worked here now proves it does not. That inversion is the
+point: /auth/resend-otp will mail a LOGIN code to any registered address, so a
+verify that still accepted one would hand out tokens for possession of the
+inbox and make the password optional again.
 """
 
 from datetime import timedelta
@@ -80,34 +81,38 @@ class MergedVerifyTests(TestCase):
         user.refresh_from_db()
         self.assertTrue(user.is_verified)
 
-    def test_a_login_code_verifies_at_the_same_url(self):
-        """The case that used to answer "OTP not found."."""
+    def test_a_login_code_is_refused(self):
+        """The door that would make the password optional.
+
+        resend-otp will mail a LOGIN code to any registered address. If this
+        endpoint spent one, an inbox alone would be enough to sign in — and the
+        inbox is where a password reset lands too.
+        """
         user = self.register()
         OTP.objects.filter(user=user).delete()
         User.objects.filter(pk=user.pk).update(
             is_verified=True, is_active=True
         )
-        self.issue(user, OTPPurpose.LOGIN, code="222222")
+        login_code = self.issue(user, OTPPurpose.LOGIN, code="222222")
 
         response = self.verify(otp="222222")
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["data"]["purpose"], "LOGIN")
-        self.assertIn("access", response.data["data"])
+        self.assertEqual(response.status_code, 400)
 
-    def test_a_login_code_still_records_the_session(self):
-        """The flows are not interchangeable, so the dispatch has to be real.
+        login_code.refresh_from_db()
+        self.assertIsNone(login_code.used_at)
+        self.assertEqual(RefreshToken.objects.filter(user=user).count(), 0)
 
-        Only the login path writes a RefreshToken row with the user agent and
-        IP, which is what makes a session revocable later.
-        """
+    def test_naming_the_login_purpose_is_refused_by_name(self):
+        """A clearer answer than searching and finding nothing."""
         user = self.register()
         OTP.objects.filter(user=user).delete()
         self.issue(user, OTPPurpose.LOGIN, code="333333")
 
-        self.verify(otp="333333")
+        response = self.verify(otp="333333", purpose="LOGIN")
 
-        self.assertEqual(RefreshToken.objects.filter(user=user).count(), 1)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("purpose", response.data["errors"])
 
     def test_a_registration_code_records_no_session(self):
         user = self.register()
@@ -120,33 +125,21 @@ class MergedVerifyTests(TestCase):
 
     # -- picking the right row --------------------------------------------
 
-    def test_the_code_picks_its_own_row_when_both_are_pending(self):
-        """Matched by hash, not by "whichever is newest".
+    def test_the_code_picks_its_own_row(self):
+        """Matched by hash, not by "whichever row is newest".
 
-        An account can hold both at once — resend a registration code after
-        logging in — and taking the newer row would reject the older code as
-        invalid when it is perfectly good.
+        Issuing deletes the previous unused code of the same purpose, so today
+        there is only ever one to match. The lookup does not lean on that: an
+        older live code still verifies if a second one exists.
         """
         user = self.register()
         OTP.objects.filter(user=user).delete()
-        self.issue(user, OTPPurpose.LOGIN, code="555555")
+        self.issue(user, OTPPurpose.REGISTRATION, code="555555")
         self.issue(user, OTPPurpose.REGISTRATION, code="666666")
 
         response = self.verify(otp="555555")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["data"]["purpose"], "LOGIN")
-
-    def test_purpose_narrows_the_search(self):
-        user = self.register()
-        OTP.objects.filter(user=user).delete()
-        self.issue(user, OTPPurpose.LOGIN, code="777777")
-
-        response = self.verify(
-            otp="777777", purpose=OTPPurpose.REGISTRATION
-        )
-
-        self.assertEqual(response.status_code, 400)
 
     def test_reset_password_codes_are_not_verifiable_here(self):
         """That code is spent by /auth/reset-password with the new password.

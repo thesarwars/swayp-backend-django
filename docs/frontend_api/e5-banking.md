@@ -13,17 +13,17 @@ four bills with schedules, so build it before the screens that display them.
 ## 1. The flow
 
 ```
-POST banking/link/token/              → link_token for the bank widget
+POST banking/link/token              → link_token for the bank widget
    ↓  user picks their bank
-POST banking/link/exchange/           → connection + accounts, scan auto-starts
+POST banking/link/exchange           → connection + accounts, scan auto-starts
    ↓
-GET  banking/scans/<id>/              → poll until is_complete
+GET  banking/scans/<id>              → poll until is_complete
    ↓
-GET  banking/scans/<id>/candidates/   → what Swayp found
+GET  banking/scans/<id>/candidates   → what Swayp found
    ↓  user ticks the ones to keep
-POST banking/scans/<id>/import/       → bills + vendors created
+POST banking/scans/<id>/import       → bills + vendors created
    ↓
-GET  banking/onboarding-summary/      → the "here's what we set up" screen
+GET  banking/onboarding-summary      → the "here's what we set up" screen
 ```
 
 ---
@@ -167,7 +167,7 @@ Show an upgrade prompt. Founding allows 1; Standard and Enterprise are
 unlimited. See [E9](e9-billing.md).
 
 Disconnecting frees the slot immediately — the count is derived from live
-connections, so `GET /billing/allowances/` and this gate can never disagree.
+connections, so `GET /billing/allowances` and this gate can never disagree.
 
 ---
 
@@ -193,8 +193,8 @@ GET /api/v1/banking/onboarding-summary
 ```
 
 One call for the whole "here's what we set up" screen. The numbers reconcile
-with [`bills/summary/`](e4-bills.md) and
-[`vendors/summary/`](e3-vendors.md) — same data, one aggregate query set.
+with [`bills/summary`](e4-bills.md) and
+[`vendors/summary`](e3-vendors.md) — same data, one aggregate query set.
 
 `rail_readiness` tells you how many vendors can actually be paid: a vendor
 with no payment method can't be, and this is where you nudge the user to add

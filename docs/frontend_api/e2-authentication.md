@@ -8,13 +8,27 @@ onboarding wizard.
 **Screens:** Create Account, Choose OTP, Enter OTP, Sign In, Forgot Password,
 Reset Password, Onboarding Steps 1–4.
 
+> ### Changed recently — read this if you built against the old shape
+>
+> | What | Was | Now |
+> |---|---|---|
+> | **Login** | two calls: `auth/login` mailed a code, `auth/login/verify` returned tokens | **one call.** `auth/login` returns the tokens |
+> | `auth/login/verify` | verified the login code | **gone — 404** |
+> | `auth/verify-otp` | registration codes only | unchanged in scope, but it is now the *only* verify endpoint |
+> | **Trailing slashes** | every path ended in one | **none do.** A path with a trailing slash 404s |
+> | `confirm_password` | required on register and reset | **not accepted.** Match the passwords client-side |
+> | Password length | 12 character minimum | **no minimum.** The character rules still apply |
+>
+> The Choose OTP and Enter OTP screens are still on the **registration** path.
+> They are no longer on the sign-in path at all.
+
 ---
 
 ## 1. Registration is two steps
 
 ```
-POST auth/register/     →  201, OTP emailed
-POST auth/verify-otp/   →  account activated
+POST auth/register     →  201, OTP emailed
+POST auth/verify-otp   →  account activated, tokens returned
 ```
 
 **The account is inactive until the OTP is verified.** Logging in before that
@@ -27,7 +41,7 @@ fails.
   "email": "jane@acme.com",
   "business_name": "Acme Corporation, LLC",
   "industry": "Construction", "business_size": "11-50",
-  "password": "…", "confirm_password": "…",
+  "password": "…",
   "terms_accepted": true, "signatory_confirmed": true,
   "marketing_opt_in": false }
 ```
@@ -35,8 +49,14 @@ fails.
 **201:**
 
 ```json
-{ "success": true, "message": "Registration successful. OTP has been sent." }
+{ "success": true,
+  "message": "Registration successful. OTP has been sent to x***e@gmail.com.",
+  "data": { "email": "x***e@gmail.com" } }
 ```
+
+`data.email` is the address the code went to, masked. Render it from there
+rather than parsing the sentence — every endpoint that mails a code returns it
+the same way, so "check x***e@gmail.com" costs no branching.
 
 That is the whole payload. There is **no postal address, phone, billing
 address or point of contact** on this call — onboarding Step 1 and Settings
@@ -52,26 +72,42 @@ the customer has chosen a plan makes no sense.
 | `marketing_opt_in` | a preference, stored as a boolean |
 | `phone_number` | optional. **Omitting it means phone login is unavailable to that account, permanently** — there is no way to add one later |
 
-**Password rules** (all enforced): 12+ characters, one uppercase, one
-lowercase, one digit, one special character.
+**Password rules** (all enforced): one uppercase, one lowercase, one digit,
+one special character. **There is no length minimum** — `Ab1@` is accepted.
+`confirm_password` is not a field; compare the two boxes on the client.
 
 ### Verify
 
 ```
-POST auth/verify-otp/    { "email": "…", "otp": "123456" }
-```
-
----
-
-## 2. Login is two steps too
-
-```
-POST auth/login       →  200, OTP sent (no tokens yet)
-POST auth/verify-otp  →  200, tokens
+POST auth/verify-otp    { "email": "…", "otp": "123456" }
 ```
 
 ```json
-{ "success": true, "message": "OTP has been sent." }
+{ "success": true, "message": "Account verified successfully.",
+  "data": { "purpose": "REGISTRATION",
+            "access": "eyJhbGciOi…", "refresh": "eyJhbGciOi…" } }
+```
+
+**Verifying signs the user in.** Tokens come back here, so the Enter OTP screen
+goes straight to the dashboard — do not send them to Sign In afterwards.
+
+`purpose` is optional on the way in and `REGISTRATION` is the only value it
+accepts. Sending `LOGIN` is a 400 naming the valid choice, which is the answer
+to "where did my login code go".
+
+When there is no code to spend, the error says which case it is rather than a
+flat "not found": *"No verification code is pending. Request a new one to
+finish signing up"* when the account was never verified, and *"…It may have
+been used already"* when it was. The second is what a double-submitted form
+produces, so treat it as success-already-happened rather than an error worth
+alarming about.
+
+---
+
+## 2. Login is one step
+
+```
+POST auth/login    { "email": "…", "password": "…" }    →  200, tokens
 ```
 
 ```json
@@ -79,17 +115,35 @@ POST auth/verify-otp  →  200, tokens
   "data": { "access": "eyJhbGciOi…", "refresh": "eyJhbGciOi…" } }
 ```
 
-**The first call returns no tokens.** Don't look for them there.
+**There is no login OTP and no second call.** `auth/login/verify` is gone and
+returns 404. Skip the Enter OTP screen entirely on the sign-in path.
 
-Access tokens last **15 minutes**, refresh **30 days**, and refresh tokens
-**rotate** — `POST auth/refresh/` returns a new refresh token and invalidates
-the old one. Store the new one or the next refresh fails.
+The code used to arrive in the same inbox a password reset lands in, so it was
+a second step rather than a second factor. Removing it changed the number of
+round trips, not who gets in: a locked, inactive or unverified account is
+refused at exactly the same point it was before.
+
+| Refusal | Response |
+|---|---|
+| wrong password, or no such account | 400, *"Invalid email or password."* — identical for both, deliberately |
+| too many failed attempts | 400, *"Too many failed attempts. Try again in N minute(s)."* |
+| registered but never verified | 400, *"Account is not verified."* → send them to Enter OTP with a resend |
+
+Refresh tokens last **30 days** and **rotate** — `POST auth/refresh` returns a
+new refresh token and invalidates the old one. Store the new one or the next
+refresh fails.
+
+Access tokens last **7 days on the development API and 15 minutes in
+production**. Build the refresh loop against the 15-minute number: a client
+that only works because the token outlives the session will break on the day it
+ships, and the failure looks like a random logout rather than a missing
+refresh.
 
 ### Phone login
 
 ```
-POST auth/login/phone/request/    { "phone_number": "+14155552671" }
-POST auth/login/phone/verify/     { "phone_number": "…", "otp": "123456" }
+POST auth/login/phone/request    { "phone_number": "+14155552671" }
+POST auth/login/phone/verify     { "phone_number": "…", "otp": "123456" }
 ```
 
 ```json
@@ -111,10 +165,15 @@ screen has no phone field, so most accounts cannot use this.
 ## 3. OTP: channel choice and throttling
 
 ```
-POST auth/resend-otp/    { "email": "…", "purpose": "LOGIN", "channel": "EMAIL" }
+POST auth/resend-otp    { "email": "…", "purpose": "LOGIN", "channel": "EMAIL" }
 ```
 
 `purpose` is `REGISTRATION`, `LOGIN` or `RESET_PASSWORD`.
+
+On the web flows you want `REGISTRATION` or `RESET_PASSWORD`. **`LOGIN` codes
+can only be spent at `auth/login/phone/verify`**, which needs the phone number
+as well — `auth/verify-otp` refuses them, so that email login cannot be done
+with an inbox instead of a password.
 
 ⚠️ **`channel: "SMS"` returns 501**, not a silent no-op:
 
@@ -144,9 +203,19 @@ A throttled resend does **not** invalidate the code the user already holds, so
 ## 4. Password reset
 
 ```
-POST auth/forgot-password/   { "email": "…" }
-POST auth/reset-password/    { "email": "…", "otp": "…", "password": "…" }
+POST auth/forgot-password   { "email": "…" }
+POST auth/reset-password    { "email": "…", "otp": "…", "password": "…" }
 ```
+
+`forgot-password` answers with the masked address, same shape as registration:
+
+```json
+{ "success": true, "message": "OTP has been sent to x***e@gmail.com.",
+  "data": { "email": "x***e@gmail.com" } }
+```
+
+Same password rules as registration — character classes, no length minimum,
+and **no `confirm_password`**.
 
 **A new password cannot match the previous one** — 400 with `errors.password`.
 Say so before submit if you can; the design's helper text already does.
@@ -232,7 +301,7 @@ four steps. Render `total_steps` from this response, never from the design.
 
 ### Skipping
 
-Step 4 offers "Skip for now". `POST /users/onboarding/skip-bank/` records it —
+Step 4 offers "Skip for now". `POST /users/onboarding/skip-bank` records it —
 this is the one thing that cannot be derived, because declining a step leaves
 no trace in the data. Without it the wizard would return the user to a step
 they refused on every sign-in.
@@ -244,10 +313,10 @@ still offer it again later.
 
 | Step | Endpoint | Guide |
 |---|---|---|
-| 1 Business | `PATCH users/profile/` | this file |
-| 2 Plan | `GET billing/plans/`, `POST billing/subscription/` | [E9](e9-billing.md) |
-| 3 Payment | `POST billing/payment-method/setup/` | [E9](e9-billing.md) |
-| 4 Bank | `POST banking/link/token/`, `link/exchange/` | [E5](e5-banking.md) |
+| 1 Business | `PATCH users/profile` | this file |
+| 2 Plan | `GET billing/plans`, `POST billing/subscription` | [E9](e9-billing.md) |
+| 3 Payment | `POST billing/payment-method/setup` | [E9](e9-billing.md) |
+| 4 Bank | `POST banking/link/token`, `link/exchange/` | [E5](e5-banking.md) |
 
 ---
 
@@ -255,6 +324,7 @@ still offer it again later.
 
 The design shows **Continue with Google**, **Continue with Microsoft** and
 **Continue with Windows Hello**, plus an **Accountant Portal** link. None of
-those exist. Email + password + OTP is the only path.
+those exist. Email + password is the only path, and phone login only for the
+accounts that registered with a number.
 
 Hide them, or the first click is a dead end.

@@ -258,31 +258,12 @@ POST /api/v1/auth/login
 Validate Email & Password
    │
    ▼
-Generate Login OTP
-   │
-   ▼
-Store Hashed OTP
-   │
-   ▼
-Send OTP
-```
-
----
-
-## Login Verification
-
-```
-Client
-   │
-   ▼
-POST /api/v1/auth/verify-otp
-   │
-   ▼
-Verify OTP
+Check Lockout / Active / Verified
    │
    ▼
 Generate Access Token
 Generate Refresh Token
+Record Session (user agent + IP)
 ```
 
 ---
@@ -354,7 +335,7 @@ The system supports two account types.
 | Method | Endpoint                       | Description                 |
 | ------ | ------------------------------ | --------------------------- |
 | POST   | `/api/v1/auth/register`        | Register new account        |
-| POST   | `/api/v1/auth/verify-otp`      | Verify a registration or login OTP |
+| POST   | `/api/v1/auth/verify-otp`      | Verify the registration OTP |
 | POST   | `/api/v1/auth/login`           | Login with email & password |
 | POST   | `/api/v1/auth/resend-otp`      | Resend OTP                  |
 | POST   | `/api/v1/auth/refresh`         | Refresh JWT tokens          |
@@ -576,14 +557,13 @@ The Swagger interface supports:
 2. Retrieve the OTP from the configured email/SMS provider (or console in development).
 3. Verify the registration OTP.
 4. Copy the generated JWT tokens.
-5. Login with email and password.
-6. Verify the login OTP.
-7. Use the returned access token in the Swagger **Authorize** dialog.
-8. Test authenticated endpoints.
-9. Test refresh token rotation.
-10. Test logout.
-11. Test forgot password.
-12. Test password reset.
+5. Login with email and password — the tokens come back on that call.
+6. Use the returned access token in the Swagger **Authorize** dialog.
+7. Test authenticated endpoints.
+8. Test refresh token rotation.
+9. Test logout.
+10. Test forgot password.
+11. Test password reset.
 
 ---
 

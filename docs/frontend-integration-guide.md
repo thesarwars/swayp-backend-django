@@ -38,8 +38,8 @@ The API is not yet consistent. Write one unwrap helper and use it everywhere.
 | Shape | Where |
 |---|---|
 | `{ "success", "message", "data" }` | auth, bills, banking, categories |
-| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods/`, `directory-search/` |
-| a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode/` |
+| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods`, `directory-search/` |
+| a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode` |
 
 Success responses in the second and third shapes have **no `success` field**;
 errors always do. **Branch on the HTTP status, never on the body.**
@@ -63,7 +63,7 @@ So on the bills screen, **"Total Bills: 6"** counts bills while
 **"Overdue 14 / Due 9 / Upcoming 14"** counts occurrences. Different endpoints,
 numbers that do not add up to each other. That is correct.
 
-**Build the list screen on `GET /bills/occurrences/`, not `GET /bills/`.**
+**Build the list screen on `GET /bills/occurrences`, not `GET /bills/`.**
 
 ### 1.3 Status is computed at read time
 
@@ -96,8 +96,8 @@ Exception: in **bill detail**, `overdue_amount`, `days_overdue` and
 ### 2.1 Registration is two steps
 
 ```
-POST auth/register/        →  201, OTP emailed
-POST auth/verify-otp/      →  account activated
+POST auth/register        →  201, OTP emailed
+POST auth/verify-otp      →  account activated
 ```
 
 ```json
@@ -130,17 +130,15 @@ Full detail: [E2 Authentication](frontend_api/e2-authentication.md).
 **The account is inactive until the OTP is verified.** Logging in before that
 fails.
 
-### 2.2 Login is two steps too
+### 2.2 Login is one step
 
 ```
-POST auth/login    →  200, OTP sent (no tokens yet)
-POST auth/verify-otp    →  200, tokens
-
-One verify endpoint serves both flows. The emailed code says nothing
-about which one issued it, so the code itself decides: send `purpose`
-(REGISTRATION or LOGIN) to narrow the search, or leave it out. The
-response echoes the `purpose` it completed.
+POST auth/login    { "email": "…", "password": "…" }    →  200, tokens
 ```
+
+There is no login OTP and no second call — `auth/login/verify` is gone and
+returns 404. Skip the Enter OTP screen on the sign-in path; it belongs to
+registration only.
 
 ```json
 { "success": true, "message": "OTP has been sent." }
@@ -153,15 +151,21 @@ response echoes the `purpose` it completed.
 
 **The first call returns no tokens.** Don't look for them there.
 
-Access tokens last **15 minutes**, refresh **30 days**, and refresh tokens
-**rotate** — `POST auth/refresh/` returns a new refresh token and invalidates
-the old one. Store the new one or the next refresh fails.
+Refresh tokens last **30 days** and **rotate** — `POST auth/refresh` returns a
+new refresh token and invalidates the old one. Store the new one or the next
+refresh fails.
+
+Access tokens last **7 days on the development API and 15 minutes in
+production**. Build the refresh loop against the 15-minute number: a client
+that only works because the token outlives the session will break on the day it
+ships, and the failure looks like a random logout rather than a missing
+refresh.
 
 ### 2.3 Phone login
 
 ```
-POST auth/login/phone/request/    { "phone_number": "+14155552671" }
-POST auth/login/phone/verify/     { "phone_number": "…", "otp": "123456" }
+POST auth/login/phone/request    { "phone_number": "+14155552671" }
+POST auth/login/phone/verify     { "phone_number": "…", "otp": "123456" }
 ```
 
 ```json
@@ -178,7 +182,7 @@ POST auth/login/phone/verify/     { "phone_number": "…", "otp": "123456" }
 ### 2.4 OTP resend is throttled
 
 ```
-POST auth/resend-otp/    { "email": "…", "purpose": "LOGIN", "channel": "EMAIL" }
+POST auth/resend-otp    { "email": "…", "purpose": "LOGIN", "channel": "EMAIL" }
 ```
 
 **60-second minimum gap** and **5 per hour**, per user *and* purpose.
@@ -201,8 +205,8 @@ holding, so "wait and use the code you have" is valid advice.
 ### 2.5 Password reset
 
 ```
-POST auth/forgot-password/   { "email": "…" }
-POST auth/reset-password/    { "email": "…", "otp": "…", "password": "…" }
+POST auth/forgot-password   { "email": "…" }
+POST auth/reset-password    { "email": "…", "otp": "…", "password": "…" }
 ```
 
 **A new password cannot match the previous one** — that returns 400 with
@@ -246,8 +250,8 @@ anything is saved.
 | 1. Vendor | `GET vendors/?search=` |
 | 2. Category | `GET bill-categories/` |
 | 3. Amount, frequency, first due date | none |
-| 4. Payment method | `GET vendors/<id>/payment-methods/?due_date=&amount=` |
-| 5. Autopay + create | `POST bills/create/` |
+| 4. Payment method | `GET vendors/<id>/payment-methods?due_date=&amount=` |
+| 5. Autopay + create | `POST bills/create` |
 
 ### Step 4 is the one with a trap
 
@@ -302,9 +306,9 @@ Three operations invalidate what you have cached. Refetch after each.
 
 | Action | Consequence |
 |---|---|
-| `PATCH bills/<id>/update/` changing `frequency` or `anchor_date` | The schedule is **rebuilt** — unpaid future occurrences are deleted and recreated, so **occurrence ids change**. Refetch the occurrence list. |
-| `DELETE bills/<id>/details/` | **Soft** delete. Paid history survives, so vendor spend totals stay correct. The bill vanishes from listings. |
-| `DELETE vendors/<id>/` | Also soft (`status: DELETED`). Still visible under `?status=DELETED`, but `GET vendors/<id>/` returns 404. |
+| `PATCH bills/<id>/update` changing `frequency` or `anchor_date` | The schedule is **rebuilt** — unpaid future occurrences are deleted and recreated, so **occurrence ids change**. Refetch the occurrence list. |
+| `DELETE bills/<id>/details` | **Soft** delete. Paid history survives, so vendor spend totals stay correct. The bill vanishes from listings. |
+| `DELETE vendors/<id>` | Also soft (`status: DELETED`). Still visible under `?status=DELETED`, but `GET vendors/<id>` returns 404. |
 
 Deleting a vendor's **primary** payment method automatically promotes another,
 so `payment_rail` stays populated.
@@ -382,27 +386,27 @@ or the database.
 `scans/<id>/candidates/` · `scans/<id>/import/` · `onboarding-summary/` ·
 `routing/validate/`
 
-**Payments** — `payments/` · `payments/<id>/` · `payments/<id>/confirm/` ·
-`payments/<id>/status/` · `payments/<id>/cancel/` · `payments/<id>/failure/` ·
-`payments/<id>/resolve/` · `payments/history/` ·
-`payments/batches/<id>/confirm|status|cancel/` · `webhooks/<processor>/`
+**Payments** — `payments/` · `payments/<id>` · `payments/<id>/confirm` ·
+`payments/<id>/status` · `payments/<id>/cancel` · `payments/<id>/failure` ·
+`payments/<id>/resolve` · `payments/history` ·
+`payments/batches/<id>/confirm|status|cancel/` · `webhooks/<processor>`
 
-**Bills** — `bills/` · `bills/create/` · `bills/occurrences/` ·
-`bills/occurrences/upcoming/` · `bills/occurrences/<id>/pay/` ·
-`bills/summary/` · `bills/next-due/` · `bills/qr/decode/` ·
-`bills/<id>/details/` · `bills/<id>/update/` · `bills/<id>/payments/` ·
-`bills/<id>/invoice/`
+**Bills** — `bills/` · `bills/create` · `bills/occurrences` ·
+`bills/occurrences/upcoming` · `bills/occurrences/<id>/pay` ·
+`bills/summary` · `bills/next-due` · `bills/qr/decode` ·
+`bills/<id>/details` · `bills/<id>/update` · `bills/<id>/payments` ·
+`bills/<id>/invoice`
 
-**Vendors** — `vendors/` · `vendors/<id>/` · `vendors/summary/` ·
-`vendors/<id>/payment-methods/` · `.../<mid>/` · `.../<mid>/set-primary/` ·
-`vendors/directory-search/` · `vendors/qr/decode/`
+**Vendors** — `vendors/` · `vendors/<id>` · `vendors/summary` ·
+`vendors/<id>/payment-methods` · `.../<mid>/` · `.../<mid>/set-primary/` ·
+`vendors/directory-search` · `vendors/qr/decode`
 
-**Billing** — `billing/plans/` · `billing/subscription/` (GET/POST/PATCH/DELETE) ·
-`billing/allowances/` · `billing/addons/` · `billing/invoice/` · `billing/fees/`
+**Billing** — `billing/plans` · `billing/subscription` (GET/POST/PATCH/DELETE) ·
+`billing/allowances` · `billing/addons` · `billing/invoice` · `billing/fees`
 
-**Teams** — `teams/me/` · `teams/members/` · `teams/members/<id>/` ·
-`teams/invite/` · `teams/invite/accept/` · `teams/entities/` ·
-`teams/entities/<id>/`
+**Teams** — `teams/me` · `teams/members` · `teams/members/<id>` ·
+`teams/invite` · `teams/invite/accept` · `teams/entities` ·
+`teams/entities/<id>`
 
 **Categories** — `bill-categories/`
 

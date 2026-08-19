@@ -57,29 +57,29 @@ class BillDetectionCandidate(BaseModel):
 ```
 **AC:** [ ] access_token unreadable via API/admin; [ ] factories + migrations
 
-## E5-S2 · Link + exchange — `POST banking/link/token/`, `POST banking/link/exchange/`
+## E5-S2 · Link + exchange — `POST banking/link/token`, `POST banking/link/exchange`
 
 (836:9157, 836:8618, 836:8936, 836:8984) Behind `BankDataProvider` (mock: fake institutions incl. Chase/BofA/WellsFargo/USBank per 836:8618). Exchange stores encrypted token, creates connection + accounts, records `consented_at`, kicks off scan (E5-S4).
 **AC:** [ ] mock E2E: token → exchange → connection ACTIVE + accounts w/ masks; [ ] consent timestamp required; [ ] feature-flagged provider selection
 
 > **Customer verification (call clarification, 2026-07-18):** the Plaid connection **is** Swayp's identity/fraud check on its own paying customer — the BRD §4 "lightweight verification at sign-up" = proving the user owns the linked bank account. There is **no separate KYC/IDV vendor or step; do not add one.** (Vendor/payee screening remains the payment provider's job — Moov/Stripe.)
 
-## E5-S3 · Connections + funding accounts — `GET banking/connections/`, `DELETE .../<id>/`, `GET banking/accounts/`
+## E5-S3 · Connections + funding accounts — `GET banking/connections`, `DELETE .../<id>/`, `GET banking/accounts`
 
 (836:8856; "Paying from Chase ***4821" on 834:3867/840:27719) Masked accounts + balances + default-funding flag. DELETE revokes at provider + status=DISCONNECTED. *(Settings surface assumed — PRD §10-Q12.)*
 **AC:** [ ] only masks exposed; [ ] disconnect blocks if payments in flight (guard tested)
 
-## E5-S4 · Transaction scan + recurring detection — `GET banking/scans/<id>/` + Celery
+## E5-S4 · Transaction scan + recurring detection — `GET banking/scans/<id>` + Celery
 
 (836:9052 — live progress, "17 recurring bills detected", 4 criteria cards) `sync_transactions` pulls history via provider; `detect_recurring_bills` clusters **deterministically**: same normalized vendor name + amount within tolerance + regular interval + **≥3 occurrences**. No LLM. Writes candidates, updates `detected_count` as it goes (polling endpoint).
 **AC:** [ ] fixture transactions → expected candidates (golden tests); [ ] progress observable mid-scan; [ ] thin-history (<180d) degrades gracefully
 
-## E5-S5 · Candidates + bulk import — `GET banking/scans/<id>/candidates/`, `POST banking/scans/<id>/import/`
+## E5-S5 · Candidates + bulk import — `GET banking/scans/<id>/candidates`, `POST banking/scans/<id>/import`
 
 (836:8666 "Add All 17 Bills" / "Select Individually") Import `{candidate_ids | all:true}` → per candidate: find-or-create Vendor (source=IMPORT) + Bill (source=DETECTED, anchor from due_day/cadence) + first occurrence. **Idempotent**: candidates with `imported_bill` set are skipped and reported.
 **AC:** [ ] re-POST is a no-op with skip report; [ ] created counts returned; [ ] Idempotency-Key honored (E1-S7)
 
-## E5-S6 · Onboarding summary — `GET banking/onboarding-summary/`
+## E5-S6 · Onboarding summary — `GET banking/onboarding-summary`
 
 (836:8856) Connected bank meta, bills detected/imported, total due this month, overdue count, per-vendor rail readiness: network-matched / ACH captured / needs-details counts.
 **AC:** [ ] numbers reconcile with E4-S2 summary + E3-S2 stats; [ ] single aggregate query set (selector)

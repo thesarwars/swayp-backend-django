@@ -6,7 +6,7 @@
 
 ---
 
-## E8-S1 · Home dashboard aggregate — `GET dashboard/home/`
+## E8-S1 · Home dashboard aggregate — `GET dashboard/home`
 
 **As a** user **I land on** "Welcome Back, Jhon" with stats, recent bills, vendors preview, and the right-rail pay panel with Overdue/Due/Upcoming tab counts (565:4649).
 
@@ -34,7 +34,7 @@ sign-off before a client is written against the sketch.**
   due_date, amount, status, autopay_mode}`. The sketch's `vendor`/`logo` are
   spelled `vendor_name`/`vendor_logo`, and there is an `id` — without an
   occurrence id the pay panel's rows cannot start a payment, which is the whole
-  point of the panel. Same serializer as `GET bills/occurrences/?status=`, so a
+  point of the panel. Same serializer as `GET bills/occurrences?status=`, so a
   preloaded row and a tab-switch row are the same object.
 - `pay_panel.active_tab` is additive: `items` is the *resolved* tab (overdue,
   falling back to due then upcoming), so the client cannot know which tab it is
@@ -44,7 +44,7 @@ sign-off before a client is written against the sketch.**
 
 **AC:**
 - [ ] Selector-composed (no N+1; assert query count)
-- [ ] Numbers reconcile with `bills/summary/` + `vendors/summary/` under same user fixture
+- [ ] Numbers reconcile with `bills/summary` + `vendors/summary` under same user fixture
 - [ ] p95 ≤ 500 ms on seeded volume (1k occurrences)
 
 ## E8-S2 · Reports — `GET reports/?vendor=<id>&date_from=&date_to=`
@@ -74,7 +74,7 @@ class NotificationPreference(BaseModel):      # apps/notifications/models/notifi
         db_table = "notification_preferences"
         constraints = [UniqueConstraint(fields=["user", "type"], name="uniq_pref_per_type")]
 ```
-**API:** `GET/PATCH notifications/preferences/` (upsert per type). Emission helper: `notify(user, type, context)` checks prefs → in-app row (exists today) + channel tasks. ⟳ **This release ships email + in-app only (BRD §1.2 — SMS/push deferred);** channel adapters sit behind an interface, external delivery flagged until R4. Payloads carry deep-link context (`bill_id`, `occurrence_id`, `payment_id`).
+**API:** `GET/PATCH notifications/preferences` (upsert per type). Emission helper: `notify(user, type, context)` checks prefs → in-app row (exists today) + channel tasks. ⟳ **This release ships email + in-app only (BRD §1.2 — SMS/push deferred);** channel adapters sit behind an interface, external delivery flagged until R4. Payloads carry deep-link context (`bill_id`, `occurrence_id`, `payment_id`).
 *(Settings screen assumed — PRD §10-Q12.)*
 **AC:**
 - [ ] Defaults created lazily; PATCH validates known types

@@ -77,6 +77,9 @@ _DAYS_PER_MONTH = 31
 #: Plaid caps a single /transactions/get page at 500.
 _PAGE_SIZE = 500
 
+#: Plaid's own guidance. Past this a captured callback is replayable.
+_WEBHOOK_MAX_AGE_SECONDS = 5 * 60
+
 
 class PlaidBankDataProvider(BankDataProvider):
 
@@ -182,6 +185,22 @@ class PlaidBankDataProvider(BankDataProvider):
 
         if redirect_uri:
             payload["redirect_uri"] = redirect_uri
+
+        # Where HISTORICAL_UPDATE will be delivered. Registered per item, at
+        # link time — there is no dashboard setting for it, so an item linked
+        # without this never tells us its history is ready and its scan waits
+        # forever. Unset is a working link and a permanently stuck scan, which
+        # is why it is logged rather than silently omitted.
+        webhook_url = getattr(settings, "PLAID_WEBHOOK_URL", "")
+
+        if webhook_url:
+            payload["webhook"] = webhook_url
+        else:
+            logger.warning(
+                "PLAID_WEBHOOK_URL is unset; this item will not report when "
+                "its transaction history is ready, and its scan will wait "
+                "indefinitely."
+            )
 
         response = self._call(
             self._client.link_token_create, LinkTokenCreateRequest(**payload)
@@ -455,6 +474,74 @@ class PlaidBankDataProvider(BankDataProvider):
         )
 
         return response["processor_token"]
+
+    # --- webhooks -----------------------------------------------------------
+
+    def verify_webhook(self, *, raw_body: bytes, header_value: str) -> None:
+        """Verify the ``Plaid-Verification`` JWT. Raises on anything wrong.
+
+        Plaid does not sign with a shared secret. It sends an ES256 JWT whose
+        key is fetched from Plaid by the ``kid`` in its own header, and whose
+        ``request_body_sha256`` claim covers the body. Three things have to
+        hold, and skipping any one of them makes the check decorative:
+
+        * the algorithm is ES256 — accepting the token's own ``alg`` would
+          let a forger send ``none``, which is the classic JWT forgery,
+        * the body hash matches, or a valid token could be replayed over a
+          different payload,
+        * ``iat`` is recent, or a token captured once is good forever.
+        """
+        import hashlib
+        import hmac
+        import json
+        import time
+
+        import jwt
+        from plaid.model.webhook_verification_key_get_request import (
+            WebhookVerificationKeyGetRequest,
+        )
+
+        if not header_value:
+            raise BankDataProviderError("Missing Plaid-Verification header.")
+
+        try:
+            header = jwt.get_unverified_header(header_value)
+        except jwt.PyJWTError as exc:
+            raise BankDataProviderError(
+                f"Unreadable Plaid-Verification header: {exc}"
+            ) from exc
+
+        if header.get("alg") != "ES256":
+            raise BankDataProviderError(
+                f"Unexpected webhook algorithm {header.get('alg')!r}."
+            )
+
+        response = self._call(
+            self._client.webhook_verification_key_get,
+            WebhookVerificationKeyGetRequest(key_id=header["kid"]),
+        )
+
+        public_key = jwt.algorithms.ECAlgorithm.from_jwk(
+            json.dumps(response["key"].to_dict())
+        )
+
+        try:
+            claims = jwt.decode(
+                header_value, public_key, algorithms=["ES256"]
+            )
+        except jwt.PyJWTError as exc:
+            raise BankDataProviderError(
+                f"Plaid webhook signature rejected: {exc}"
+            ) from exc
+
+        if time.time() - claims.get("iat", 0) > _WEBHOOK_MAX_AGE_SECONDS:
+            raise BankDataProviderError("Plaid webhook is too old.")
+
+        if not hmac.compare_digest(
+            claims.get("request_body_sha256", ""),
+            hashlib.sha256(raw_body).hexdigest(),
+        ):
+            raise BankDataProviderError("Plaid webhook body does not match.")
 
     # --- disconnecting ------------------------------------------------------
 

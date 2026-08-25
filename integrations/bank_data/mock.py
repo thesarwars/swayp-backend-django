@@ -176,6 +176,26 @@ class MockBankDataProvider(BankDataProvider):
     ) -> str:
         return f"processor-{processor}-{account_id}"
 
+    def verify_webhook(self, *, raw_body: bytes, header_value: str) -> None:
+        """Shared-secret HMAC, so the flow can be exercised without Plaid.
+
+        Deliberately not a no-op: a mock that accepts anything would let a
+        missing signature reach the handler in every test, and the one thing
+        this guards is that unverified callbacks never do.
+        """
+        import hashlib
+        import hmac
+
+        from django.conf import settings
+
+        secret = getattr(settings, "WEBHOOK_SECRETS", {}).get("PLAID") or ""
+        expected = hmac.new(
+            secret.encode(), raw_body, hashlib.sha256
+        ).hexdigest()
+
+        if not secret or not hmac.compare_digest(expected, header_value):
+            raise ValueError("Mock webhook signature mismatch.")
+
     def remove_item(self, *, access_token: str) -> None:
         # Deterministic mock — no remote item to revoke.
         return None

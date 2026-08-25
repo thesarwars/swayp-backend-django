@@ -46,16 +46,42 @@ class WebhookAPIView(APIView):
     def event_type(self, payload):
         return payload.get("type") or payload.get("event_type") or ""
 
+    def verify(self, request, raw):
+        """Prove the sender. Overridable, because not everyone signs alike.
+
+        The shared default is HMAC-SHA256 over the raw body, which is what the
+        payment processors use. Sharing it was meant to stop a new processor
+        quietly getting weaker semantics — but a processor that signs
+        differently cannot be made to fit by wishing, and forcing it here
+        would mean rejecting every one of its callbacks. Plaid is one: it
+        sends a signed JWT, not an HMAC.
+        """
+        verify_signature(
+            processor=self.processor,
+            raw_body=raw,
+            signature=request.META.get(self.signature_header, ""),
+            secret=self.secret(),
+        )
+
+    def handle(self, payload):
+        """What the event means. Overridable for the same reason.
+
+        The default routes to payment state, which is what a processor
+        callback is. Plaid's callbacks are about data readiness and mean
+        nothing to a Payment.
+        """
+        return WebhookService().handle(
+            processor=self.processor,
+            event_id=self.event_id(payload),
+            event_type=self.event_type(payload),
+            payload=payload,
+        )
+
     def post(self, request):
         raw = request.body
 
         try:
-            verify_signature(
-                processor=self.processor,
-                raw_body=raw,
-                signature=request.META.get(self.signature_header, ""),
-                secret=self.secret(),
-            )
+            self.verify(request, raw)
         except SignatureError as error:
             logger.warning(
                 "rejected %s webhook: %s", self.processor, error
@@ -82,11 +108,4 @@ class WebhookAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        result = WebhookService().handle(
-            processor=self.processor,
-            event_id=event_id,
-            event_type=self.event_type(payload),
-            payload=payload,
-        )
-
-        return Response({"received": True, "result": result})
+        return Response({"received": True, "result": self.handle(payload)})

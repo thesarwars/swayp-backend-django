@@ -86,11 +86,33 @@ error at all. Detection over one month of data finds almost nothing, and the
 "17 bills found" screen would show a near-empty list that looks like a real
 answer.
 
-The fix for both is the same and is **not yet built**: wait for Plaid's
-`HISTORICAL_UPDATE` webhook before scanning, rather than scanning on exchange.
-`/webhooks/plaid` is routed but is a stub (`PlaidWebhookAPIView` sets a
-processor name and nothing else). Until then the first scan of any connection
-is a race against Plaid's backfill.
+**Both are handled now** (2026-08-25). The scan started at connect time stops
+on `BankDataNotReady` and stays `RUNNING`; Plaid's
+`TRANSACTIONS/HISTORICAL_UPDATE` callback re-queues it once the full window is
+there. `INITIAL_UPDATE` is deliberately ignored — it carries only 30 days, and
+acting on it is precisely the partial-history bug.
+
+Wiring it meant discovering that **Plaid fits none of the shared webhook
+assumptions**, and each mismatch rejected every one of its callbacks:
+
+| Assumption | Plaid | Result before |
+|---|---|---|
+| HMAC-SHA256 of the raw body | ES256 JWT, key fetched by `kid` | signature mismatch |
+| payload carries `id` / `event_id` | carries neither | "Payload has no event id" |
+| event maps to a payment status | is about data readiness | ignored |
+
+`WebhookAPIView.verify()` and `.handle()` are overridable now, defaults
+unchanged for the four payment processors. The JWT check pins `alg` to ES256
+(accepting the token's own `alg` is the classic forgery), compares
+`request_body_sha256` against the body, and rejects anything older than five
+minutes. The event id is synthesised from the item, the code and a body hash,
+so Plaid's retries — identical bytes — dedupe.
+
+`PLAID_WEBHOOK_URL` is now sent on every link token. It is registered **per
+item at link time**, not configured in Plaid's dashboard, so an item linked
+while it is empty never reports readiness and its scan waits forever; the
+provider logs a warning rather than omitting it quietly. Verified: sandbox
+accepts a link token carrying it.
 
 ### The one failure
 
@@ -259,13 +281,20 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
 ## 5. Order of work
 
 1. ~~§3.1–3.5 — provider, settings, registration, error mapping, tests.~~ Done.
-2. **The `HISTORICAL_UPDATE` webhook (§2.1).** Now the highest-value item:
-   without it the first scan races Plaid's backfill and silently under-detects.
-3. §4.1 — decide the history window. Asking for 24 months while the cap is 12
-   is a one-line change; the screens already promise the larger number.
-4. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
+2. ~~The `HISTORICAL_UPDATE` webhook (§2.1).~~ Done.
+3. ~~§4.1 — the history window.~~ Done: 24, overriding the BRD.
+4. **Deploy configuration.** Two values the code cannot supply itself:
+   `PLAID_WEBHOOK_URL` on the server (items linked without it never report
+   readiness), and `MOOV_WEBHOOK_SECRET`, which the live server does not have
+   — `/webhooks/moov` currently answers *"No webhook secret configured for
+   MOOV."*
+5. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
    Written to the documented shapes, stub-tested, sandbox test skipped.
-5. §4.2 and §4.3 — out of the agreed scope; listed so they are not forgotten.
+6. §4.2 and §4.3 — out of the agreed scope; listed so they are not forgotten.
+7. **Moov's signature scheme**, unverified. The shared HMAC that Plaid turned
+   out not to use is the same one `MoovWebhookAPIView` assumes. Worth checking
+   against Moov's docs before counting that integration as wired — the
+   override points now exist either way.
 
 Step 1 makes the flow real for everything the screens read. Step 2 makes it
 *correct* for the first connection, which is the only one every user makes.

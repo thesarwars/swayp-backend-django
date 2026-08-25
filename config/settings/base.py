@@ -451,6 +451,11 @@ PLAID_COUNTRY_CODES = env.list("PLAID_COUNTRY_CODES", default=["US"])
 # Required by OAuth institutions only, and Plaid rejects an empty string, so
 # the provider omits it entirely when this is unset.
 PLAID_REDIRECT_URI = env("PLAID_REDIRECT_URI", default="")
+# Where Plaid delivers TRANSACTIONS/HISTORICAL_UPDATE. Registered on each item
+# at link time rather than configured in Plaid's dashboard, so an item linked
+# while this is empty never reports that its history is ready — and the scan
+# waiting on it never finishes. Must be publicly reachable.
+PLAID_WEBHOOK_URL = env("PLAID_WEBHOOK_URL", default="")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 

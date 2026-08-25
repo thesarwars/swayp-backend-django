@@ -109,6 +109,18 @@ class BankDataProvider(ABC):
     ) -> str:
         ...
 
+    def verify_webhook(self, *, raw_body: bytes, header_value: str) -> None:
+        """Prove a callback came from the provider. Raise if it did not.
+
+        Not abstract: a provider with no callbacks has nothing to implement,
+        and the default refuses rather than returning quietly — an
+        unimplemented check that returns None would look exactly like a
+        passing one.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} cannot verify webhooks."
+        )
+
     @abstractmethod
     def remove_item(self, *, access_token: str) -> None:
         """Revoke the linked item at the provider (Plaid ``/item/remove``).

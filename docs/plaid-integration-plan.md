@@ -283,11 +283,15 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
 1. ~~§3.1–3.5 — provider, settings, registration, error mapping, tests.~~ Done.
 2. ~~The `HISTORICAL_UPDATE` webhook (§2.1).~~ Done.
 3. ~~§4.1 — the history window.~~ Done: 24, overriding the BRD.
-4. **Deploy configuration.** Two values the code cannot supply itself:
-   `PLAID_WEBHOOK_URL` on the server (items linked without it never report
-   readiness), and `MOOV_WEBHOOK_SECRET`, which the live server does not have
-   — `/webhooks/moov` currently answers *"No webhook secret configured for
-   MOOV."*
+4. **Deploy configuration.** Four values the code cannot supply itself, all
+   on the server and needing a restart: `PLAID_CLIENT_ID`, `PLAID_SECRET`,
+   `PLAID_WEBHOOK_URL` (items linked without it never report readiness), and
+   `MOOV_WEBHOOK_SECRET` — `/webhooks/moov` still answers *"No webhook secret
+   configured for MOOV."*
+
+   Both mounts now answer, so a dashboard configured against
+   `/api/v1/webhooks/<processor>` works as well as the canonical versionless
+   path. `reverse()` still returns the versionless one.
 5. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
    Written to the documented shapes, stub-tested, sandbox test skipped.
 6. §4.2 and §4.3 — out of the agreed scope; listed so they are not forgotten.

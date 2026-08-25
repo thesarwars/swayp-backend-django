@@ -1,5 +1,9 @@
 from django.urls import include, path
 
+from apps.webhooks.api.urls import (
+    versioned_urlpatterns as versioned_webhook_urls,
+)
+
 urlpatterns = [
     path(
         "/auth",
@@ -62,4 +66,10 @@ urlpatterns = [
         "/users",
         include("apps.users.api.urls"),
     ),
+
+    # Alias only. The canonical mount is versionless at /webhooks/ (see
+    # config/urls.py); this exists because the processor dashboards were
+    # configured against the versioned path, and a webhook URL is the one
+    # thing you cannot fix faster on our side than on theirs.
+    path("/webhooks", include(versioned_webhook_urls)),
 ]

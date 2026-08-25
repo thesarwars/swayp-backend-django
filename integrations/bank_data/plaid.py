@@ -36,6 +36,7 @@ from integrations.bank_data.base import (
     BankDataProviderError,
     BankReauthRequired,
     ExchangeResult,
+    Institution,
     LinkToken,
     RecurringCandidate,
     Transaction,
@@ -474,6 +475,49 @@ class PlaidBankDataProvider(BankDataProvider):
         )
 
         return response["processor_token"]
+
+    def search_institutions(self, *, query: str):
+        from plaid.model.country_code import CountryCode
+        from plaid.model.institutions_search_request import (
+            InstitutionsSearchRequest,
+        )
+        from plaid.model.institutions_search_request_options import (
+            InstitutionsSearchRequestOptions,
+        )
+        from plaid.model.products import Products
+
+        response = self._call(
+            self._client.institutions_search,
+            InstitutionsSearchRequest(
+                query=query,
+                # Scoped to what Swayp actually needs, so the picker cannot
+                # offer a bank that then fails at link time.
+                products=[
+                    Products(product)
+                    for product in getattr(
+                        settings, "PLAID_PRODUCTS", ["transactions"]
+                    )
+                ],
+                country_codes=[
+                    CountryCode(code)
+                    for code in getattr(
+                        settings, "PLAID_COUNTRY_CODES", ["US"]
+                    )
+                ],
+                options=InstitutionsSearchRequestOptions(
+                    include_optional_metadata=True
+                ),
+            ),
+        )
+
+        return tuple(
+            Institution(
+                institution_id=row["institution_id"],
+                name=row["name"],
+                logo=row.get("logo"),
+            )
+            for row in response["institutions"]
+        )
 
     # --- webhooks -----------------------------------------------------------
 

@@ -14,6 +14,15 @@ class LinkTokenSerializer(serializers.Serializer):
     provider = serializers.CharField()
 
 
+class InstitutionSerializer(serializers.Serializer):
+    """One row of the bank picker."""
+
+    institution_id = serializers.CharField()
+    name = serializers.CharField()
+    logo = serializers.CharField(allow_null=True)
+    subtitle = serializers.CharField(allow_blank=True)
+
+
 class LinkExchangeSerializer(serializers.Serializer):
     """Consent is mandatory — see E5-S2."""
 
@@ -82,7 +91,61 @@ class TransactionScanSerializer(serializers.ModelSerializer):
         return {
             "is_complete": obj.status != "RUNNING",
             "thin_history": ScanService().is_thin_history(obj),
+            "stages": self.get_stages(obj),
         }
+
+    def get_stages(self, obj):
+        """The four steps the Verifying/Scanning screens draw.
+
+        Derived from what the scan has actually done, not from a timer. A
+        timer advances whether or not anything is happening, so a stuck scan
+        looks identical to a fast one and the bar is decoration.
+
+        Each stage is done / active / pending, and only one is ever active —
+        the screen renders the list rather than deciding the sequence.
+        """
+        from apps.common.enums import ScanStatus
+
+        failed = obj.status == ScanStatus.FAILED
+        complete = obj.status == ScanStatus.DONE
+
+        # Nothing is "active" on a finished scan, and on a failed one the
+        # stage that was running is where it stopped.
+        reached = [
+            # The connection exists for a scan to belong to at all.
+            True,
+            True,
+            obj.transactions_scanned > 0 or complete,
+            obj.detected_count > 0 or complete,
+        ]
+
+        labels = (
+            ("connected", "Connected to your bank"),
+            ("verifying", "Verifying account ownership"),
+            ("history", "Retrieving transaction history"),
+            ("detecting", "Detecting recurring bills"),
+        )
+
+        stages = []
+        active_taken = False
+
+        for (key, label), done in zip(labels, reached):
+            if complete:
+                state = "done"
+            elif done:
+                state = "done"
+            elif failed:
+                state = "failed" if not active_taken else "pending"
+                active_taken = True
+            elif not active_taken:
+                state = "active"
+                active_taken = True
+            else:
+                state = "pending"
+
+            stages.append({"key": key, "label": label, "status": state})
+
+        return stages
 
 
 class StartScanSerializer(serializers.Serializer):

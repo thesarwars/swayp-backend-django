@@ -41,6 +41,19 @@ class Transaction:
 
 
 @dataclass(frozen=True)
+class Institution:
+    """One row of the bank picker."""
+
+    institution_id: str
+    name: str
+    logo: Optional[str] = None
+    #: The grey line under the name — "JPMorgan Chase · 70M+ customers" on the
+    #: design. Providers rarely give this, so it is optional rather than
+    #: invented.
+    subtitle: str = ""
+
+
+@dataclass(frozen=True)
 class RecurringCandidate:
     vendor_name: str
     amount: Decimal
@@ -108,6 +121,17 @@ class BankDataProvider(ABC):
         self, *, access_token: str, account_id: str, processor: str
     ) -> str:
         ...
+
+    def search_institutions(self, *, query: str) -> tuple[Institution, ...]:
+        """Institutions matching a typed query, for a native bank picker.
+
+        Not abstract for the same reason as verify_webhook: a provider that
+        cannot search should say so rather than return an empty list, which
+        reads as "no banks match" and sends the user looking for a typo.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} cannot search institutions."
+        )
 
     def verify_webhook(self, *, raw_body: bytes, header_value: str) -> None:
         """Prove a callback came from the provider. Raise if it did not.

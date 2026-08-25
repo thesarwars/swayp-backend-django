@@ -3,11 +3,13 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 
+from apps.common.exceptions import ProviderUnavailableException
 from apps.banking.api.serializers.banking import (
     BankAccountSerializer,
     BankConnectionSerializer,
     BillDetectionCandidateSerializer,
     ImportCandidatesSerializer,
+    InstitutionSerializer,
     LinkExchangeSerializer,
     LinkTokenSerializer,
     SetFundingSourceSerializer,
@@ -24,6 +26,50 @@ from apps.teams.access import AccountScopedMixin, RequiresCapability
 from apps.teams.permissions import MANAGE_BANKS
 from apps.common.responses import ApiResponse
 from apps.payments.idempotency import IdempotencyMixin
+
+
+@extend_schema(
+    tags=["Banking"],
+    summary="Search bank institutions",
+    description=(
+        "Institutions matching `search`, for a native bank picker. Plaid "
+        "Link searches institutions in its own UI too — this is for clients "
+        "that draw their own list."
+    ),
+    parameters=[
+        OpenApiParameter(
+            name="search",
+            description="Free text, e.g. `chase`. Empty returns a default set.",
+            required=False,
+            type=str,
+        )
+    ],
+    responses={200: InstitutionSerializer(many=True)},
+)
+class InstitutionSearchAPIView(AccountScopedMixin, BaseAPIView):
+    """The native bank picker (1620-12323).
+
+    Plaid Link already searches institutions in its own UI, so this exists
+    only because the design draws its own list. It is scoped to the products
+    Swayp needs, so the picker cannot offer a bank that fails at link time.
+    """
+
+    service_class = BankLinkService
+
+    def get(self, request):
+        query = (request.query_params.get("search") or "").strip()
+
+        try:
+            institutions = self.service.search_institutions(query=query)
+        except NotImplementedError as exc:
+            # A provider that cannot search says so. Returning [] would read
+            # as "no banks match" and send the user hunting for a typo.
+            raise ProviderUnavailableException(str(exc)) from exc
+
+        return ApiResponse.success(
+            data=InstitutionSerializer(institutions, many=True).data,
+            message="Institutions fetched successfully.",
+        )
 
 
 @extend_schema(

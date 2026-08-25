@@ -16,6 +16,7 @@ from integrations.bank_data.base import (
     BankAccountInfo,
     BankDataProvider,
     ExchangeResult,
+    Institution,
     LinkToken,
     RecurringCandidate,
     Transaction,
@@ -175,6 +176,21 @@ class MockBankDataProvider(BankDataProvider):
         self, *, access_token: str, account_id: str, processor: str
     ) -> str:
         return f"processor-{processor}-{account_id}"
+
+    def search_institutions(self, *, query: str):
+        """Substring match over the canned four, so the picker works offline."""
+        needle = (query or "").strip().lower()
+
+        return tuple(
+            Institution(
+                institution_id=key,
+                name=name,
+                logo=None,
+                subtitle=account_name,
+            )
+            for key, (name, account_name, _mask) in INSTITUTIONS.items()
+            if not needle or needle in name.lower() or needle in key
+        )
 
     def verify_webhook(self, *, raw_body: bytes, header_value: str) -> None:
         """Shared-secret HMAC, so the flow can be exercised without Plaid.

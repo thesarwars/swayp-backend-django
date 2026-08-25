@@ -223,27 +223,34 @@ The mock provider still generates 12 months of canned history, so a
 mock-backed scan requests 24 and receives 12. That is honest for a fixture and
 does not affect the Plaid path.
 
-### 4.2 Scan progress has no stages
+### 4.2 Scan progress — resolved
 
 `1620-12370` shows four named stages with Done / Active / Next, and `1620-12434`
 shows a live count. The scan model has three states — `RUNNING`, `DONE`,
 `FAILED` — and `progress: {is_complete, thin_history}`.
 
-The screen can be built on a timer, but then the bar is fiction: it advances
-whether or not anything is happening, and a slow or stuck scan looks identical
-to a fast one. Adding a `stages[]` array to the scan detail response is a small
-change and makes the screen honest.
+**Built.** `progress.stages[]` on the scan detail carries four rows —
+`connected`, `verifying`, `history`, `detecting` — each `done` / `active` /
+`pending` / `failed`, derived from `transactions_scanned` and `detected_count`
+rather than from a clock. Exactly one is ever active, and a failed scan shows
+which step it stopped on rather than reporting everything done or everything
+pending. The client renders the list; it does not decide the sequence.
 
-### 4.3 Institution picker
+### 4.3 Institution picker — resolved
 
 `1620-12323` is a native "Select Your Bank" search. Plaid Link already includes
 institution search in its own UI, so building this means passing
 `institution_id` into link-token creation and maintaining a second search
 surface for no functional gain.
 
-`/institutions/search` works (verified), so it is cheap either way — but it is
-worth confirming the design intends a native picker rather than illustrating
-what Plaid shows.
+**Built** as `GET /api/v1/banking/institutions?search=`, scoped to
+`PLAID_PRODUCTS` so the picker cannot offer a bank that then fails at link
+time. The mock searches its canned four, so the screen works offline. A
+provider that cannot search raises rather than returning `[]` — an empty list
+reads as "no banks match" and sends the user hunting for a typo.
+
+The caveat above stands: Plaid Link searches institutions in its own UI, so
+this is only needed by a client drawing its own list.
 
 ### 4.4 Dwolla — resolved
 
@@ -292,13 +299,22 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
    Both mounts now answer, so a dashboard configured against
    `/api/v1/webhooks/<processor>` works as well as the canonical versionless
    path. `reverse()` still returns the versionless one.
-5. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
-   Written to the documented shapes, stub-tested, sandbox test skipped.
-6. §4.2 and §4.3 — out of the agreed scope; listed so they are not forgotten.
+5. ~~§4.2 scan stages and §4.3 institution search.~~ Done.
+6. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
+   Written to the documented shapes, stub-tested, sandbox test skipped. This
+   is the only remaining code-level blocker, and it is not ours to unblock.
 7. **Moov's signature scheme**, unverified. The shared HMAC that Plaid turned
    out not to use is the same one `MoovWebhookAPIView` assumes. Worth checking
    against Moov's docs before counting that integration as wired — the
    override points now exist either way.
+
+### The webhook is no longer mandatory
+
+`sync_transactions` now retries a not-ready scan on its own — 30s doubling to
+roughly 30 minutes, then FAILED with a message a person can act on. The
+webhook remains the better path (it resumes the moment the data lands, instead
+of waiting out a backoff), but a deployment without `PLAID_WEBHOOK_URL` no
+longer leaves scans hanging forever.
 
 Step 1 makes the flow real for everything the screens read. Step 2 makes it
 *correct* for the first connection, which is the only one every user makes.

@@ -28,6 +28,10 @@ class BankLinkService:
     def __init__(self):
         self.provider = get_bank_data_provider()
 
+    def search_institutions(self, *, query):
+        """Straight through to the provider — nothing to add or store."""
+        return self.provider.search_institutions(query=query)
+
     def create_link_token(self, *, user):
         token = self.provider.create_link_token(user_ref=str(user.id))
 

@@ -4,6 +4,7 @@ from apps.banking.api.views.banking import (
     BankAccountListAPIView,
     BankConnectionDetailAPIView,
     BankConnectionListAPIView,
+    InstitutionSearchAPIView,
     LinkExchangeAPIView,
     LinkTokenAPIView,
     OnboardingSummaryAPIView,
@@ -14,6 +15,11 @@ from apps.banking.api.views.banking import (
 )
 
 urlpatterns = [
+    path(
+        "/institutions",
+        InstitutionSearchAPIView.as_view(),
+        name="banking-institutions",
+    ),
     path("/link/token", LinkTokenAPIView.as_view(), name="banking-link-token"),
     path(
         "/link/exchange",

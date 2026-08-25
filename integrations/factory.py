@@ -22,6 +22,9 @@ from integrations.subscription_billing.mock import (
 )
 
 _REGISTRY = {
+    # "plaid" is imported lazily below, like "stripe" and "fcm": the SDK is
+    # only needed when it is selected, so a mock deployment does not require
+    # the package.
     "bank_data": {"mock": MockBankDataProvider},
     "money_movement": {"mock": MockMoneyMovementProvider},
     "directory": {"mock": MockDirectoryProvider},
@@ -63,6 +66,11 @@ def _resolve(domain: str):
     setting_key = _SETTING[domain]
     name = getattr(settings, setting_key, "mock") or "mock"
     providers = _REGISTRY[domain]
+
+    if domain == "bank_data" and name == "plaid":
+        from integrations.bank_data.plaid import PlaidBankDataProvider
+
+        return PlaidBankDataProvider()
 
     if domain == "subscription_billing" and name == "stripe":
         from integrations.subscription_billing.stripe_provider import (

@@ -49,6 +49,33 @@ class RecurringCandidate:
     occurrences: int
 
 
+class BankDataProviderError(Exception):
+    """The provider could not answer. Ours to fix, or theirs."""
+
+
+class BankReauthRequired(BankDataProviderError):
+    """The link is alive but the user has to log in again.
+
+    Plaid's ``ITEM_LOGIN_REQUIRED``, which is what a changed bank password
+    looks like from here. Separate from the generic error because it is not a
+    fault: nobody can fix it but the user, and ``BankConnection.status``
+    already has somewhere to record it. Reported as a 500 it would send an
+    engineer to the logs for a thing only the account holder can resolve.
+    """
+
+
+class BankDataNotReady(BankDataProviderError):
+    """The link is good; the data has not finished arriving.
+
+    Plaid's ``PRODUCT_NOT_READY``. An item is usable the moment it is
+    exchanged, but transactions are pulled asynchronously afterwards — so a
+    scan started immediately after linking asks for history that does not
+    exist yet. This is the normal first-connect path, not a fault, and the
+    caller should wait for the provider's webhook (or retry) rather than
+    record the scan as failed.
+    """
+
+
 class BankDataProvider(ABC):
     name = "base"
 

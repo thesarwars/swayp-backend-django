@@ -173,6 +173,23 @@ if DEFAULT_PLAN_CODE != "FOUNDING":
         "user. Per-customer plans arrive with E9 (apps/billing)."
     )
 
+# Selecting Plaid without its keys fails at the first bank connection rather
+# than at boot, which turns a configuration mistake into a customer staring at
+# a 500 in the middle of onboarding. Same check, same reason, as Stripe below.
+if env("BANK_DATA_PROVIDER", default="mock") == "plaid":
+    _require(
+        "PLAID_CLIENT_ID",
+        hint="Or set BANK_DATA_PROVIDER=mock to run on canned bank data.",
+    )
+    _require("PLAID_SECRET")
+
+    if env("PLAID_ENV", default="sandbox") != "production":
+        raise ImproperlyConfigured(
+            "PLAID_ENV must be 'production' when BANK_DATA_PROVIDER=plaid in "
+            "production. Sandbox returns invented accounts, and they would be "
+            "indistinguishable from real ones in the UI."
+        )
+
 # --- money -----------------------------------------------------------------
 
 # Selecting Stripe without its keys fails at the first subscribe rather than

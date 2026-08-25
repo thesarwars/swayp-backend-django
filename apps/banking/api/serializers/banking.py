@@ -88,7 +88,7 @@ class TransactionScanSerializer(serializers.ModelSerializer):
 class StartScanSerializer(serializers.Serializer):
     connection_id = serializers.UUIDField()
     months = serializers.IntegerField(
-        required=False, min_value=1, max_value=12,
+        required=False, min_value=1, max_value=24,
     )
 
 

@@ -1,6 +1,6 @@
 # Banking API Documentation
 
-The onboarding journey: connect a bank read-only, scan up to 12 months of
+The onboarding journey: connect a bank read-only, scan up to 24 months of
 history, review the recurring bills we found, and import them as real bills.
 Plus ABA routing validation for the vendor ACH form.
 

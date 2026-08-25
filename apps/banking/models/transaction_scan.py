@@ -21,9 +21,12 @@ class TransactionScan(BaseModel):
         default=ScanStatus.RUNNING,
     )
 
-    # BRD §3.1 caps history at 12 months. The 24 months on screens
-    # 836:8984/9052 is a design bug (PRD §11).
-    months_history = models.PositiveSmallIntegerField(default=12)
+    # 24, decided 2026-08-25, and it overrides the BRD rather than following
+    # it: BRD §3.1 says "up to 12 months" and PRD §11 open question 2 called
+    # the 24 on screens 836:8984/9052 a design bug. The screens won — every
+    # bank-connect screen promises 24 months and Plaid serves that window
+    # without complaint, so the requirement moved to match what was designed.
+    months_history = models.PositiveSmallIntegerField(default=24)
 
     transactions_scanned = models.PositiveIntegerField(default=0)
 

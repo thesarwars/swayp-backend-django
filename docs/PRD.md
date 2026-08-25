@@ -33,7 +33,7 @@ The CEO BRD is now the source of truth for the payments architecture. It **resol
 
 ## 1. Overview
 
-Swayp lets a US business (or individual) **see and pay all of its bills from one place — without Swayp ever holding, storing, or transmitting customer funds.** A user connects their business bank account once (read-only, via **Plaid**); Swayp reads balance and up to 12 months of history to detect recurring bills; and the user pays vendors by one of three rails:
+Swayp lets a US business (or individual) **see and pay all of its bills from one place — without Swayp ever holding, storing, or transmitting customer funds.** A user connects their business bank account once (read-only, via **Plaid**); Swayp reads balance and up to 24 months of history to detect recurring bills; and the user pays vendors by one of three rails:
 
 - **Stripe** — vendors that already have a configured payment account with our processor (fast "confirm, send, done").
 - **Moov** — vendors identified only by a bank **routing + account number** (ACH); standard 1–3 business days (free) or same-day (+$4.99, pre-cutoff only).
@@ -52,7 +52,7 @@ Small businesses juggle bills across utility portals, emailed invoices, and pape
 ### Goals
 1. Register (Business/Individual), verify via OTP (email), and log in (two-step OTP).
 2. Connect a bank **once** (Plaid, read-only); that single connection also serves as **proof of ownership** when money later moves from that account — the customer is never asked to re-verify their own bank (BRD §3.1).
-3. Auto-detect recurring bills from up to 12 months of history and import them.
+3. Auto-detect recurring bills from up to 24 months of history and import them.
 4. Add a vendor either as a **Stripe configured-account** vendor or a **Moov bank-number** vendor (one-time vendor-account verification), or as a **check** vendor (mailing address). Raw bank numbers are **never stored** — masked value + provider reference only.
 5. Create bills (fixed/variable; monthly/quarterly/weekly/one-time) with auto-pay (standing authorization) or remind-me.
 6. Pay one or many bills: Stripe one-click; Moov standard (free) or same-day (+$4.99, pre-cutoff); check standard (allowance) or expedited (+$8.99). Single authorization per batch; live stages; cancel window; failure/reversal recovery.
@@ -92,7 +92,7 @@ IDs map to epics (`E#`) in [epics/](epics/README.md); screen ids are Figma nodes
 ### FR-2 Bank connectivity (E5) — Plaid
 - FR-2.1 Connect a business bank read-only during sign-up; Swayp never sees/stores banking credentials (836:9157–8936, BRD §3.1).
 - FR-2.2 Read **real-time balance** (powers Flo cash context) (BRD §3.1).
-- FR-2.3 ⟳ Scan **up to 12 months** of transaction history to auto-detect recurring bills (BRD §3.1). *(Screens 836:8984/9052 say "24 months" — design bug, §11.)* Recurring detection is a Plaid capability (BRD §5), with deterministic clustering as the implementation baseline.
+- FR-2.3 Scan **up to 24 months** of transaction history to auto-detect recurring bills. *(Decided 2026-08-25, overriding BRD §3.1's 12 — see §10 q2.)* Recurring detection is a Plaid capability (BRD §5), with deterministic clustering as the implementation baseline.
 - FR-2.4 ⟳ **One connection, two purposes**: the sign-up bank link is also instant proof of ownership when Swayp later moves money from that account — never re-verify the customer's own bank (BRD §3.1). (Plaid → Moov processor handoff.)
 - FR-2.5 Onboarding: candidate review + bulk import + summary (836:8666, 836:8856).
 - FR-2.6 Real-time ABA routing validation with bank-name resolution (793:1326) — validate, then hand to provider; do not store raw.
@@ -201,7 +201,7 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 
 **Still open:**
 1. **Stripe configured-account discovery** — how does Swayp find/search vendors that "have a configured payment account with Stripe" (the 80%-pre-enrolled "Bill Pay Network" UX), now that BILL.com/Melio are rejected and Stripe has no public biller directory? (impl of E3-S7 directory search)
-2. ⟳ **12 vs 24 months** — BRD §3.1 says up to **12 months**; screens 836:8984/9052 say **24 months**. Confirm 12 (assumed authoritative) and fix the screens.
+2. ~~**12 vs 24 months**~~ — **Resolved 2026-08-25: 24 months.** This overrides BRD §3.1 ("up to 12 months") rather than following it: every bank-connect screen promises 24, Plaid serves that window without complaint, and the requirement moved to match what was designed. `MAX_MONTHS_HISTORY = 24`.
 3. ⟳ **SMS OTP vs email-only** — BRD scopes SMS out; the OTP screen (1464:16992) offers SMS. Is OTP delivery exempt from the "email only" rule, or email-only this release?
 4. Reports output shape (table / CSV / PDF, columns) and **1099 reporting** specifics (form generation vs data export).
 5. Late-fee policy: user-entered per vendor (assumed) or inferred?
@@ -216,5 +216,5 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 ## 11. Design bugs to return to the design team
 From dashboard-plan.md §9 plus BRD conflicts:
 - ⟳ Payment/authorization copy names **GoCardless** (840:28151) and screens imply **Dwolla/Stripe Treasury** — all superseded; the model is **Stripe + Moov**. Update copy.
-- ⟳ Bank-connect screens say **"24 months"** (836:8984/9052) — BRD says up to **12**.
+- ~~Bank-connect screens say **"24 months"**~~ — not a design bug after all. The screens were adopted and the backend now reads 24 (§10 q2, 2026-08-25).
 - "Discord" → "Discard" (829:4347); State-field placeholder "Suite, unit, etc." (793:1707 etc.); "Save ACH Vendor" on the check drawer (840:16667); receipt vendor mismatch (840:28867); sign-up footer "Create Account" (1464:15936); "$33,7771" (836:8856); Reset-Password screen has no identifier input (1472:18735).

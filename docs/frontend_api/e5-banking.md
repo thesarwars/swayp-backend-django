@@ -1,6 +1,6 @@
 # E5 — Banking & Onboarding
 
-Link a bank, scan 12 months of transactions, review the bills Swayp found,
+Link a bank, scan 24 months of transactions, review the bills Swayp found,
 import them.
 
 ← [Index](README.md) · Prev: [E4](e4-bills.md) · Next: [E6 Payments](e6-payments.md)

@@ -15,18 +15,23 @@ from rest_framework.exceptions import ValidationError
 
 from apps.banking.models import (
     BankConnection,
+    BankConnectionStatus,
     BillDetectionCandidate,
     TransactionScan,
 )
 from apps.banking.services.recurring_detector import detect
 from apps.bill_categories.models import BillCategory
 from apps.common.enums import ScanStatus
+from integrations.bank_data.base import (
+    BankDataNotReady,
+    BankReauthRequired,
+)
 from integrations.factory import get_bank_data_provider
 
 logger = logging.getLogger(__name__)
 
 #: BRD §3.1. Screens 836:8984/9052 say 24 months — design bug, PRD §11.
-MAX_MONTHS_HISTORY = 12
+MAX_MONTHS_HISTORY = 24
 
 #: Below this, a "no recurring bills" result means "not enough history",
 #: not "you have none". Surfaced so the UI can say so (thin-history AC).
@@ -153,6 +158,49 @@ class ScanService:
                     "updated_at",
                 ]
             )
+
+        except BankDataNotReady as exc:
+            # Not a failure. Plaid pulls an item's history asynchronously
+            # after it is linked, so the first scan of a new connection —
+            # which is every user's onboarding — routinely asks before the
+            # data has landed. Left RUNNING, the progress screen keeps waiting
+            # and a retry finishes the job; marked FAILED, every single first
+            # connect would end on an error screen with nothing wrong.
+            logger.info(
+                "scan %s is waiting on the provider (%s)", scan.pk, exc
+            )
+
+            scan.error_message = ""
+            scan.save(update_fields=["error_message", "updated_at"])
+
+            return scan
+
+        except BankReauthRequired as exc:
+            # The connection is what broke, not the scan, and only the user
+            # can fix it. Recording it on the scan alone would leave the
+            # connection looking healthy and every later scan failing the
+            # same way.
+            logger.info("scan %s needs reauth (%s)", scan.pk, exc)
+
+            scan.connection.status = BankConnectionStatus.ERROR
+            scan.connection.save(update_fields=["status", "updated_at"])
+
+            scan.status = ScanStatus.FAILED
+            scan.error_message = (
+                "Your bank needs you to sign in again before Swayp can read "
+                "this account."
+            )
+            scan.completed_at = timezone.now()
+            scan.save(
+                update_fields=[
+                    "status",
+                    "error_message",
+                    "completed_at",
+                    "updated_at",
+                ]
+            )
+
+            return scan
 
         except Exception as exc:
             logger.exception("scan %s failed", scan.pk)

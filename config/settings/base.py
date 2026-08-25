@@ -437,6 +437,20 @@ FIELD_ENCRYPTION_KEYS = env.list(
 # Real: Plaid / Stripe+Moov / Lob-PostGrid / Anthropic (BRD §5).
 BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
 MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
+
+# Plaid (E5). Read only by construction — these products cannot move money.
+# Sandbox and production differ in the host and the secret alone, so going
+# live is an .env change. Empty by default so a mock deployment needs nothing.
+PLAID_CLIENT_ID = env("PLAID_CLIENT_ID", default="")
+PLAID_SECRET = env("PLAID_SECRET", default="")
+PLAID_ENV = env("PLAID_ENV", default="sandbox")
+# "auth" is here for the routing details the money rail needs, not for
+# reading: it is what /processor/token/create is built on.
+PLAID_PRODUCTS = env.list("PLAID_PRODUCTS", default=["transactions", "auth"])
+PLAID_COUNTRY_CODES = env.list("PLAID_COUNTRY_CODES", default=["US"])
+# Required by OAuth institutions only, and Plaid rejects an empty string, so
+# the provider omits it entirely when this is unset.
+PLAID_REDIRECT_URI = env("PLAID_REDIRECT_URI", default="")
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 

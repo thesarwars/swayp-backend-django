@@ -1,8 +1,12 @@
 # Plaid integration — status and plan
 
-**Status:** proposed, not started. Every Plaid call named below was run against
-the sandbox on 2026-08-19 and the results are recorded verbatim, so nothing
-here is planned on an assumption about what the API returns.
+**Status:** §3 built (2026-08-25). Every Plaid call named below was run against
+the sandbox and the results are recorded verbatim, so nothing here rests on an
+assumption about what the API returns.
+
+Building it surfaced two things the probing had not — see §2.1. Both are
+first-connect behaviour, both would have hit every user, and neither is
+visible from the documentation alone.
 
 **Scope:** the Plaid Role flow in `figma_node_mobile.md` (8 mobile screens) and
 the onboarding bank step in `figma_node.md` (node `2113-7090`).
@@ -62,6 +66,31 @@ Also confirmed available, both relevant below:
 
 - `/institutions/search` — ✅ `"chase"` returns Chase and two others
 - `/auth/get` — ✅ returns ACH routing and account numbers
+
+### 2.1 What only appeared once it ran
+
+Two conditions that a one-shot probe misses, because they are properties of a
+*freshly linked* item:
+
+**`PRODUCT_NOT_READY`.** Plaid pulls an item's history asynchronously after the
+exchange. A scan started immediately — which is exactly what onboarding does —
+asks for history that has not arrived. `ScanService` caught it under
+`except Exception` and marked the scan `FAILED`, so **every user's first
+connection would have ended on an error screen** with nothing actually wrong.
+Now `BankDataNotReady`, and the scan stays `RUNNING` so a retry finishes it.
+
+**Partial history without an error.** On a second run `get_transactions`
+*succeeded* and returned 17 transactions covering one month — not the 24 the
+screens promise. A fresh item answers with whatever has landed so far and no
+error at all. Detection over one month of data finds almost nothing, and the
+"17 bills found" screen would show a near-empty list that looks like a real
+answer.
+
+The fix for both is the same and is **not yet built**: wait for Plaid's
+`HISTORICAL_UPDATE` webhook before scanning, rather than scanning on exchange.
+`/webhooks/plaid` is routed but is a stub (`PlaidWebhookAPIView` sets a
+processor name and nothing else). Until then the first scan of any connection
+is a race against Plaid's backfill.
 
 ### The one failure
 
@@ -158,18 +187,19 @@ logs for a thing the user has to fix themselves.
 
 Each is a decision for someone, not a bug to fix silently.
 
-### 4.1 History window — 12 months vs 24
+### 4.1 History window — resolved: 24
 
-Four screens promise 24 months: *"Returns 24 months of history"*, *"Plaid
-returned 24 months of history"*, *"Retrieving 24mo transaction history"*, *"From
-24mo history"*.
+**Decided 2026-08-25: 24 months.** `MAX_MONTHS_HISTORY = 24`, the model default
+is 24 (migration `0002`), and `StartScanSerializer` accepts up to 24.
 
-The backend caps at 12. `MAX_MONTHS_HISTORY = 12` in `scan_service.py`,
-`months_history` defaults to 12, and `StartScanSerializer` rejects anything
-above 12. Sandbox served a 24-month window without complaint.
+Worth recording that this **overrides the BRD rather than following it**. BRD
+§3.1 says "up to 12 months" and PRD §11 listed the 24 on screens 836:8984/9052
+as a design bug to send back. The screens won: they all promise 24, Plaid
+serves that window, and the requirement moved to match the design.
 
-Either the cap goes to 24 or the copy comes down to 12. Shipping as-is means
-the app claims two years and reads one.
+The mock provider still generates 12 months of canned history, so a
+mock-backed scan requests 24 and receives 12. That is honest for a fixture and
+does not affect the Plaid path.
 
 ### 4.2 Scan progress has no stages
 
@@ -199,22 +229,44 @@ Nodes `1620-12846`, `1620-12370` and `1620-12687` all name **Dwolla** as the ACH
 executor. The backend implements **Moov and Stripe**, and `file-architecture.md`
 says explicitly: *"No `dwolla.py`/`gocardless.py`"*.
 
-**Decided 2026-08-19: the backend is right and the design copy is wrong.** The
-API field is rail-neutral (`rail_readiness.ach_captured`), so nothing in the
-backend changes. Mobile must not ship screens naming a processor that is not
-integrated.
+**Decided: the backend is right and the design copy is wrong.** Confirmed
+2026-08-25 — *"no need dwolla, we will never use dwolla"*. The codebase already
+holds that line in more than one place: `integrations/__init__.py` and
+`apps/common/enums.py` record the exclusion, and
+`apps/common/tests/test_integrations.py` has a `BANNED` list that fails if a
+Dwolla provider ever appears. The API field is rail-neutral
+(`rail_readiness.ach_captured`), so nothing in the backend changes. Mobile must
+not ship screens naming a processor that will never be integrated.
 
 ---
 
+## 4b. Built
+
+- `integrations/bank_data/plaid.py` — all seven methods, error translation.
+- `BankDataProviderError` / `BankReauthRequired` / `BankDataNotReady` in
+  `bank_data/base.py`.
+- `ScanService` tells the three apart: not-ready stays `RUNNING`, reauth marks
+  the *connection* `ERROR` with a message addressed to the user, anything else
+  fails as before.
+- `PLAID_*` settings, lazy registration in `factory.py`, `plaid-python` in
+  requirements, `production.py` refusing to boot on `plaid` without keys or
+  with `PLAID_ENV != production`.
+- 26 tests: 21 stubbed (offline), 5 on the scan mapping, 1 live sandbox test
+  behind `PLAID_SANDBOX_TESTS=1`.
+
+Not built: the webhook wait (§2.1), and §4.1–4.3 below.
+
 ## 5. Order of work
 
-1. §3.1–3.3 — provider, settings, registration. Six methods verified; nothing
-   blocks them.
-2. §3.4–3.5 — error mapping and tests.
-3. §4.1 — decide the history window, because it changes what the scan requests.
-4. `create_processor_token` — **blocked** on the Plaid entitlement in §2. Write
-   it, test it against stubs, leave the sandbox test skipped.
+1. ~~§3.1–3.5 — provider, settings, registration, error mapping, tests.~~ Done.
+2. **The `HISTORICAL_UPDATE` webhook (§2.1).** Now the highest-value item:
+   without it the first scan races Plaid's backfill and silently under-detects.
+3. §4.1 — decide the history window. Asking for 24 months while the cap is 12
+   is a one-line change; the screens already promise the larger number.
+4. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
+   Written to the documented shapes, stub-tested, sandbox test skipped.
 5. §4.2 and §4.3 — out of the agreed scope; listed so they are not forgotten.
 
-The first two steps make the flow real for everything the screens read. Nothing
-in the money path can be verified until §2 is resolved.
+Step 1 makes the flow real for everything the screens read. Step 2 makes it
+*correct* for the first connection, which is the only one every user makes.
+Nothing in the money path can be verified until §2 is resolved.

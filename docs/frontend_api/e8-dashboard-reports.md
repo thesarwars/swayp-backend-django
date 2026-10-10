@@ -177,8 +177,29 @@ PATCH /api/v1/notifications/read-all
 { "success": true, "message": "Success", "data": [],
   "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
                   "totalItems": 0, "hasNext": false, "hasPrevious": false },
+  "nextCursor": null,
   "unreadCount": 3 }
 ```
+
+**Scroll with the cursor, not `page`.** New notifications arrive at the top,
+so page 2 shifts by one row whenever one lands, and offset paging then
+repeats or skips rows. Load the first page normally, then ask for what comes
+after the last row you have:
+
+```
+GET /api/v1/notifications?pageSize=20&before=<nextCursor>
+```
+
+`nextCursor` is the id of the last row when there is more, and `null` on the
+last page. With `before`, `page` is ignored and `pagination` has only
+`pageSize` and `hasNext` (a cursor page has no number or total). Filters work
+the same in both modes. A `before` that is not one of the caller's
+notifications is a 400. To pick up new arrivals at the top, refetch the first
+page, or take them from the socket.
+
+A `page` past the end returns an empty `data` with `hasNext: false`. This
+applies to every list paged with `page`, not only notifications. It used to
+return the last page again.
 
 **Filters**, all optional and applied before paging, so `totalItems` counts
 only matching rows:

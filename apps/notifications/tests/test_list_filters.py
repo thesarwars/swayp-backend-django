@@ -203,3 +203,80 @@ class MarkReadResponseTests(TestCase):
         self.assertEqual(body["data"]["markedCount"], 2)
         self.assertEqual(body["unreadCount"], 0)
         self.assertEqual(again["data"]["markedCount"], 0)
+
+
+class CursorPagingTests(TestCase):
+    """DASH-7: a feed that grows at the top pages by cursor, so a new
+    notification arriving mid-scroll neither repeats nor hides a row."""
+
+    def setUp(self):
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.rows = NotificationFactory.create_batch(5, user=self.user)
+
+    def _get(self, query):
+        return self.client.get(f"{LIST_URL}?{query}").json()
+
+    def _walk(self, page_size, between_pages=None):
+        seen = []
+        body = self._get(f"pageSize={page_size}")
+
+        while True:
+            seen += [row["id"] for row in body["data"]]
+
+            if between_pages:
+                between_pages()
+
+            if not body["nextCursor"]:
+                return seen
+
+            body = self._get(f"pageSize={page_size}&before={body['nextCursor']}")
+
+    def test_walking_the_cursor_returns_every_row_once(self):
+        seen = self._walk(2)
+
+        self.assertEqual(len(seen), 5)
+        self.assertEqual(len(set(seen)), 5)
+
+    def test_a_new_notification_mid_scroll_does_not_repeat_a_row(self):
+        seen = self._walk(
+            2, between_pages=lambda: NotificationFactory(user=self.user)
+        )
+
+        self.assertEqual(len(seen), len(set(seen)))
+        self.assertTrue({str(r.id) for r in self.rows} <= set(seen))
+
+    def test_the_last_cursor_page_says_so(self):
+        first = self._get("pageSize=4")
+        last = self._get(f"pageSize=4&before={first['nextCursor']}")
+
+        self.assertEqual(len(last["data"]), 1)
+        self.assertIsNone(last["nextCursor"])
+        self.assertFalse(last["pagination"]["hasNext"])
+
+    def test_filters_apply_to_cursor_pages(self):
+        promo = NotificationFactory(
+            user=self.user, type=NotificationType.PROMOTION
+        )
+        newer = NotificationFactory(
+            user=self.user, type=NotificationType.PROMOTION
+        )
+
+        body = self._get(f"category=promotion&before={newer.id}")
+
+        self.assertEqual([row["id"] for row in body["data"]], [str(promo.id)])
+
+    def test_another_persons_cursor_is_a_400(self):
+        theirs = NotificationFactory()
+
+        response = self.client.get(f"{LIST_URL}?before={theirs.id}")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_a_page_past_the_end_is_empty_not_the_last_page_again(self):
+        body = self._get("page=9&pageSize=2")
+
+        self.assertEqual(body["data"], [])
+        self.assertFalse(body["pagination"]["hasNext"])
+        self.assertEqual(body["pagination"]["totalItems"], 5)

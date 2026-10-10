@@ -13,7 +13,9 @@ class NotificationRepository:
         return (
             self.get_queryset()
             .filter(user=user)
-            .order_by("-created_at")
+            # id breaks ties between rows created in the same instant, so the
+            # order is total and a cursor can resume from any row (DASH-7).
+            .order_by("-created_at", "-id")
         )
 
     def get_by_id(self, *, user, notification_id):

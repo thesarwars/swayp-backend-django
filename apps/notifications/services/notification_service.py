@@ -21,6 +21,7 @@ class NotificationService:
         types=None,
         category=None,
         is_read=None,
+        before=None,
     ):
         return self.selector.list_notifications(
             user=user,
@@ -29,6 +30,7 @@ class NotificationService:
             types=types,
             category=category,
             is_read=is_read,
+            before=before,
         )
 
     def unread_count(

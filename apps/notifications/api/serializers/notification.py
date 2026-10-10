@@ -38,7 +38,16 @@ class NotificationListResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = NotificationSerializer(many=True)
-    pagination = PaginationResponseSerializer()
+    pagination = PaginationResponseSerializer(
+        help_text=(
+            "With ?before=, only pageSize and hasNext are present: a cursor "
+            "page has no page number or total."
+        )
+    )
+    nextCursor = serializers.UUIDField(
+        allow_null=True,
+        help_text="Pass as ?before= for the next page; null on the last.",
+    )
     unreadCount = serializers.IntegerField(
         help_text="All unread notifications, ignoring the list's filters."
     )
@@ -56,6 +65,9 @@ class NotificationQuerySerializer(
         choices=NotificationCategory.choices,
         required=False,
     )
+    # Cursor paging (DASH-7): the rows older than this notification. When
+    # sent, page is ignored; pass the previous response's nextCursor.
+    before = serializers.UUIDField(required=False)
     # allow_null so an absent isRead means "both". Without it DRF reads a
     # missing boolean query param as false and the list would silently drop
     # every read notification.

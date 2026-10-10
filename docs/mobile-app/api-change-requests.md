@@ -285,6 +285,7 @@ Contents:
 - **App today:** reads the snake_case keys and validates them as uuids. `payment_id` opens the payment detail. `bill_id` and `occurrence_id` open the Pay tab ([PAY-4](#pay-4--major--a-payment-or-occurrence-cannot-be-traced-back-to-its-bill-or-vendor)). Fee and security notifications do not navigate.
 
 #### DASH-7 · minor · Notifications use offset paging on a feed that grows at the head
+- **✅ Fixed**: `GET /notifications` now takes `before=<notification id>` and returns the rows older than it, newest first. Every response carries `nextCursor`, the id to pass next or `null` on the last page, including the first page loaded with `page`. A row arriving mid-scroll no longer repeats or hides one. Also fixed: a `page` past the end used to return the last page again; it now returns an empty list, on every paged endpoint. See e8 §4.
 - **Endpoint:** `GET /notifications`.
 - **Today:** a new notification shifts every page, so rows are duplicated or skipped between pages.
 - **Needed:** a cursor (`before=<id or createdAt>`).

@@ -42,7 +42,20 @@ class PaginationService:
         try:
             result = paginator.page(page)
         except EmptyPage:
-            result = paginator.page(paginator.num_pages)
+            # A page past the end is empty. It used to return the last page
+            # again, so an infinite scroll that asked for one page too many
+            # rendered the final page twice (DASH-7).
+            return {
+                "items": [],
+                "pagination": {
+                    "page": page,
+                    "pageSize": page_size,
+                    "totalPages": paginator.num_pages,
+                    "totalItems": paginator.count,
+                    "hasNext": False,
+                    "hasPrevious": paginator.count > 0,
+                },
+            }
 
         return {
             "items": list(result.object_list),

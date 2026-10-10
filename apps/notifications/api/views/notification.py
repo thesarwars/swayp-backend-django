@@ -51,6 +51,7 @@ class NotificationListAPIView(BaseAPIView):
             types=query.validated_data.get("type"),
             category=query.validated_data.get("category"),
             is_read=query.validated_data.get("isRead"),
+            before=query.validated_data.get("before"),
         )
 
         serializer = NotificationSerializer(
@@ -64,6 +65,7 @@ class NotificationListAPIView(BaseAPIView):
             # Unfiltered: the bell badge counts every unread notification,
             # whatever chip the list is showing (DASH-4).
             extra={
+                "nextCursor": result["next_cursor"],
                 "unreadCount": self.service.unread_count(user=request.user),
             },
         )

@@ -608,13 +608,25 @@ stored, so it is always current.
         "quantity": 1, "unit_price": "2.99", "total": "2.99" }
     ],
     "subtotal": "608.99",
-    "currency": "USD"
+    "currency": "USD",
+    "next_charge_date": "2026-08-29"
   }
 }
 ```
 
 Line order is fixed and safe to render as-is: the plan first, then add-ons by
 kind, then fees oldest-first.
+
+Every line also carries `state`, `fee_charge_id`, `payment_reference` and
+`created_at`. On fee lines they are the fee's: `state` is `PENDING` or
+`REFUNDED`, so branch on it, not on `total == 0`. On plan and add-on lines all
+four are `null`.
+
+`next_charge_date` is when the card is next billed: `trial_end` during a
+trial, otherwise `period_end`. It is `null` when the plan is cancelling or the
+deployment collects no money. Show it as the billing date; `period_end` is
+when the allowances reset.
+
 
 ### 9.1 A refunded fee shows at 0.00 rather than disappearing ⚠️
 
@@ -687,7 +699,7 @@ What the payment processor actually billed, newest first:
 | Gap | Impact |
 |---|---|
 | No proration | A mid-cycle plan change takes effect immediately at the new price with no credit for the unused part. Don't promise "you'll be credited". |
-| Renewal rolls the cycle but collects nothing | A nightly job advances `period_start`/`period_end` and resets the free-check allowance, so entitlements are correct. It does **not** charge — that arrives with Stripe. Treat `period_end` as "when the allowance resets", not "when the card is billed". |
+| Renewal rolls the cycle but collects nothing | A nightly job advances `period_start`/`period_end` and resets the free-check allowance, so entitlements are correct. It does **not** charge — that arrives with Stripe. Treat `period_end` as "when the allowance resets"; the billing date is the preview's `next_charge_date` (§9). |
 | Per-rail SLA thresholds | The guarantee compares against the arrival estimate at charge time. Explicit per-rail SLA windows are an open product question. |
 
 ---

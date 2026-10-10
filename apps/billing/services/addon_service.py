@@ -20,6 +20,14 @@ from apps.billing.models import (
 )
 
 
+#: Plan and add-on lines are not fees, so carry no fee fields (BILLING-10).
+NOT_A_FEE = {
+    "state": None,
+    "fee_charge_id": None,
+    "payment_reference": None,
+    "created_at": None,
+}
+
 class AddOnService:
 
     def assert_enterprise(self, subscription):
@@ -96,6 +104,7 @@ class AddOnService:
                 "quantity": 1,
                 "unit_price": subscription.effective_price,
                 "total": subscription.effective_price,
+                **NOT_A_FEE,
             }
         )
 
@@ -107,6 +116,7 @@ class AddOnService:
                     "quantity": addon.quantity,
                     "unit_price": addon.unit_price,
                     "total": addon.line_total,
+                    **NOT_A_FEE,
                 }
             )
 
@@ -126,6 +136,10 @@ class AddOnService:
                     "quantity": 1,
                     "unit_price": fee.amount,
                     "total": Decimal("0.00") if refunded else fee.amount,
+                    "state": fee.state,
+                    "fee_charge_id": fee.id,
+                    "payment_reference": fee.payment.transaction_reference,
+                    "created_at": fee.created_at,
                 }
             )
 
@@ -141,4 +155,24 @@ class AddOnService:
             "lines": lines,
             "subtotal": subtotal,
             "currency": "USD",
+            "next_charge_date": self.next_charge_date(subscription),
         }
+
+    def next_charge_date(self, subscription, today=None):
+        """When the card is next billed (BILLING-10), which is not always
+        period_end: a trial bills when it ends, a cancelled plan never
+        again, and a deployment that collects no money never at all."""
+        from apps.billing.services.provider_service import (
+            BillingProviderService,
+        )
+
+        if subscription.cancels_on is not None:
+            return None
+
+        if not BillingProviderService().collects_money:
+            return None
+
+        if subscription.is_trialing(today):
+            return subscription.trial_end
+
+        return subscription.period_end

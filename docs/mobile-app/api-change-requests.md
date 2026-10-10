@@ -734,6 +734,7 @@ These matter once the bill detail screens are built:
 - **Needed:** pagination, filters (`state`, date range), and `payment_id` on each row to link to the receipt.
 
 #### BILLING-10 · minor · Invoice lines
+✅ Fixed: every line carries `state` (`PENDING`/`REFUNDED` on fee lines), `fee_charge_id`, `payment_reference` and `created_at`, all `null` on plan and add-on lines. The preview carries `next_charge_date`: `trial_end` during a trial, otherwise `period_end`, `null` when cancelling or when nothing is collected.
 - **Endpoint:** `GET /billing/invoice`.
 - **Needed:** a machine-readable `state`, `fee_charge_id`, `payment_reference` and `created_at` on lines, and a `next_charge_date` on the preview. `period_end` is documented as "when the allowance resets", not "when the card is billed".
 - **App today:** infers "refunded" from `total == 0`.

@@ -218,6 +218,13 @@ class InvoiceLineSerializer(serializers.Serializer):
     quantity = serializers.IntegerField()
     unit_price = serializers.DecimalField(max_digits=18, decimal_places=2)
     total = serializers.DecimalField(max_digits=18, decimal_places=2)
+    state = serializers.ChoiceField(
+        choices=FeeState.choices, allow_null=True,
+        help_text="Fee lines only: PENDING or REFUNDED. Null otherwise.",
+    )
+    fee_charge_id = serializers.UUIDField(allow_null=True)
+    payment_reference = serializers.CharField(allow_null=True)
+    created_at = serializers.DateTimeField(allow_null=True)
 
 
 class InvoicePreviewSerializer(serializers.Serializer):
@@ -228,6 +235,14 @@ class InvoicePreviewSerializer(serializers.Serializer):
     lines = InvoiceLineSerializer(many=True)
     subtotal = serializers.DecimalField(max_digits=18, decimal_places=2)
     currency = serializers.CharField()
+    next_charge_date = serializers.DateField(
+        allow_null=True,
+        help_text=(
+            "When the card is next billed: trial_end during a trial, else "
+            "period_end. Null if the plan is cancelling or nothing is "
+            "collected."
+        ),
+    )
 
 
 class CardSerializer(serializers.Serializer):

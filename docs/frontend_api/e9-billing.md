@@ -395,11 +395,22 @@ GET /api/v1/billing/invoice
       "description": "Same-day ACH — SWP-20260801-0000 (refunded)",
       "quantity": 1, "unit_price": "4.99", "total": "0.00" }
   ],
-  "subtotal": "608.99", "currency": "USD" }
+  "subtotal": "608.99", "currency": "USD", "next_charge_date": "2026-08-29" }
 ```
 
 Line order is fixed and safe to render as-is: plan, add-ons by kind, then fees
 oldest-first.
+
+Every line also carries `state`, `fee_charge_id`, `payment_reference` and
+`created_at`. On fee lines they are the fee's: `state` is `PENDING` or
+`REFUNDED`, so branch on it, not on `total == 0`. On plan and add-on lines all
+four are `null`.
+
+`next_charge_date` is when the card is next billed: `trial_end` during a
+trial, otherwise `period_end`. It is `null` when the plan is cancelling or the
+deployment collects no money. Show it as the billing date; `period_end` is
+when the allowances reset.
+
 
 ### Render `total`, not `unit_price` ⚠️
 

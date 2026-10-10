@@ -286,3 +286,85 @@ class FeeListTests(BillingTestCase):
         response = self.client.get(f"{self.URL}?state=LOST")
 
         self.assertEqual(response.status_code, 400)
+
+
+class InvoiceLineTests(BillingTestCase):
+    """BILLING-10: lines say what they are; the preview says when it bills."""
+
+    URL = "/api/v1/billing/invoice"
+
+    def _preview(self):
+        return self.client.get(self.URL).json()["data"]
+
+    def _collecting(self, collects=True):
+        from unittest import mock
+
+        from apps.billing.services.provider_service import (
+            BillingProviderService,
+        )
+
+        return mock.patch.object(
+            BillingProviderService, "collects_money",
+            new_callable=mock.PropertyMock, return_value=collects,
+        )
+
+    def test_fee_lines_carry_state_ids_and_time(self):
+        from apps.billing.factories import FeeChargeFactory
+        from apps.billing.models import FeeState
+        from apps.payments.factories import PaymentFactory
+
+        subscription = self.subscribe()
+        fee = FeeChargeFactory(
+            subscription=subscription,
+            payment=PaymentFactory(user=self.user),
+            state=FeeState.REFUNDED,
+        )
+
+        plan_line, fee_line = self._preview()["lines"]
+
+        self.assertIsNone(plan_line["state"])
+        self.assertIsNone(plan_line["fee_charge_id"])
+        self.assertEqual(fee_line["state"], "REFUNDED")
+        self.assertEqual(fee_line["fee_charge_id"], str(fee.id))
+        self.assertEqual(
+            fee_line["payment_reference"], fee.payment.transaction_reference
+        )
+        self.assertIsNotNone(fee_line["created_at"])
+
+    def test_next_charge_is_the_trial_end_during_a_trial(self):
+        subscription = self.subscribe()
+        self.assertIsNotNone(subscription.trial_end)
+
+        with self._collecting():
+            data = self._preview()
+
+        self.assertEqual(data["next_charge_date"], str(subscription.trial_end))
+
+    def test_next_charge_is_the_period_end_after_the_trial(self):
+        subscription = self.subscribe()
+        subscription.trial_end = None
+        subscription.save(update_fields=["trial_end"])
+
+        with self._collecting():
+            data = self._preview()
+
+        self.assertEqual(
+            data["next_charge_date"], str(subscription.period_end)
+        )
+
+    def test_no_next_charge_when_cancelling(self):
+        self.subscribe()
+        self.service.cancel(account=self.user)
+
+        with self._collecting():
+            data = self._preview()
+
+        self.assertIsNone(data["next_charge_date"])
+
+    def test_no_next_charge_when_nothing_is_collected(self):
+        self.subscribe()
+
+        with self._collecting(False):
+            data = self._preview()
+
+        self.assertIsNone(data["next_charge_date"])

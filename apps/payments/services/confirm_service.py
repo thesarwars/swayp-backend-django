@@ -10,6 +10,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.enums import PaymentStageStatus, PaymentStatus
+from apps.common.error_codes import CANCEL_WINDOW_CLOSED, NOT_CANCELLABLE
 from apps.common.exceptions import ConflictException, NotFoundException
 from apps.payments.models import (
     Payment,
@@ -217,7 +218,8 @@ class PaymentConfirmService:
 
         if not cancelled:
             raise ConflictException(
-                "No payments in this batch can still be cancelled."
+                "No payments in this batch can still be cancelled.",
+                code=NOT_CANCELLABLE,
             )
 
         return {"batch": batch, "cancelled": cancelled}
@@ -268,7 +270,8 @@ class PaymentConfirmService:
         if payment.status not in CANCELLABLE:
             raise ConflictException(
                 f"Payment {payment.transaction_reference} is "
-                f"{payment.status} and can no longer be cancelled."
+                f"{payment.status} and can no longer be cancelled.",
+                code=NOT_CANCELLABLE,
             )
 
         # The deadline protects money the user has authorized to move. An
@@ -284,7 +287,8 @@ class PaymentConfirmService:
         ):
             raise ConflictException(
                 "The cancellation window for "
-                f"{payment.transaction_reference} has closed."
+                f"{payment.transaction_reference} has closed.",
+                code=CANCEL_WINDOW_CLOSED,
             )
 
         # If it already reached the processor, void it there too — marking it

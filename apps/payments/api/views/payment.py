@@ -41,6 +41,7 @@ from apps.payments.api.serializers.resolution import (
     PaymentFailureResponseSerializer,
     ResolveResponseSerializer,
 )
+from apps.common.error_codes import RECEIPT_NOT_READY
 from apps.common.exceptions import NotFoundException
 
 PaymentDetailEnvelope = envelope(
@@ -456,7 +457,8 @@ class PaymentReceiptPDFAPIView(AccountScopedMixin, BaseAPIView):
 
         if payment.status != PaymentStatus.SUCCESSFUL:
             raise ConflictException(
-                "A receipt is available once the payment has completed."
+                "A receipt is available once the payment has completed.",
+                code=RECEIPT_NOT_READY,
             )
 
         return render_receipt(payment)

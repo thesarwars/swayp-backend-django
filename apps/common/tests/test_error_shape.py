@@ -61,7 +61,8 @@ class JsonEverywhereTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response["Content-Type"], "application/json")
         self.assertEqual(
-            response.json(), {"success": False, "message": "Not found."}
+            response.json(),
+            {"success": False, "message": "Not found.", "code": "not_found"},
         )
 
     def test_a_service_error_reaches_the_client_as_a_list(self):

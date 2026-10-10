@@ -8,6 +8,8 @@ through untouched.
 
 from django.http import JsonResponse
 
+from apps.common.error_codes import code_for
+
 API_PREFIX = "/api/"
 
 MESSAGES = {
@@ -38,6 +40,7 @@ class JsonApiErrorMiddleware:
                     "message": MESSAGES.get(
                         response.status_code, "Request failed."
                     ),
+                    "code": code_for(response.status_code),
                 },
                 status=response.status_code,
             )

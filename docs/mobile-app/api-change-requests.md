@@ -778,6 +778,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 | `POST /payments`, `…/confirm`, `…/resolve` | A second payment or a double confirm. | Sends a key: one per user intent, reused only when the same request is retried after an unknown outcome. |
 
 #### API-3 · major · Other errors the app can only recognise by their English text
+✅ Fixed: every error body carries `code`: a specific one where the app must branch (`no_funding_account`, `token_not_valid`, `idempotency_key_reused`, `idempotency_in_progress`, `receipt_not_ready`, `not_cancellable`, `cancel_window_closed`, plus `plan_limit`/`role_forbidden` from BILLING-11), otherwise the generic one for the status (`validation_failed`, `not_found`, `conflict`, `throttled`…). The registry is `apps/common/error_codes.py`; the table is in the integration guide §6. Auth-specific codes are AUTH-3; failed scans already carry `error_code` (BANK-9).
 - **Today:**
   - `POST /payments` answers 400 "No funding account is available. Connect a bank account first."
   - 402 and 403 bodies have no code (BILLING-11).

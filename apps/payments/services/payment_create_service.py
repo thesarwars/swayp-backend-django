@@ -36,6 +36,7 @@ from apps.payments.services.authorization_text import (
     for_single,
     processor_for_rail,
 )
+from apps.common.error_codes import NO_FUNDING_ACCOUNT
 from apps.common.exceptions import NotFoundException
 
 #: Rails a client may request. CHECK is created the same way but mailed.
@@ -371,7 +372,8 @@ class PaymentCreateService:
                         "No funding account is available. Connect a bank "
                         "account first."
                     )
-                }
+                },
+                code=NO_FUNDING_ACCOUNT,
             )
 
         return account

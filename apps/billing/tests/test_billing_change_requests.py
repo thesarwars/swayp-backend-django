@@ -409,7 +409,7 @@ class ErrorCodeTests(BillingTestCase):
         self.assertEqual(response.json()["code"], "role_forbidden")
         self.assertEqual(response.json()["capability"], "manage_billing")
 
-    def test_other_errors_are_unchanged(self):
+    def test_other_errors_carry_their_generic_code(self):
         response = self.client.patch(
             "/api/v1/billing/subscription",
             {"plan": PlanCode.FOUNDING},
@@ -417,7 +417,8 @@ class ErrorCodeTests(BillingTestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertNotIn("code", response.json())
+        self.assertEqual(response.json()["code"], "validation_failed")
+        self.assertNotIn("limit", response.json())
 
 
 class PlanDisplayTests(BillingTestCase):

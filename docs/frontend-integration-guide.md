@@ -332,8 +332,38 @@ so `payment_rail` stays populated.
 
 ```json
 { "success": false, "message": "Validation failed.",
+  "code": "validation_failed",
   "errors": { "<field>": ["<message>"] } }
 ```
+
+**Branch on `code`, never on `message`.** Every error has one. `message` is
+copy and gets reworded; `code` is a contract and is only ever added to.
+
+| `code` | Status | Meaning / what to do |
+|---|---|---|
+| `validation_failed` | 400 | Read `errors` per field |
+| `no_funding_account` | 400 | No bank to pay from: show "Connect a bank account", not a toast |
+| `not_authenticated` | 401 | No token: sign in |
+| `token_not_valid` | 401 | Expired or bad token: refresh, then retry |
+| `plan_limit` | 402 | Upgrade prompt; `limit` says which ceiling (Billing §1.2) |
+| `forbidden` | 403 | Not allowed |
+| `role_forbidden` | 403 | The caller's team role lacks `capability` |
+| `not_found` | 404 | Missing, or not yours |
+| `method_not_allowed` | 405 | Wrong method |
+| `conflict` | 409 | State changed under you: refetch |
+| `idempotency_key_reused` | 409 | Same `Idempotency-Key`, different body: a client bug, use a new key per action |
+| `idempotency_in_progress` | 409 | The first request with this key is still running: wait and retry |
+| `receipt_not_ready` | 409 | The payment hasn't completed yet |
+| `not_cancellable` | 409 | The payment (or every payment in the batch) can't be cancelled any more |
+| `cancel_window_closed` | 409 | Past `cancellation_deadline` |
+| `unprocessable` | 422 | e.g. an unreadable QR payload: "scan again" |
+| `throttled`, `otp_throttled` | 429 | Wait `Retry-After` seconds |
+| `channel_not_available` | 400 | That OTP channel isn't offered |
+| `service_unavailable`, `google_unavailable` | 503 | A provider is down: retry later |
+| `server_error` | 500 | Our bug |
+
+Codes not in this table may appear for statuses not listed. Treat an unknown
+code by its status.
 
 | Status | Meaning |
 |---|---|

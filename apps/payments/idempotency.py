@@ -12,6 +12,10 @@ import json
 
 from rest_framework.response import Response
 
+from apps.common.error_codes import (
+    IDEMPOTENCY_IN_PROGRESS,
+    IDEMPOTENCY_KEY_REUSED,
+)
 from apps.common.exceptions import ConflictException
 from apps.payments.models import IdempotencyKey
 
@@ -64,7 +68,8 @@ class IdempotencyMixin:
         if not created:
             if record.request_hash != req_hash:
                 raise ConflictException(
-                    "Idempotency-Key was reused with a different request body."
+                    "Idempotency-Key was reused with a different request body.",
+                    code=IDEMPOTENCY_KEY_REUSED,
                 )
             if record.state == IdempotencyKey.State.COMPLETED:
                 return Response(
@@ -72,7 +77,8 @@ class IdempotencyMixin:
                     status=record.response_status,
                 )
             raise ConflictException(
-                "A request with this Idempotency-Key is already in progress."
+                "A request with this Idempotency-Key is already in progress.",
+                code=IDEMPOTENCY_IN_PROGRESS,
             )
 
         try:

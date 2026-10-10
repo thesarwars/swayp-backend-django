@@ -1,5 +1,6 @@
 from rest_framework.views import exception_handler
 
+from .error_codes import SPECIFIC, code_for
 from .responses import ApiResponse
 
 
@@ -7,10 +8,13 @@ def custom_exception_handler(exc, context):
     response = exception_handler(exc, context)
 
     if response is None:
-        return ApiResponse.error(
+        built = ApiResponse.error(
             message="Internal server error.",
             status_code=500,
         )
+        built.data["code"] = code_for(500)
+
+        return built
 
     if isinstance(response.data, dict):
 
@@ -26,11 +30,17 @@ def custom_exception_handler(exc, context):
                 status_code=response.status_code,
             )
 
-        _add_codes(built, exc, context)
+    else:
+        # ValidationError(["..."]) has no field to hang the message on; it
+        # used to reach the client as a bare JSON list, outside the envelope.
+        built = ApiResponse.error(
+            message=_flatten_detail(response.data),
+            status_code=response.status_code,
+        )
 
-        return _carry_retry_after(built, exc, original=response)
+    _add_codes(built, exc, context)
 
-    return _carry_retry_after(response, exc)
+    return _carry_retry_after(built, exc, original=response)
 
 
 def _as_lists(errors):
@@ -55,10 +65,11 @@ def _as_lists(errors):
 
 
 def _add_codes(response, exc, context):
-    """Machine-readable codes on 402 and on a role's 403 (BILLING-11).
+    """A ``code`` on every error (API-3), and its companions.
 
-    402: ``{code: "plan_limit", limit: "BANKS"|"SEATS"|"CHECKS"|null}``.
-    403 from RequiresCapability: ``{code: "role_forbidden", capability}``.
+    The first specific code named anywhere in the exception wins (see
+    apps/common/error_codes.py); otherwise the generic code for the status.
+    402 also carries ``limit`` and a role's 403 ``capability`` (BILLING-11).
     """
     from apps.common.exceptions import PlanLimitExceededException
     from apps.teams.access import ROLE_FORBIDDEN_CODE
@@ -68,21 +79,38 @@ def _add_codes(response, exc, context):
         response.data["limit"] = exc.limit
         return
 
-    if response.status_code == 403 and _code_of(exc) == ROLE_FORBIDDEN_CODE:
+    specific = [c for c in _leaf_codes(exc) if c in SPECIFIC]
+    code = specific[0] if specific else code_for(response.status_code)
+    response.data["code"] = code
+
+    if code == ROLE_FORBIDDEN_CODE:
         view = context.get("view") if context else None
-        response.data["code"] = ROLE_FORBIDDEN_CODE
         response.data["capability"] = getattr(
             view, "required_capability", None
         )
 
 
-def _code_of(exc):
+def _leaf_codes(exc):
     try:
         codes = exc.get_codes()
     except AttributeError:
-        return None
+        return []
 
-    return codes if isinstance(codes, str) else None
+    leaves = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, (list, tuple)):
+            for value in node:
+                walk(value)
+        else:
+            leaves.append(str(node))
+
+    walk(codes)
+
+    return leaves
 
 
 def _flatten_detail(detail):

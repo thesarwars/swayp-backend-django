@@ -283,3 +283,70 @@ class BankingContractTests(ContractTestCase):
     def test_routing_validate(self):
         self.check("POST", "/api/v1/banking/routing/validate",
                    body={"routing_number": "021000021"}, status=200)
+
+
+class BillsContractTests(ContractTestCase):
+
+    AUTH_TEXT = None
+
+    def setUp(self):
+        super().setUp()
+        from apps.vendors.factories import BillCategoryFactory, VendorFactory
+
+        self.category = BillCategoryFactory()
+        self.vendor = VendorFactory(user=self.user, category=self.category)
+
+    def create_bill(self):
+        return self.check("POST", "/api/v1/bills/create", body={
+            "vendor": str(self.vendor.id),
+            "category": str(self.category.id),
+            "bill_type": "FIXED", "amount": "3200.00",
+            "frequency": "MONTHLY", "anchor_date": "2027-01-01",
+            "autopay_mode": "REMIND", "source": "MANUAL",
+        }, status=201).json()["data"]
+
+    def test_bill_lifecycle(self):
+        from apps.bills.models import Bill
+
+        self.create_bill()
+        bill = Bill.objects.get(user=self.user)
+        bid = bill.id
+        occurrence = bill.occurrences.order_by("due_date").first()
+
+        self.check("GET", "/api/v1/bills", status=200)
+        self.check("GET", "/api/v1/bills/summary", status=200)
+        self.check("GET", "/api/v1/bills/next-due", status=200)
+        self.check("GET", "/api/v1/bills/occurrences", status=200)
+        self.check("GET", "/api/v1/bills/occurrences/upcoming", status=200)
+        self.check(
+            "GET", f"/api/v1/bills/occurrences/{occurrence.id}",
+            path="/api/v1/bills/occurrences/{occurrence_id}", status=200,
+        )
+        self.check("GET", f"/api/v1/bills/{bid}/details",
+                   path="/api/v1/bills/{bill_id}/details", status=200)
+        self.check("GET", f"/api/v1/bills/{bid}/payments",
+                   path="/api/v1/bills/{bill_id}/payments", status=200)
+        self.check("GET", f"/api/v1/bills/{bid}/invoice",
+                   path="/api/v1/bills/{bill_id}/invoice", status=200)
+        self.check("PATCH", f"/api/v1/bills/{bid}/update",
+                   path="/api/v1/bills/{bill_id}/update",
+                   body={"amount": "3300.00"}, status=200)
+        self.check(
+            "PATCH", f"/api/v1/bills/occurrences/{occurrence.id}/pay",
+            path="/api/v1/bills/occurrences/{occurrence_id}/pay",
+            body={"payment_reference": "CHK-1001"}, status=200,
+        )
+        self.check("DELETE", f"/api/v1/bills/{bid}/details",
+                   path="/api/v1/bills/{bill_id}/details", status=None)
+
+    def test_qr_and_autopay_preview(self):
+        self.check("POST", "/api/v1/bills/qr/decode", body={
+            "payload": "SWAYP:vendor=WeWork;amount=3200.00;due=2026-09-01"},
+            status=200)
+        self.check("POST", "/api/v1/bills/qr/decode",
+                   body={"payload": "@@@@"}, status=422)
+        self.check("POST", "/api/v1/bills/autopay-authorization/preview",
+                   body={"vendor": str(self.vendor.id), "amount": "3200.00",
+                         "frequency": "MONTHLY",
+                         "anchor_date": "2027-01-01"},
+                   status=200)

@@ -7,7 +7,7 @@ from rest_framework import serializers
 from apps.bills.models.bill import Bill
 from apps.bills.selectors.occurrence_status import open_occurrences
 from apps.common.dates import today_eastern
-from apps.common.enums import BillOccurrenceStatus
+from apps.common.enums import BillOccurrenceStatus, VendorPaymentMethodType
 
 
 def _money(value):
@@ -69,6 +69,11 @@ class BillDetailSerializer(serializers.ModelSerializer):
             "total_paid",
         )
 
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=VendorPaymentMethodType.choices, allow_null=True
+        )
+    )
     def get_payment_method(self, obj):
         if obj.payment_method:
             return obj.payment_method.method_type
@@ -77,6 +82,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
     # Eastern, not localdate(): the occurrence list, bills/summary/ and the
     # dashboard all classify against the user's calendar day, and a bill that
     # every other screen calls DUE must not be "1 day overdue" here.
+    @extend_schema_field(serializers.DateField(allow_null=True))
     def get_next_due(self, obj):
         occurrence = (
             open_occurrences(obj.occurrences)
@@ -154,6 +160,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
 
         return _money(sum((item.amount for item in overdue), Decimal("0")))
 
+    @extend_schema_field(serializers.IntegerField())
     def get_days_overdue(self, obj):
         today = today_eastern()
 

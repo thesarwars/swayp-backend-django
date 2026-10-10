@@ -71,6 +71,15 @@ class BillListAPIView(AccountScopedMixin, APIView):
         super().__init__(**kwargs)
         self.service = BillService()
 
+    @extend_schema(
+        tags=["Bills"],
+        summary="Bill rules",
+        description=(
+            "Every bill rule, unpaginated. For the list screen use "
+            "bills/occurrences, which pages and filters due dates."
+        ),
+        responses={200: BillListSerializer(many=True)},
+    )
     def get(self, request):
         bills = self.service.get_user_bills(self.account(request))
 
@@ -89,11 +98,17 @@ class BillListAPIView(AccountScopedMixin, APIView):
 
 class BillDetailAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    nullable_data = ("DELETE",)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.service = BillService()
 
+    @extend_schema(
+        tags=["Bills"],
+        summary="A bill",
+        responses={200: BillDetailSerializer},
+    )
     def get(self, request, bill_id):
         bill = self.service.get_bill_detail(
             bill_id=bill_id,
@@ -111,6 +126,15 @@ class BillDetailAPIView(AccountScopedMixin, APIView):
         )
 
 
+    @extend_schema(
+        tags=["Bills"],
+        summary="Delete a bill",
+        description=(
+            "200 with data null (not 204). Its open occurrences go and "
+            "an autopay authorization is revoked; paid ones stay in history."
+        ),
+        responses={200: None},
+    )
     def delete(self, request, bill_id):
         self.service.delete_bill(
             bill_id=bill_id,
@@ -121,6 +145,7 @@ class BillDetailAPIView(AccountScopedMixin, APIView):
             {
                 "success": True,
                 "message": "Bill deleted successfully.",
+                "data": None,
             }
         )
 

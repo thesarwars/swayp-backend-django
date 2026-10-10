@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -12,8 +13,15 @@ from apps.bills.services.bill_occurrence_service import (
 from apps.teams.access import AccountScopedMixin
 
 
+@extend_schema(
+    tags=["Bills"],
+    summary="Next due bill",
+    description="The earliest open due date, or data null when none.",
+    responses={200: NextDueSerializer},
+)
 class NextDueAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    nullable_data = ("GET",)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

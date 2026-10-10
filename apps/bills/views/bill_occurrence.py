@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,6 +11,11 @@ from rest_framework import status
 from apps.teams.access import AccountScopedMixin
 
 
+@extend_schema(
+    tags=["Bills"],
+    summary="Upcoming occurrences",
+    responses={200: BillOccurrenceSerializer(many=True)},
+)
 class UpcomingBillOccurrenceAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 
@@ -36,8 +42,16 @@ class UpcomingBillOccurrenceAPIView(AccountScopedMixin, APIView):
         )
 
 
+@extend_schema(
+    tags=["Bills"],
+    summary="Mark an occurrence paid outside Swayp",
+    description="Records a payment made elsewhere. data is null.",
+    request=BillPaymentSerializer,
+    responses={200: None},
+)
 class MarkBillOccurrencePaidAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    nullable_data = ("PATCH",)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

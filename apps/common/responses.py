@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 from apps.common.casing import with_snake_case
+from apps.common.error_codes import code_for
 
 
 class ApiResponse:
@@ -37,10 +38,15 @@ class ApiResponse:
         message,
         errors=None,
         status_code=status.HTTP_400_BAD_REQUEST,
+        code=None,
     ):
         body = {
             "success": False,
             "message": message,
+            # Every error carries a code (API-3), including the few built
+            # here directly rather than raised. The exception handler
+            # replaces it with a more specific one when it has one.
+            "code": code or code_for(status_code),
         }
 
         if errors:

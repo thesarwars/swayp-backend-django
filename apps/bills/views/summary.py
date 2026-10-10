@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -12,6 +13,12 @@ from apps.bills.services.bill_occurrence_service import (
 from apps.teams.access import AccountScopedMixin
 
 
+@extend_schema(
+    tags=["Bills"],
+    summary="Bills summary",
+    description="Counts and the total due this calendar month (Eastern).",
+    responses={200: BillSummarySerializer},
+)
 class BillSummaryAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
 

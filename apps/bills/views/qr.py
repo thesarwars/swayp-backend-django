@@ -1,6 +1,6 @@
 """Bill QR decode (E4-S7)."""
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -31,6 +31,10 @@ from apps.vendors.api.serializers.qr import QRDecodeSerializer
     responses={
         200: BillQRDecodeResponseSerializer,
         400: BAD_REQUEST_RESPONSE,
+        422: OpenApiResponse(
+            description="Unreadable payload: ask to scan again "
+            "(code unprocessable)."
+        ),
         401: UNAUTHORIZED_RESPONSE,
     },
 )

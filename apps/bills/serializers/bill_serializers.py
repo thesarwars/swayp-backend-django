@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.bills.models.bill import Bill
@@ -8,6 +9,7 @@ from apps.common.enums import (
     BillFrequency,
     BillSource,
     BillType,
+    VendorPaymentMethodType,
 )
 
 
@@ -98,9 +100,14 @@ class BillListSerializer(serializers.ModelSerializer):
             "payment_method",
         )
 
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=VendorPaymentMethodType.choices, allow_null=True
+        )
+    )
     def get_payment_method(self, obj):
         if obj.payment_method:
-            return obj.payment_method.method_type 
+            return obj.payment_method.method_type
         return None
 
 

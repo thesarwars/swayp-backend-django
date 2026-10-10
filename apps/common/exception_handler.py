@@ -26,9 +26,42 @@ def custom_exception_handler(exc, context):
                 status_code=response.status_code,
             )
 
+        _add_codes(built, exc, context)
+
         return _carry_retry_after(built, exc, original=response)
 
     return _carry_retry_after(response, exc)
+
+
+def _add_codes(response, exc, context):
+    """Machine-readable codes on 402 and on a role's 403 (BILLING-11).
+
+    402: ``{code: "plan_limit", limit: "BANKS"|"SEATS"|"CHECKS"|null}``.
+    403 from RequiresCapability: ``{code: "role_forbidden", capability}``.
+    """
+    from apps.common.exceptions import PlanLimitExceededException
+    from apps.teams.access import ROLE_FORBIDDEN_CODE
+
+    if isinstance(exc, PlanLimitExceededException):
+        response.data["code"] = exc.body_code
+        response.data["limit"] = exc.limit
+        return
+
+    if response.status_code == 403 and _code_of(exc) == ROLE_FORBIDDEN_CODE:
+        view = context.get("view") if context else None
+        response.data["code"] = ROLE_FORBIDDEN_CODE
+        response.data["capability"] = getattr(
+            view, "required_capability", None
+        )
+
+
+def _code_of(exc):
+    try:
+        codes = exc.get_codes()
+    except AttributeError:
+        return None
+
+    return codes if isinstance(codes, str) else None
 
 
 def _flatten_detail(detail):

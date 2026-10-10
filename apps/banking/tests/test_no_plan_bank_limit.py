@@ -40,6 +40,8 @@ class NoPlanBankLimitTests(TestCase):
         response = self._link("bofa")
 
         self.assertEqual(response.status_code, 402)
+        self.assertEqual(response.json()["code"], "plan_limit")
+        self.assertEqual(response.json()["limit"], "BANKS")
         self.assertEqual(
             BankConnection.objects.filter(user=self.user).count(), 1
         )

@@ -19,6 +19,9 @@ from rest_framework.permissions import BasePermission
 from apps.teams.permissions import role_can
 from apps.teams.services.team_service import TeamService
 
+#: The ``code`` on a 403 for a role that lacks the capability (BILLING-11).
+ROLE_FORBIDDEN_CODE = "role_forbidden"
+
 
 def acting_account(request):
     """The account this request acts on.
@@ -92,6 +95,7 @@ class RequiresCapability(BasePermission):
     """
 
     message = "Your role does not allow this action."
+    code = ROLE_FORBIDDEN_CODE
 
     def has_permission(self, request, view):
         capability = getattr(view, "required_capability", None)

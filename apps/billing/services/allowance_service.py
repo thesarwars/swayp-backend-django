@@ -187,7 +187,7 @@ class AllowanceService:
 
         if self.used(subscription, kind) + requested > limit:
             raise PlanLimitExceededException(
-                self.limit_message(subscription, kind, limit)
+                self.limit_message(subscription, kind, limit), limit=kind
             )
 
         return True

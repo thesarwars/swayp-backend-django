@@ -39,13 +39,30 @@ That distinction is the whole point: **402 should render an upgrade prompt,
 403 should render a permission error.** Treating them alike turns a sales
 moment into a dead end.
 
+Note the envelope: a 402 carries **no `errors` object**. The message is
+written to be shown to the user verbatim.
+
 ```json
 { "success": false,
-  "message": "Your Founding plan allows 1 connected bank. Upgrade to add more." }
+  "message": "Your Founding plan allows 1 connected bank. Upgrade to add more.",
+  "code": "plan_limit",
+  "limit": "BANKS" }
 ```
 
-Note the envelope: a 402 carries **`message` only, no `errors` object**. The
-message is written to be shown to the user verbatim.
+Branch on `code`, never on the message. `limit` names the ceiling hit —
+`BANKS`, `SEATS` or `CHECKS` — so the upgrade prompt can preselect the
+cheapest plan that lifts it. It is `null` when no single ceiling applies. A
+refused downgrade (`PATCH /billing/subscription`) names the first ceiling the
+account is over; the message lists them all.
+
+A 403 for a role that lacks the right carries a code too:
+
+```json
+{ "success": false, "message": "Your role does not allow this action.",
+  "code": "role_forbidden", "capability": "manage_billing" }
+```
+
+Other errors don't have codes yet.
 
 ### 1.3 402 comes from other endpoints, not from Billing
 

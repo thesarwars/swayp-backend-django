@@ -177,6 +177,8 @@ class DowngradeBelowUsageTests(BillingTestCase):
 
         self.assertEqual(response.status_code, 402)
         self.assertIn("3 connected banks in use", response.json()["message"])
+        self.assertEqual(response.json()["code"], "plan_limit")
+        self.assertEqual(response.json()["limit"], "BANKS")
         self.assertEqual(
             self.service.current(self.user).plan.code, PlanCode.STANDARD
         )
@@ -368,3 +370,51 @@ class InvoiceLineTests(BillingTestCase):
             data = self._preview()
 
         self.assertIsNone(data["next_charge_date"])
+
+
+class ErrorCodeTests(BillingTestCase):
+    """BILLING-11: 402 and a role's 403 say which, without parsing text."""
+
+    def test_a_capacity_402_names_the_limit(self):
+        from apps.billing.services.allowance_service import AllowanceService
+        from apps.billing.models import AllowanceKind
+        from apps.common.exception_handler import custom_exception_handler
+        from apps.common.exceptions import PlanLimitExceededException
+
+        subscription = self.subscribe(PlanCode.FOUNDING)
+        limit = AllowanceService().limit_for(subscription, AllowanceKind.SEATS)
+
+        with self.assertRaises(PlanLimitExceededException) as raised:
+            AllowanceService().check_capacity(
+                subscription=subscription,
+                kind=AllowanceKind.SEATS,
+                requested=limit + 1,
+            )
+
+        body = custom_exception_handler(raised.exception, {}).data
+        self.assertEqual(body["code"], "plan_limit")
+        self.assertEqual(body["limit"], "SEATS")
+        self.assertFalse(body["success"])
+
+    def test_a_role_403_names_the_capability(self):
+        from apps.teams.factories import ActiveMemberFactory
+
+        owner = UserFactory()
+        self.service.subscribe(account=owner, plan_code=PlanCode.STANDARD)
+        ActiveMemberFactory(account=owner, user=self.user)
+
+        response = self.client.delete("/api/v1/billing/subscription")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["code"], "role_forbidden")
+        self.assertEqual(response.json()["capability"], "manage_billing")
+
+    def test_other_errors_are_unchanged(self):
+        response = self.client.patch(
+            "/api/v1/billing/subscription",
+            {"plan": PlanCode.FOUNDING},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertNotIn("code", response.json())

@@ -57,12 +57,29 @@ opposite answers.
 ## 3. 402 is an upgrade, 403 is a role
 
 Plan ceilings answer **402**, never 403 — the request was authorised, the plan
-is just full. It carries `message` only, written to be shown verbatim.
+is just full. `message` is written to be shown verbatim.
 
 ```json
 { "success": false,
-  "message": "Your Founding plan allows 1 connected bank. Upgrade to add more." }
+  "message": "Your Founding plan allows 1 connected bank. Upgrade to add more.",
+  "code": "plan_limit",
+  "limit": "BANKS" }
 ```
+
+Branch on `code`, never on the message. `limit` names the ceiling hit —
+`BANKS`, `SEATS` or `CHECKS` — so the upgrade prompt can preselect the
+cheapest plan that lifts it. It is `null` when no single ceiling applies. A
+refused downgrade (`PATCH /billing/subscription`) names the first ceiling the
+account is over; the message lists them all.
+
+A 403 for a role that lacks the right carries a code too:
+
+```json
+{ "success": false, "message": "Your role does not allow this action.",
+  "code": "role_forbidden", "capability": "manage_billing" }
+```
+
+Other errors don't have codes yet.
 
 **402 arrives from the endpoint that performs the action**, never from
 `/billing/`. Handle it globally.

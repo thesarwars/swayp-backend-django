@@ -133,3 +133,14 @@ class PlanLimitExceededException(APIException):
     default_detail = "This action exceeds your plan limit."
     default_code = "plan_limit_exceeded"
 
+    #: What the body's ``code`` says (BILLING-11), so a client branches on it
+    #: rather than on the message.
+    body_code = "plan_limit"
+
+    def __init__(self, detail=None, code=None, *, limit=None):
+        super().__init__(detail, code)
+        # Which ceiling was hit: an AllowanceKind value ("BANKS", "SEATS",
+        # "CHECKS"), or None when no single ceiling applies. Lets the client
+        # preselect the plan that lifts it.
+        self.limit = str(limit) if limit else None
+

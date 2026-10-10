@@ -217,7 +217,9 @@ class SubscriptionService:
         raise PlanLimitExceededException(
             "This plan is too small for the account: "
             + "; ".join(parts)
-            + ". Remove the extra ones first, or choose a bigger plan."
+            + ". Remove the extra ones first, or choose a bigger plan.",
+            # The first ceiling the account is over; the message names all.
+            limit=over[0][0],
         )
 
     @transaction.atomic

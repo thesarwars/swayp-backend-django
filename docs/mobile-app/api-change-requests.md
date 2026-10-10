@@ -740,6 +740,7 @@ These matter once the bill detail screens are built:
 - **App today:** infers "refunded" from `total == 0`.
 
 #### BILLING-11 · minor · Codes on 402 and 403
+✅ Fixed: every 402 carries `code: "plan_limit"` and `limit` (`BANKS`, `SEATS`, `CHECKS`, or `null`). A 403 for a missing role capability carries `code: "role_forbidden"` and `capability` (e.g. `manage_billing`).
 - **Endpoint:** every gated endpoint.
 - **Needed:** for example `{ code: "plan_limit", limit: "BANKS" }`, so the app can preselect the plan that lifts the limit.
 - **App today:** every 402 opens one app-wide "Upgrade your plan" prompt with the server's message, which leads to the plan list. A 403 is shown as an error.

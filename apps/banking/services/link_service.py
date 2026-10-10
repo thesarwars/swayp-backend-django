@@ -133,7 +133,8 @@ class BankLinkService:
 
             if connected >= NO_PLAN_BANK_LIMIT:
                 raise PlanLimitExceededException(
-                    "Choose a plan to connect more than one bank."
+                    "Choose a plan to connect more than one bank.",
+                    limit=AllowanceKind.BANKS,
                 )
 
             return

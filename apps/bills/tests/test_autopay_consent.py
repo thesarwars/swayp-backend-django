@@ -369,3 +369,88 @@ class ChangedTermsNeedFreshConsentTests(AutopayConsentTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertEqual(StandingAuthorization.objects.count(), 0)
+
+
+class AuthorizationTextPreviewTests(AutopayConsentTestCase):
+    """BILLS-3: the server writes the autopay authorization text."""
+
+    URL = "/api/v1/bills/autopay-authorization/preview"
+
+    def preview(self, **overrides):
+        body = {
+            "vendor": str(self.vendor.id),
+            "amount": "3200.00",
+            "frequency": "MONTHLY",
+            "anchor_date": "2027-01-01",
+        }
+        body.update(overrides)
+        return self.client.post(self.URL, body, format="json")
+
+    def test_the_text_states_the_terms(self):
+        response = self.preview()
+
+        self.assertEqual(response.status_code, 200)
+        text = response.data["data"]["authorization_text"]
+        for part in ("WeWork", "$3,200.00", "every month", "January 1, 2027"):
+            self.assertIn(part, text)
+        self.assertIn("turn off autopay", text)
+
+    def test_a_variable_bill_authorizes_each_bills_amount(self):
+        text = self.preview(bill_type="VARIABLE").data["data"][
+            "authorization_text"
+        ]
+
+        self.assertIn("the amount due on each bill", text)
+
+    def test_no_bank_yet_names_the_account_generically(self):
+        data = self.preview().data["data"]
+
+        self.assertIsNone(data["funding_account"])
+        self.assertIn("my connected bank account", data["authorization_text"])
+
+    def test_the_linked_funding_account_is_named(self):
+        from apps.banking.factories import (
+            BankAccountFactory,
+            BankConnectionFactory,
+        )
+
+        BankAccountFactory(
+            connection=BankConnectionFactory(user=self.user), mask="4821"
+        )
+
+        data = self.preview().data["data"]
+
+        self.assertIn("4821", data["funding_account"])
+        self.assertIn("4821", data["authorization_text"])
+
+    def test_the_preview_creates_nothing(self):
+        from apps.bills.models.bill import Bill
+
+        self.preview()
+
+        self.assertEqual(Bill.objects.count(), 0)
+        self.assertEqual(StandingAuthorization.objects.count(), 0)
+
+    def test_the_previewed_text_is_what_gets_stored(self):
+        text = self.preview().data["data"]["authorization_text"]
+
+        self.create(
+            autopay_mode="AUTO",
+            autopay_consent={"accepted": True, "authorization_text": text},
+        )
+
+        self.assertEqual(
+            StandingAuthorization.objects.get().authorization_text, text
+        )
+
+    def test_another_accounts_vendor_is_refused(self):
+        stranger = User.objects.create_user(
+            email="other@example.com", password="Sw@yp-Test-1"
+        )
+        theirs = Vendor.objects.create(
+            user=stranger, name="Theirs", category=self.category
+        )
+
+        self.assertEqual(
+            self.preview(vendor=str(theirs.id)).status_code, 400
+        )

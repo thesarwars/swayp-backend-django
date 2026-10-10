@@ -1,5 +1,8 @@
 from django.urls import path
 
+from apps.bills.views.autopay_authorization import (
+    AutopayAuthorizationPreviewAPIView,
+)
 from apps.bills.views.bill import (
     BillCreateAPIView,
     BillDetailAPIView,
@@ -21,6 +24,11 @@ urlpatterns = [
     path("", BillListAPIView.as_view(), name="bill-list"),
     path("/create", BillCreateAPIView.as_view(), name="bill-create"),
     path("/summary", BillSummaryAPIView.as_view(), name="bill-summary"),
+    path(
+        "/autopay-authorization/preview",
+        AutopayAuthorizationPreviewAPIView.as_view(),
+        name="bill-autopay-authorization-preview",
+    ),
     path(
         "/occurrences",
         BillOccurrenceListAPIView.as_view(),

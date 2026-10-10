@@ -144,6 +144,29 @@ Autopay debits a bank account on a schedule, so it needs a NACHA standing
 authorization. Show the authorization text, capture acceptance, and send it
 with the request. Don't default the toggle to `AUTO`.
 
+**Get the text from the server; don't write it yourself:**
+
+```
+POST /api/v1/bills/autopay-authorization/preview
+{ "vendor": "<uuid>", "amount": "3200.00", "bill_type": "FIXED",
+  "frequency": "MONTHLY", "anchor_date": "2026-11-01",
+  "payment_method": "<uuid, optional>" }
+```
+
+```json
+{ "success": true, "message": "Authorization text generated.",
+  "data": {
+    "authorization_text": "I authorize Swayp to debit Chase Business Checking ****4821 for $3,200.00 every month, starting November 1, 2026, to pay WeWork. Each payment will be executed by Moov Financial, Inc. over the ACH network. …",
+    "funding_account": "Chase Business Checking ****4821" } }
+```
+
+Show `authorization_text` as it is, and send it back **verbatim** as
+`autopay_consent.authorization_text`. That exact string is stored as what the
+user agreed to. Call the preview again whenever any term changes (amount,
+frequency, date, type, method), including when editing an autopay bill.
+It creates nothing. `funding_account` is `null` when no bank is linked; the
+text then says "my connected bank account".
+
 ### Anchor dates clamp
 
 A monthly bill anchored on the 31st lands on Feb 28, then **back to Mar 31** —

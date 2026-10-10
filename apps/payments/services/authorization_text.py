@@ -104,3 +104,59 @@ RAIL_LABEL = {
     PaymentRail.NETWORK: "the biller network",
     PaymentRail.CHECK: "a mailed check",
 }
+
+
+#: How each cadence reads inside a recurring authorization (BILLS-3).
+RECURRING_PHRASE = {
+    "WEEKLY": "every week",
+    "MONTHLY": "every month",
+    "QUARTERLY": "every three months",
+}
+
+
+def for_recurring(*, vendor_name, amount, bill_type, frequency, start_date,
+                  funding_display, rail):
+    """Consent wording for an autopay bill: a standing, recurring debit.
+
+    Server-written so every client shows, and stores, the same words
+    (BILLS-3). A recurring authorization has to say what will be debited,
+    how often, from when, by whom, and how to stop it. Variable bills
+    authorize the amount of each bill as issued, so the amount shown is the
+    current one, not a cap.
+    """
+    party = PROCESSOR_LEGAL_NAME.get(
+        processor_for_rail(rail), str(processor_for_rail(rail))
+    )
+
+    if bill_type == "VARIABLE":
+        amount_text = (
+            f"the amount due on each bill (currently {_money(amount)})"
+        )
+    else:
+        amount_text = _money(amount)
+
+    start = _date(start_date)
+
+    if frequency == "ONE_TIME":
+        schedule = f"once, on {start}" if start else "once"
+    else:
+        schedule = RECURRING_PHRASE.get(frequency, f"each {frequency.lower()}")
+
+        if start:
+            schedule = f"{schedule}, starting {start}"
+
+    return " ".join(
+        [
+            f"I authorize Swayp to debit {funding_display} for "
+            f"{amount_text} {schedule}, to pay {vendor_name}.",
+            _sentence(
+                f"Each payment will be executed by {party} over "
+                f"{RAIL_LABEL.get(rail, rail)}"
+            ),
+            "Payments are initiated ahead of each due date so they arrive "
+            "on time.",
+            "This authorization remains in effect until I turn off autopay "
+            "for this bill in Swayp. Turning it off stops every payment not "
+            "yet initiated.",
+        ]
+    )

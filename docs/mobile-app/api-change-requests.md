@@ -353,6 +353,7 @@ Contents:
 - **App today:** puts the vendor name in the vendor search box and matches the category by name. Scanned values are marked "Read from the QR code. Please confirm."
 
 #### BILLS-3 · major · The server should write the autopay authorization text
+- **✅ Fixed**: `POST /bills/autopay-authorization/preview` with `{ vendor, amount, bill_type, frequency, anchor_date, payment_method? }` returns `authorization_text` (plus `funding_account`). Show it and send it back verbatim as `autopay_consent.authorization_text`. The text names the account debited, the amount (for variable bills, "the amount due on each bill"), the schedule and start date, the vendor, the processor, and how to revoke. Call it again when an autopay bill's terms change (BILLS-4). See e4 §4, step 5. The wording should still get a legal review before production.
 - **Endpoint:** new, for example `POST /bills/autopay-authorization/preview` (vendor, amount, frequency, bill type, date, funding account).
 - **Today:** the payments API returns its authorization text, but bill create expects the client to compose the NACHA sentence for `AUTO` bills.
 - **Needed:** the exact `authorization_text` from the server, which the app then shows and sends back verbatim.

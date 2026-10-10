@@ -463,3 +463,46 @@ class ContactFieldsTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class ListRowAndCategoryTests(TestCase):
+    """VEND-8 / VEND-7: list rows say status and category; category is
+    optional on create."""
+
+    def setUp(self):
+        from apps.vendors.factories import UserFactory
+
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.other = BillCategory.objects.create(
+            name="Other", icon="https://e.com/o.png", color="#999"
+        )
+
+    def create(self, **extra):
+        body = {
+            "name": "Acme", "source": "MANUAL",
+            "payment_method": {
+                "method_type": "CHECK", "check_legal_name": "Acme Inc",
+                "street": "1 Main St", "city": "Austin", "state": "TX",
+                "zip_code": "78701",
+            },
+        }
+        body.update(extra)
+        return self.client.post("/api/v1/vendors", body, format="json")
+
+    def test_without_a_category_the_vendor_is_filed_under_other(self):
+        response = self.create()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(str(response.data["category"]), str(self.other.id))
+
+    def test_list_rows_carry_status_and_category(self):
+        self.create()
+
+        row = self.client.get("/api/v1/vendors").data["items"][0]
+
+        self.assertEqual(row["status"], "ACTIVE")
+        self.assertEqual(row["category_name"], "Other")
+        self.assertIn("created_at", row)
+        self.assertIn("updated_at", row)

@@ -19,6 +19,10 @@ class VendorListSerializer(serializers.ModelSerializer):
     recurring_amount = serializers.SerializerMethodField()
     amount_period = serializers.SerializerMethodField()
     next_due = serializers.SerializerMethodField()
+    # VEND-8: the card's pill and the category line, without a second call.
+    category_name = serializers.CharField(
+        source="category.name", read_only=True, default=None
+    )
 
     class Meta:
 
@@ -28,6 +32,11 @@ class VendorListSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "logo",
+            "status",
+            "category",
+            "category_name",
+            "created_at",
+            "updated_at",
             "business_type",
             "directory_verified",
             "payment_rail",
@@ -258,8 +267,11 @@ class VendorCreateSerializer(serializers.Serializer):
     """
 
     name = serializers.CharField(max_length=150)
+    # Optional (VEND-7): the add-vendor design has no category step. When
+    # omitted, the vendor is filed under the default category ("Other").
     category = serializers.PrimaryKeyRelatedField(
-        queryset=BillCategory.objects.all()
+        queryset=BillCategory.objects.filter(is_active=True),
+        required=False,
     )
     source = serializers.ChoiceField(choices=VendorSource.choices)
     notes = serializers.CharField(required=False, allow_blank=True)

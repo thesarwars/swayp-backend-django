@@ -629,11 +629,13 @@ These matter once the bill detail screens are built:
 - **Screen:** the add-vendor directory and QR paths (not built).
 
 #### VEND-7 · minor · Vendor category is required, but the design has no category step
+- **✅ Fixed**: `category` is optional on `POST /vendors`. Left out, the vendor is filed under the default category ("Other", the same default a bank-scan import uses). The added picker can go, or stay optional. An inactive category is refused. See e3 §1.
 - **Endpoint:** `POST /vendors`.
 - **Needed:** make `category` optional with a server default, or confirm that the app's added picker is the intended design.
 - **App today:** "Add Manually" has an added Category field that is required before Continue.
 
 #### VEND-8 · minor · Vendor list rows
+- **✅ Fixed**: rows now have `status`, `category` (id), `category_name`, `created_at` and `updated_at`. **"Assigned Bill Payer" is dropped from the design** (product decision, 2026-10-10), so there is no field for it. See e3 §1.
 - **Endpoint:** `GET /vendors`.
 - **Today:** the card design shows "Assigned Bill Payer". No such field exists, and rows also lack `status` and a category name.
 - **App today:** the card shows the payment method instead, and an "Active" pill.

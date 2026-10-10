@@ -20,6 +20,8 @@ GET /api/v1/vendors?search=&category=&rail=&status=&page=1&pageSize=20
 {
   "items": [
     { "id": "0ec2bf6c-…", "name": "WeWork", "logo": "",
+      "status": "ACTIVE", "category": "653f035b-…", "category_name": "Rent",
+      "created_at": "2026-08-01T10:00:00Z", "updated_at": "2026-09-12T08:30:00Z",
       "business_type": "", "directory_verified": false,
       "payment_rail": "ACH", "recurring_amount": "3200.00",
       "amount_period": "MONTHLY", "next_due": "2026-09-01" }
@@ -36,6 +38,15 @@ occurrence, and are all `null` for a vendor with no upcoming bill.
 `rail=` filters on the primary method (`NETWORK` / `ACH` / `CHECK`), and
 `status=` accepts `ACTIVE` or `DELETED` — deletion is soft, so a deleted
 vendor is still readable under that filter.
+
+Each row has `status`, `category` (id) and `category_name`, so the card's
+pill and category line need no second call, plus `created_at` and
+`updated_at`. There is no "Assigned Bill Payer": that field was dropped from
+the design.
+
+**Category is optional on `POST /vendors`.** Leave it out and the vendor is
+filed under the default category ("Other"). The user can change it later
+with `PATCH`. An inactive category is refused.
 
 ## 2. Summary chips
 

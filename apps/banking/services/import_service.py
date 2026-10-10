@@ -28,7 +28,6 @@ from apps.common.enums import (
 from apps.vendors.models import Vendor
 
 #: Used when a candidate has no category guess and no fallback exists.
-_FALLBACK_CATEGORY_NAMES = ("Other", "Uncategorized", "General")
 
 
 class BillImportService:
@@ -268,14 +267,11 @@ class BillImportService:
         return candidate
 
     def _fallback_category(self):
-        category = BillCategory.objects.filter(
-            name__in=_FALLBACK_CATEGORY_NAMES, is_active=True
-        ).first()
+        from apps.bill_categories.selectors.default_category import (
+            default_category,
+        )
 
-        if category:
-            return category
-
-        category = BillCategory.objects.filter(is_active=True).first()
+        category = default_category()
 
         if category is None:
             raise ValidationError(

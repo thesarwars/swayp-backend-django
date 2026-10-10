@@ -21,6 +21,18 @@ class VendorService:
 
         payment_method_data = dict(validated_data.pop("payment_method"))
 
+        if not validated_data.get("category"):
+            from apps.bill_categories.selectors.default_category import (
+                default_category,
+            )
+
+            validated_data["category"] = default_category()
+
+            if validated_data["category"] is None:
+                raise ValidationError(
+                    {"category": "No bill categories are configured."}
+                )
+
         vendor = Vendor.objects.create(
             user=user,
             **validated_data,

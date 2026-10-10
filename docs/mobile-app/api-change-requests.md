@@ -218,6 +218,7 @@ Contents:
 - **App today:** stops polling on either `is_complete` or a final status, and shows `error_message` (or a fallback) with "Try Again".
 
 #### BANK-10 · minor · Onboarding progress after skip and disconnect
+- **✅ Fixed**: the bank step is now sticky. It counts as complete once the account has ever linked a bank, so disconnecting (or the bank asking for a fresh sign-in) no longer sends the user back into onboarding. `skip-bank` already answers with the updated progress, the same body as `GET users/onboarding`, so there is no need to refetch. See e2 §6.
 - **Endpoint:** `GET /users/onboarding`, `POST /users/onboarding/skip-bank`.
 - **Needed:** say whether the bank step goes back to incomplete after a disconnect (a sticky "was completed" flag would avoid re-prompting), and return the updated progress from `skip-bank`.
 - **Screen:** onboarding gate.

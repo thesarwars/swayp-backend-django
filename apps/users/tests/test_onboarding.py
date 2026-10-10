@@ -17,6 +17,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.banking.factories import BankConnectionFactory
+from apps.banking.models import BankConnection
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.users.models.business_profile import BusinessProfile
 from apps.users.models.profile import AccountType, Profile
@@ -96,6 +97,18 @@ class OnboardingProgressTests(TestCase):
 
         self.assertTrue(state["complete"])
         self.assertIsNone(state["current_step"])
+
+    def test_disconnecting_the_bank_does_not_reopen_step_four(self):
+        """BANK-10: a disconnect (or a bank asking for a fresh sign-in) is a
+        Settings task, not unfinished onboarding."""
+        for status in ("DISCONNECTED", "ERROR"):
+            with self.subTest(status=status):
+                BankConnection.objects.filter(user=self.user).delete()
+                BankConnectionFactory(user=self.user, status=status)
+
+                steps = {s["key"]: s for s in self.state()["steps"]}
+
+                self.assertTrue(steps["bank"]["complete"])
 
     def test_progress_survives_a_drop_out(self):
         """The whole point: sign out mid-wizard, come back, resume."""

@@ -416,7 +416,7 @@ four steps. Render `total_steps` from this response, never from the design.
 | 1 business | An individual account: always. A business account: `business_name` is set. |
 | 2 plan | The account has a subscription. |
 | 3 payment | There is a subscription **and** one of: it is trialing; the billing provider does not collect money (`collects_money: false`, the mock); or the provider holds a real subscription for it. |
-| 4 bank | An `ACTIVE` bank connection exists. |
+| 4 bank | The account has linked a bank, ever. **It stays complete after a disconnect**, or when the bank asks the user to sign in again. Reconnecting is a Settings task, not unfinished onboarding. |
 
 Step 3 never requires a card when no money is collected, so `current_step`
 can reach the bank step on the mock. But step 3 can never be complete

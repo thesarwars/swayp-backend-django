@@ -20,7 +20,7 @@ The one thing that cannot be derived is a deliberate skip. Step 4 offers
 skip" from "has not got there yet" — so that single bit is stored.
 """
 
-from apps.banking.models import BankConnection, BankConnectionStatus
+from apps.banking.models import BankConnection
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.users.models.profile import AccountType
 from apps.users.services.profile_service import ProfileService
@@ -83,10 +83,15 @@ class OnboardingService:
         return bool(subscription.provider_subscription_id)
 
     def bank_complete(self, account):
-        """Step 4."""
-        return BankConnection.objects.filter(
-            user=account, status=BankConnectionStatus.ACTIVE
-        ).exists()
+        """Step 4: the account has linked a bank, ever.
+
+        Sticky on purpose (BANK-10). Counting only ACTIVE connections sent
+        anyone who disconnected their bank, or whose bank asked them to sign
+        in again (ERROR), back into the onboarding wizard. The step was done;
+        reconnecting is a Settings task, not unfinished onboarding. Still
+        derived from the rows, so nothing extra is stored.
+        """
+        return BankConnection.objects.filter(user=account).exists()
 
     def bank_skipped(self, account):
         """The one bit that cannot be derived.

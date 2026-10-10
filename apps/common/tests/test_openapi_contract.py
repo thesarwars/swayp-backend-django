@@ -500,3 +500,89 @@ class VendorsContractTests(ContractTestCase):
                    path="/api/v1/vendors/directory-search", status=200)
         self.check("POST", "/api/v1/vendors/qr/decode", body={
             "payload": "SWAYP:vendor=WeWork;amount=3200.00"}, status=200)
+
+
+class TeamsContractTests(ContractTestCase):
+
+    def setUp(self):
+        super().setUp()
+        SubscriptionServiceForTests().subscribe(
+            account=self.user, plan_code="ENTERPRISE")
+
+    def test_members_and_entities(self):
+        self.check("GET", "/api/v1/teams/me", status=200)
+        self.check("GET", "/api/v1/teams/members", status=200)
+        member = self.check("POST", "/api/v1/teams/invite",
+                            body={"email": "new@example.com",
+                                  "role": "ADMIN"},
+                            status=201).json()["data"]
+        M = "/api/v1/teams/members/{member_id}"
+        self.check("PATCH", f"/api/v1/teams/members/{member['id']}",
+                   path=M, body={"role": "MEMBER"}, status=200)
+        self.check("DELETE", f"/api/v1/teams/members/{member['id']}",
+                   path=M, status=200)
+
+        self.check("GET", "/api/v1/teams/entities", status=200)
+        entity = self.check("POST", "/api/v1/teams/entities", body={
+            "legal_name": "Acme Holdings LLC", "ein": "12-3456789"},
+            status=201).json()["data"]
+        E = "/api/v1/teams/entities/{entity_id}"
+        self.check("PATCH", f"/api/v1/teams/entities/{entity['id']}",
+                   path=E, body={"legal_name": "Acme Holdings, LLC"},
+                   status=200)
+        self.check("DELETE", f"/api/v1/teams/entities/{entity['id']}",
+                   path=E, status=200)
+
+
+class AdvisorContractTests(ContractTestCase):
+
+    def setUp(self):
+        super().setUp()
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.banking.factories import BankAccountFactory
+
+        BankAccountFactory(connection__user=self.user,
+                           available_balance=Decimal("41200.00"),
+                           balance_as_of=timezone.now(),
+                           is_default_funding_source=True)
+
+    def test_consent_and_guidance(self):
+        self.check("GET", "/api/v1/ai/consent", status=None)
+        self.check("POST", "/api/v1/ai/consent", body={
+            "consent_text":
+                "I allow Flo to use my balances and bills for guidance."},
+            status=None)
+        self.check("GET", "/api/v1/ai/consent", status=200)
+        from apps.banking.models import BankAccount
+
+        account = BankAccount.objects.get(connection__user=self.user)
+        self.check("GET",
+                   f"/api/v1/ai/balance-projection?account={account.id}"
+                   "&date=2026-11-01",
+                   path="/api/v1/ai/balance-projection", status=200)
+        self.check("POST", "/api/v1/ai/cash-context",
+                   body={"amount": "3200.00"}, status=200)
+
+
+class ReferenceContractTests(ContractTestCase):
+
+    def test_categories_providers_reports(self):
+        from apps.vendors.factories import BillCategoryFactory
+
+        BillCategoryFactory()
+        SubscriptionServiceForTests().subscribe(
+            account=self.user, plan_code="ENTERPRISE")
+
+        self.check("GET", "/api/v1/bill-categories", status=200)
+        self.check("GET", "/api/v1/providers", status=200)
+        self.check("GET", "/api/v1/reports", status=200)
+        self.check("GET", "/api/v1/reports/1099", status=200)
+
+
+def SubscriptionServiceForTests():
+    from apps.billing.services.subscription_service import SubscriptionService
+
+    return SubscriptionService()

@@ -6,6 +6,7 @@ from rest_framework import status
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 from apps.teams.api.serializers.team import (
+    MyRoleSerializer,
     AcceptInviteSerializer,
     ChangeRoleSerializer,
     EntitySerializer,
@@ -67,6 +68,7 @@ class TeamMemberListAPIView(TeamContextMixin, BaseAPIView):
         "The caller's role on the account and the capabilities it grants. "
         "Use it to hide what the user cannot do — the API enforces it too."
     ),
+    responses={200: MyRoleSerializer},
 )
 class MyRoleAPIView(TeamContextMixin, BaseAPIView):
 
@@ -158,6 +160,11 @@ class TeamMemberDetailAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = TeamService
 
+    @extend_schema(
+        summary="Change a member's role",
+        request=ChangeRoleSerializer,
+        responses={200: TeamMemberSerializer},
+    )
     def patch(self, request, member_id):
         serializer = ChangeRoleSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -176,6 +183,12 @@ class TeamMemberDetailAPIView(TeamContextMixin, BaseAPIView):
             message="Role updated.",
         )
 
+    @extend_schema(
+        summary="Remove a member",
+        description="Answers the removed member; their seat is freed.",
+        request=None,
+        responses={200: TeamMemberSerializer},
+    )
     def delete(self, request, member_id):
         member = self.service.remove(
             account=self.account_for(request),
@@ -215,6 +228,12 @@ class EntityListAPIView(TeamContextMixin, BaseAPIView):
             message="Entities fetched successfully.",
         )
 
+    @extend_schema(
+        summary="Add an entity",
+        description="Enterprise only (402 otherwise). 403 without manage_entities.",
+        request=EntityWriteSerializer,
+        responses={201: EntitySerializer},
+    )
     def post(self, request):
         account = self.account_for(request)
 
@@ -249,6 +268,11 @@ class EntityDetailAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = EntityService
 
+    @extend_schema(
+        summary="Rename an entity",
+        request=EntityWriteSerializer,
+        responses={200: EntitySerializer},
+    )
     def patch(self, request, entity_id):
         account = self.account_for(request)
 
@@ -273,6 +297,12 @@ class EntityDetailAPIView(TeamContextMixin, BaseAPIView):
             message="Entity updated.",
         )
 
+    @extend_schema(
+        summary="Archive an entity",
+        description="Answers the archived entity.",
+        request=None,
+        responses={200: EntitySerializer},
+    )
     def delete(self, request, entity_id):
         """Archives rather than deletes — payments still reference it."""
         account = self.account_for(request)

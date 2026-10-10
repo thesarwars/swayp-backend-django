@@ -82,6 +82,7 @@ class NotificationReadAPIView(BaseAPIView):
     @extend_schema(
         tags=["Notifications"],
         summary="Mark Notification As Read",
+        request=None,
         description=(
             "Marks one of the caller's notifications as read and returns it, "
             "with the unread count after the change. Idempotent: an "
@@ -121,6 +122,7 @@ class NotificationReadAllAPIView(BaseAPIView):
     @extend_schema(
         tags=["Notifications"],
         summary="Mark All Notifications As Read",
+        request=None,
         description=(
             "Marks all of the caller's unread notifications as read. "
             "data.markedCount is how many changed (0 when none were unread); "

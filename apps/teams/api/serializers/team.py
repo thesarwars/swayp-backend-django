@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.teams.models import Entity, TeamMember, TeamRole
@@ -27,6 +28,11 @@ class TeamMemberSerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+    @extend_schema_field(
+        serializers.CharField(
+            allow_null=True, help_text="null until the invite is accepted."
+        )
+    )
     def get_name(self, member):
         if member.user is None:
             return None
@@ -35,6 +41,7 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
         return full or None
 
+    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_capabilities(self, member):
         return capabilities_for(member.role)
 
@@ -77,4 +84,14 @@ class EntityWriteSerializer(serializers.Serializer):
     legal_name = serializers.CharField(max_length=150)
     ein = serializers.CharField(
         max_length=20, required=False, allow_blank=True, default=""
+    )
+
+
+class MyRoleSerializer(serializers.Serializer):
+    account_id = serializers.UUIDField(help_text="The account acted on.")
+    is_owner = serializers.BooleanField()
+    role = serializers.ChoiceField(choices=TeamRole.choices)
+    capabilities = serializers.ListField(
+        child=serializers.CharField(),
+        help_text="e.g. manage_billing, send_money: what this role may do.",
     )

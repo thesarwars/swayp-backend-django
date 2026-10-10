@@ -36,6 +36,7 @@ class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
 @extend_schema(
     tags=["Users"],
     summary="Skip the bank step",
+    request=None,
     description=(
         "Records the \"Skip for now\" choice on step 4. The only part of "
         "progress that cannot be derived, because declining a step leaves no "

@@ -41,6 +41,28 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Production Finance Backend APIs",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # One stable name per shared vocabulary (API-1). Without these, an enum
+    # used by several fields got a hashed name (Rail0b4Enum) that changes
+    # whenever a field is added, which breaks every generated client.
+    "ENUM_NAME_OVERRIDES": {
+        "PaymentRailEnum": "apps.common.enums.PaymentRail",
+        "PaymentStatusEnum": "apps.common.enums.PaymentStatus",
+        "PaymentMethodTypeEnum": "apps.common.enums.VendorPaymentMethodType",
+        "BillOccurrenceStatusEnum": "apps.common.enums.BillOccurrenceStatus",
+        "BillFrequencyEnum": "apps.common.enums.BillFrequency",
+        "BillSourceEnum": "apps.common.enums.BillSource",
+        "VendorSourceEnum": "apps.common.enums.VendorSource",
+        "VendorStatusEnum": "apps.common.enums.VendorStatus",
+        "ScanErrorCodeEnum": "apps.common.enums.ScanErrorCode",
+        "AccountTypeEnum": "apps.users.models.AccountType",
+        "TeamRoleEnum": "apps.teams.models.TeamRole",
+        "OTPPurposeEnum": "apps.authentication.models.OTPPurpose",
+        "PlanCodeEnum": "apps.common.enums.PlanCode",
+        "SubscriptionStatusEnum": "apps.billing.models.SubscriptionStatus",
+        "FeeKindEnum": "apps.billing.models.FeeKind",
+        "FeeStateEnum": "apps.billing.models.FeeState",
+        "AddOnKindEnum": "apps.billing.models.AddOnKind",
+    },
     "COMPONENT_SPLIT_REQUEST": True,
     "SWAGGER_UI_SETTINGS": {
         "persistAuthorization": True,

@@ -376,6 +376,7 @@ class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
 @extend_schema(
     tags=["Billing"],
     summary="Start card collection",
+    request=None,
     description=(
         "Returns a SetupIntent client secret for the card form. The card is "
         "sent straight to the processor, never to Swayp; POST the resulting "

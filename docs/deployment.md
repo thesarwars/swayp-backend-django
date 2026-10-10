@@ -183,18 +183,30 @@ server {
 from it (`SECURE_PROXY_SSL_HEADER`); without it Django sees plain HTTP behind
 the proxy and redirects to HTTPS forever.
 
-### HSTS comes after, not with
+### HSTS
 
-Leave `DJANGO_HSTS_SECONDS` at `0` for the first deploy. Once HTTPS is
-confirmed working on the domain **and every subdomain**, set:
+Production sends `Strict-Transport-Security: max-age=31536000` for the API
+host by default. It promises only what the HTTPS redirect already enforces,
+so it is safe from the first deploy. `DJANGO_HSTS_SECONDS=0` turns it off.
 
-```bash
-DJANGO_HSTS_SECONDS=31536000
+**Two flags are off by default, because they are hard to undo:**
+- `DJANGO_HSTS_INCLUDE_SUBDOMAINS=True` makes every subdomain of the domain
+  HTTPS-only for a year.
+- `DJANGO_HSTS_PRELOAD=True` asks browsers to build the rule into their
+  source, which takes months to remove.
+
+Set them only once every subdomain serves HTTPS.
+
+**A host running other settings sends no header from Django.** That includes
+the dev host, which runs `config.settings.local`. Have nginx send it
+instead, inside the `server { listen 443 … }` block:
+
+```nginx
+add_header Strict-Transport-Security "max-age=31536000" always;
 ```
 
-Setting it early is the one mistake here that is genuinely hard to undo:
-browsers cache the instruction for the full year and will refuse plain HTTP to
-any subdomain for that long, whatever you serve afterwards.
+`always` makes nginx add it to error responses too. Don't add it on the port
+80 server block: a browser ignores it over plain HTTP.
 
 ## 5b. Notifications: push and realtime
 
@@ -322,7 +334,7 @@ database before you need to.
 - [ ] If realtime is on: `websocket` is up, and a browser can open
       `wss://api.getswayp.com/ws/notifications/?token=…`
 - [ ] If push is on: a test notification arrives on a real device
-- [ ] `DJANGO_HSTS_SECONDS` set, after HTTPS is confirmed (§5)
+- [ ] HSTS header present: `curl -sI https://<host>/healthz | grep -i strict` (§5)
 
 ## 10. When something is wrong
 

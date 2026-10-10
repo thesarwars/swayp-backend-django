@@ -829,6 +829,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **Needed:** `DEBUG=False` everywhere outside a developer's machine (and certainly in production), and JSON 404s in the standard error shape.
 
 #### SEC-2 · major · No HSTS
+✅ Fixed: production sends `Strict-Transport-Security: max-age=31536000` for the API host by default. includeSubDomains and preload, the parts that are hard to undo, are separate opt-ins. The dev host runs local settings, so `docs/deployment.md` §5 gives the one-line nginx `add_header` that covers it. That line has to be added on the server.
 - **Today:** `http://` redirects (301) to `https://`, but responses carry no `Strict-Transport-Security` header. Observed.
 - **Needed:** HSTS on the API host.
 - **App today:** release builds refuse any API URL that is not `https://`.

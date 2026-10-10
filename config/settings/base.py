@@ -255,6 +255,8 @@ REST_FRAMEWORK = {
         "routing_validate": "30/min",
         # E7-S2: the only advisor endpoint that can reach a paid provider.
         "ai_cash_context": "20/min",
+        # SEC-3: register must say an address is taken; this keeps it slow.
+        "register": "10/hour",
     },
 
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",

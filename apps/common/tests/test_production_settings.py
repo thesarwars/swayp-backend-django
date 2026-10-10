@@ -143,19 +143,37 @@ class TransportSecurityTests(SimpleTestCase):
             ("HTTP_X_FORWARDED_PROTO", "https"),
         )
 
-    def test_hsts_is_off_until_asked_for(self):
-        """Browsers remember it and it cannot be withdrawn quickly, so a
-        first deploy must not be able to lock a domain out by accident."""
+    def test_hsts_is_on_for_this_host_by_default(self):
+        """SEC-2: a year for the API host. Subdomains and preload, the parts
+        that are hard to undo, stay off until asked for."""
         settings = load()
 
-        self.assertEqual(settings.SECURE_HSTS_SECONDS, 0)
+        self.assertEqual(settings.SECURE_HSTS_SECONDS, 31536000)
+        self.assertFalse(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
         self.assertFalse(settings.SECURE_HSTS_PRELOAD)
 
-    def test_enabling_hsts_turns_on_subdomains_and_preload(self):
-        settings = load(DJANGO_HSTS_SECONDS="31536000")
+    def test_subdomains_and_preload_are_separate_opt_ins(self):
+        settings = load(DJANGO_HSTS_INCLUDE_SUBDOMAINS="True")
 
         self.assertTrue(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
+        self.assertFalse(settings.SECURE_HSTS_PRELOAD)
+
+        settings = load(
+            DJANGO_HSTS_INCLUDE_SUBDOMAINS="True", DJANGO_HSTS_PRELOAD="True"
+        )
         self.assertTrue(settings.SECURE_HSTS_PRELOAD)
+
+    def test_preload_without_subdomains_is_ignored(self):
+        """Preload lists refuse a header without includeSubDomains."""
+        settings = load(DJANGO_HSTS_PRELOAD="True")
+
+        self.assertFalse(settings.SECURE_HSTS_PRELOAD)
+
+    def test_hsts_can_be_turned_off(self):
+        settings = load(DJANGO_HSTS_SECONDS="0")
+
+        self.assertEqual(settings.SECURE_HSTS_SECONDS, 0)
+        self.assertFalse(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
 
     def test_csrf_trusted_origins_cover_cors(self):
         """Derived rather than configured twice, so they cannot drift."""

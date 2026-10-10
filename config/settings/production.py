@@ -137,12 +137,23 @@ SECURE_SSL_REDIRECT = _flag("DJANGO_SECURE_SSL_REDIRECT")
 # return a fixed shape (see apps/common/api_health.py).
 SECURE_REDIRECT_EXEMPT = [r"^healthz$", r"^readyz$"]
 
-# Browsers remember HSTS and it cannot be withdrawn quickly, so this defaults
-# to off. Set it to 31536000 once the domain and every subdomain are confirmed
-# to serve HTTPS — not before.
-SECURE_HSTS_SECONDS = int(env("DJANGO_HSTS_SECONDS", default="0"))
-SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
-SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
+# HSTS for this host is on by default for a year (SEC-2). It promises only
+# what SECURE_SSL_REDIRECT already enforces, that this host is HTTPS, so it
+# locks nothing new in; what it adds is that a browser stops trying plain
+# HTTP first, which is the request a network attacker would intercept.
+# DJANGO_HSTS_SECONDS=0 turns it off.
+SECURE_HSTS_SECONDS = int(env("DJANGO_HSTS_SECONDS", default="31536000"))
+
+# These two are the ones that are hard to undo, so each is asked for
+# separately: includeSubDomains makes every subdomain HTTPS-only for the
+# year, and preload asks browsers to ship that in their source, where it
+# takes months to remove. Set them only once every subdomain serves HTTPS.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0 and _flag(
+    "DJANGO_HSTS_INCLUDE_SUBDOMAINS", default="False"
+)
+SECURE_HSTS_PRELOAD = SECURE_HSTS_INCLUDE_SUBDOMAINS and _flag(
+    "DJANGO_HSTS_PRELOAD", default="False"
+)
 
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True

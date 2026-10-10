@@ -288,7 +288,7 @@ Every id key in `metadata` is a **uuid string, or absent**, never `""` or
 
 `metadata` can also carry display values (`vendor_name`, `amount`,
 `reference`, `reason`). Treat the id keys as the contract. The same ids
-arrive in push `data` as camelCase (`paymentId`, …).
+arrive in push `data` as `payment_id` (and the older `paymentId`, …).
 
 Notifications are **personal, not account-wide** — a team member sees their
 own, not the owner's. This is the one place that scopes to the user rather

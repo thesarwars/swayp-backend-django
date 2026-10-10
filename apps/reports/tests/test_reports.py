@@ -360,6 +360,12 @@ class ReportFilterTests(ReportTestCase):
                 "totalItems": len(self.reportable),
                 "hasNext": True,
                 "hasPrevious": False,
+                # API-5: snake_case beside the shipped camelCase.
+                "page_size": 2,
+                "total_pages": 5,
+                "total_items": len(self.reportable),
+                "has_next": True,
+                "has_previous": False,
             },
         )
 

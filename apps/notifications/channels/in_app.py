@@ -2,6 +2,7 @@ import functools
 
 from django.db import transaction
 
+from apps.common.casing import with_snake_case
 from apps.notifications.channels.base import (
     IN_APP,
     SENT,
@@ -65,7 +66,7 @@ class InAppChannel(NotificationChannel):
         ``GET /notifications/`` are built from one row and cannot drift."""
         broadcast(
             user_id=user_id,
-            payload={
+            payload=with_snake_case({
                 "id": str(notification.pk),
                 "type": notification.type,
                 "title": notification.title,
@@ -73,5 +74,5 @@ class InAppChannel(NotificationChannel):
                 "isRead": notification.is_read,
                 "createdAt": notification.created_at.isoformat(),
                 "metadata": notification.metadata or {},
-            },
+            }),
         )

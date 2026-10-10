@@ -334,8 +334,10 @@ also carries:
 | `estimatedArrival`, `scheduledFor` | Dates, or `null` |
 | `replacedPaymentId` | The failed payment this one retried, or `null` |
 
-History rows stay **camelCase**, unlike the other payment bodies. Changing it
-would break current clients.
+History rows carry every key **twice**: the shipped camelCase
+(`vendorName`) and snake_case (`vendor_name`). Read the snake_case one; the
+camelCase copy will be removed later. The query parameters take either
+spelling (`fromDate` or `from_date`).
 
 ---
 

@@ -46,9 +46,14 @@ class ProfileSummaryAPITests(TestCase):
                 "profilePicture",
                 "greeting",
                 "unreadNotificationCount",
+                # API-5: snake_case beside the shipped camelCase.
+                "full_name",
+                "profile_picture",
+                "unread_notification_count",
             },
         )
         self.assertEqual(response.data["data"]["fullName"], "Jhon Doe")
+        self.assertEqual(response.data["data"]["full_name"], "Jhon Doe")
         self.assertIsNone(response.data["data"]["profilePicture"])
         self.assertEqual(response.data["data"]["unreadNotificationCount"], 0)
 

@@ -29,6 +29,10 @@ NOTIFICATION_FIELDS = {
     "createdAt",
     "readAt",
     "metadata",
+    # API-5: snake_case beside the shipped camelCase.
+    "is_read",
+    "created_at",
+    "read_at",
 }
 
 

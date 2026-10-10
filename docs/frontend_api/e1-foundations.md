@@ -85,7 +85,9 @@ GET /api/v1/bill-categories
               "displayOrder": 1 } ] }
 ```
 
-The key is **`displayOrder`** (camelCase). The list is already sorted by it.
+The key is **`display_order`** (also sent as the older `displayOrder`, see
+[One casing](../frontend-integration-guide.md#one-casing)). The list is
+already sorted by it.
 Cache it — it changes rarely and every bill and vendor form needs it.
 
 **`displayOrder` is unique**, so it is a stable way to pick and order

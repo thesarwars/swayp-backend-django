@@ -328,6 +328,17 @@ so `payment_rail` stays populated.
 
 ---
 
+### One casing
+
+**Every key is snake_case.** A few bodies shipped in camelCase: the
+notification list and socket events, push `data`, payment history, the
+profile summary, bill categories' `displayOrder`, and `pagination`. Those
+now carry **both** spellings, e.g. `unreadCount` and `unread_count`. Read the
+snake_case one. The camelCase copies stay until both apps have moved, then
+they are removed. Query parameters take either spelling: `pageSize` or
+`page_size`, `isRead` or `is_read`. If a request sends both, the camelCase one
+wins.
+
 ## 6. Errors
 
 ```json

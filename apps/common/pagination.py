@@ -3,6 +3,8 @@ from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
+from apps.common.casing import with_snake_case
+
 
 class _PastTheEnd:
     """Stands in for a Django page past the last one: empty, no next.
@@ -65,14 +67,14 @@ class StandardPagination(PageNumberPagination):
         return Response(
             {
                 "items": data,
-                "pagination": {
+                "pagination": with_snake_case({
                     "page": self.page.number,
                     "pageSize": self.get_page_size(self.request),
                     "totalPages": paginator.num_pages,
                     "totalItems": paginator.count,
                     "hasNext": self.page.has_next(),
                     "hasPrevious": self.page.has_previous(),
-                },
+                }),
             }
         )
 

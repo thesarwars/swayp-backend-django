@@ -17,6 +17,7 @@ import logging
 from django.conf import settings
 from django.db import transaction
 
+from apps.common.casing import with_snake_case
 from apps.notifications.channels.base import (
     PENDING_COMMIT,
     PUSH,
@@ -98,7 +99,8 @@ class PushChannel(NotificationChannel):
             if value:
                 payload[target] = str(value)
 
-        return payload
+        # API-5: snake_case beside the camelCase, like the API bodies.
+        return with_snake_case(payload)
 
     @staticmethod
     def _queue(*, user_id, title, body, data, notification_type):

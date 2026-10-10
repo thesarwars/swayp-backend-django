@@ -1,5 +1,7 @@
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.response import Response
+
+from apps.common.casing import with_snake_case
 
 
 class ApiResponse:
@@ -20,12 +22,12 @@ class ApiResponse:
         }
 
         if pagination:
-            body["pagination"] = pagination
+            body["pagination"] = with_snake_case(pagination)
 
         # Top-level keys that describe the whole list rather than one item,
         # beside pagination (e.g. unreadCount on GET notifications).
         if extra:
-            body.update(extra)
+            body.update(with_snake_case(extra))
 
         return Response(body, status=status_code)
 

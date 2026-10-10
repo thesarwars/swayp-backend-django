@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.common.casing import snake_case_aliases
+
 from apps.common.enums import NotificationCategory, NotificationType
 from apps.common.serializers import (
     PaginationQuerySerializer,
@@ -7,6 +9,7 @@ from apps.common.serializers import (
 )
 
 
+@snake_case_aliases
 class NotificationSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     title = serializers.CharField()
@@ -34,6 +37,7 @@ class NotificationSerializer(serializers.Serializer):
     )
 
 
+@snake_case_aliases
 class NotificationListResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
@@ -78,6 +82,7 @@ class NotificationQuerySerializer(
     )
 
 
+@snake_case_aliases
 class MarkNotificationReadResponseSerializer(
     serializers.Serializer
 ):
@@ -89,12 +94,14 @@ class MarkNotificationReadResponseSerializer(
     unreadCount = serializers.IntegerField()
 
 
+@snake_case_aliases
 class MarkedCountSerializer(serializers.Serializer):
     markedCount = serializers.IntegerField(
         help_text="Notifications that were unread and are now read."
     )
 
 
+@snake_case_aliases
 class MarkAllReadResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()

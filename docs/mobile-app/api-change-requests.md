@@ -799,6 +799,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **App today:** accepts strings and arrays, reads `detail` and `message`, and flattens nested fields with dots (`payment_method.routing_number`).
 
 #### API-5 · minor · One casing
+✅ Fixed: snake_case is the one casing. Every body that shipped camelCase now sends both spellings (notifications and their socket events, push `data`, payment history, profile summary, `displayOrder`, `pagination`, `unreadCount`/`nextCursor`/`markedCount`). Query parameters accept both. The snake_case fields are declared in OpenAPI. The camelCase copies will be removed once the apps have moved: tell us when.
 - **Today:** `dashboard/home`, bills, vendors and payment bodies are snake_case. `dashboard/profile-summary`, `notifications` and `payments/history` are camelCase.
 - **Needed:** pick one.
 

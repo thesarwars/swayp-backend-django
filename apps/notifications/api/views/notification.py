@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema
 
 from apps.common.base_views import BaseAPIView
+from apps.common.casing import with_snake_case
 from apps.common.responses import ApiResponse
 from apps.common.swagger import (
     BAD_REQUEST_RESPONSE,
@@ -134,7 +135,7 @@ class NotificationReadAllAPIView(BaseAPIView):
         )
 
         return ApiResponse.success(
-            data={"markedCount": marked},
+            data=with_snake_case({"markedCount": marked}),
             message="All notifications marked as read.",
             extra={
                 "unreadCount": self.service.unread_count(user=request.user),

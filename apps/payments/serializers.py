@@ -1,10 +1,13 @@
 from rest_framework import serializers
 
+from apps.common.casing import snake_case_aliases
+
 from apps.common.serializers import PaginationQuerySerializer
 
 
 
 
+@snake_case_aliases
 class PaymentSerializer(serializers.Serializer):
     id = serializers.UUIDField()
 

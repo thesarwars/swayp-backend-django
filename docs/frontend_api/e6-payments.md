@@ -74,7 +74,7 @@ POST /api/v1/payments
 ```json
 { "occurrence_ids": ["e200c2f4-…", "71e76f76-…"],
   "funding_account_id": "optional — defaults to the funding source",
-  "rail": "ACH_STANDARD",
+  "rail": "optional — omitted means each bill's own rail",
   "scheduled_for": "optional — YYYY-MM-DD, future-dates the send",
   "expedited": "optional — CHECK rail only, $8.99" }
 ```
@@ -107,10 +107,44 @@ The selected occurrences become `SCHEDULED`, which is what stops reminders.
 
 **Rails:** `ACH_STANDARD` (free) · `ACH_SAMEDAY` ($4.99) · `NETWORK` ·
 `CHECK` (free to the plan allotment, then $2.99; `expedited: true` = $8.99).
-Fees are [E9](e9-billing.md).
+Fees are [E9](e9-billing.md). An account with no plan is charged no fees.
 
-⚠️ **Hide same-day after the daily cutoff** (11:59 PM Eastern). Past it the
-rail cannot deliver, so it is withdrawn rather than sold — no fee, no row.
+**Omit `rail` and each bill uses its own**, the rail its saved payment
+method implies: an ACH account → `ACH_STANDARD`, a check address → `CHECK`, a
+network payee → `NETWORK`. This is the same rule autopay uses, and a batch can
+then mix rails. It used to be `ACH_STANDARD` for everything. **An explicit
+`rail` has to suit the method**, because the money goes there: an ACH account
+takes `ACH_STANDARD` or `ACH_SAMEDAY`, a check address takes `CHECK`, a network
+payee takes `NETWORK`. Anything else is a 400 on `errors.rail`.
+
+### Quote first
+
+Ask what each rail costs and when it lands before creating anything:
+
+```
+POST /api/v1/payments/quote   { "occurrence_ids": ["…"], "scheduled_for": null }
+```
+
+```json
+{ "occurrences": [
+    { "occurrence_id": "e200c2f4-…", "default_rail": "ACH_STANDARD",
+      "rails": [
+        { "rail": "ACH_STANDARD", "available": true, "unavailable_reason": null,
+          "fee": "0.00", "initiated_date": "2026-08-28",
+          "estimated_arrival": "2026-09-01", "expedited": null },
+        { "rail": "ACH_SAMEDAY", "available": false,
+          "unavailable_reason": "Past today's same-day cutoff.", "fee": "4.99", "…": "…" },
+        { "rail": "CHECK", "available": false,
+          "unavailable_reason": "This vendor is paid by ACH.", "fee": "0.00",
+          "expedited": { "fee": "8.99", "estimated_arrival": "2026-08-31" }, "…": "…" }
+      ] } ] }
+```
+
+Show only `available` rails, with their fee and arrival date. `default_rail`
+is what create uses when `rail` is omitted. The quote handles the same-day
+cutoff (11:59 PM Eastern) for you, so there is no time-zone maths on the
+client. Check fees count down the plan's free checks across the quote,
+assuming every quoted check is sent. Nothing is created or charged.
 
 ⚠️ **`expedited` is CHECK-only.** On any other rail it is a 400, not a silent
 downgrade. It cuts check transit from 5 business days to 2.

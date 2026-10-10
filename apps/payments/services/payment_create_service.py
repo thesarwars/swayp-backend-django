@@ -25,6 +25,7 @@ from apps.common.enums import (
 from apps.payments.models import Payment, PaymentBatch
 from apps.payments.models.reference import create_with_reference
 from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
+from apps.payments.services.rails import rail_for_bill, rails_for_bill
 from apps.payments.services.authorization_text import (
     for_batch,
     for_single,
@@ -62,21 +63,32 @@ class PaymentCreateService:
 
     @transaction.atomic
     def create(self, *, user, occurrence_ids, funding_account_id=None,
-               rail=PaymentRail.ACH_STANDARD, scheduled_for=None,
-               expedited=False, today=None):
+               rail=None, scheduled_for=None, expedited=False, today=None):
+        """``rail`` omitted means each bill's own: the rail its saved payment
+        method implies, the same rule autopay uses (PAY-5). It used to be
+        standard ACH for everything, so pay now on a check-only vendor went
+        out over a rail that vendor cannot receive."""
         today = today or timezone.localdate()
 
-        if rail not in SELECTABLE_RAILS:
+        if rail is not None and rail not in SELECTABLE_RAILS:
             raise ValidationError({"rail": f"Unsupported rail: {rail}."})
 
-        if expedited and rail != PaymentRail.CHECK:
+        occurrences = self._load_occurrences(user, occurrence_ids)
+
+        rails = {
+            occurrence.id: rail or rail_for_bill(occurrence.bill)
+            for occurrence in occurrences
+        }
+
+        if expedited and any(r != PaymentRail.CHECK for r in rails.values()):
             # Refused rather than ignored: silently dropping it would take the
             # customer's request for speed and give back the standard rail.
             raise ValidationError(
                 {"expedited": "Only check payments can be expedited."}
             )
 
-        occurrences = self._load_occurrences(user, occurrence_ids)
+        self._assert_rails_fit(occurrences, rails, explicit=rail is not None)
+
         funding_account = self._load_funding_account(user, funding_account_id)
 
         batch = None
@@ -92,7 +104,7 @@ class PaymentCreateService:
                 user=user,
                 occurrence=occurrence,
                 funding_account=funding_account,
-                rail=rail,
+                rail=rails[occurrence.id],
                 scheduled_for=scheduled_for,
                 expedited=expedited,
                 batch=batch,
@@ -166,6 +178,34 @@ class PaymentCreateService:
             )
 
         return create_with_reference(build, today=today)
+
+    @staticmethod
+    def _assert_rails_fit(occurrences, rails, *, explicit):
+        """An explicit rail has to suit each bill's saved method (PAY-5).
+
+        Money goes to that method, so a check-only vendor cannot be paid by
+        ACH. A bill with no saved method is left to fail as before, and
+        only when the rail was chosen by the client: the omitted-rail path
+        never picks a rail the method cannot take.
+        """
+        if not explicit:
+            return
+
+        for occurrence in occurrences:
+            allowed = rails_for_bill(occurrence.bill)
+            rail = rails[occurrence.id]
+
+            if allowed and rail not in allowed:
+                raise ValidationError(
+                    {
+                        "rail": (
+                            f"{occurrence.bill.vendor.name} is paid by "
+                            f"{occurrence.bill.payment_method.method_type}; "
+                            f"{rail} is not available for it. Use one of: "
+                            f"{', '.join(allowed)}."
+                        )
+                    }
+                )
 
     def cancellation_deadline(self, initiated_date):
         """11:59 PM Eastern on the day before the debit starts.

@@ -19,10 +19,13 @@ class PaymentCreateSerializer(serializers.Serializer):
         child=serializers.UUIDField(), allow_empty=False,
     )
     funding_account_id = serializers.UUIDField(required=False)
+    # Omitted means each bill's own rail, from its saved payment method
+    # (PAY-5). It used to default to ACH_STANDARD for everything.
     rail = serializers.ChoiceField(
         choices=PaymentRail.choices,
         required=False,
-        default=PaymentRail.ACH_STANDARD,
+        allow_null=True,
+        default=None,
     )
     scheduled_for = serializers.DateField(required=False, allow_null=True)
     # Faster check delivery for $8.99 (E9-S3). Rejected on any other rail

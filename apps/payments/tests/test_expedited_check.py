@@ -44,8 +44,10 @@ class ExpeditedCheckTests(TestCase):
         )
 
         self.bill = BillFactory(user=self.user, anchor_date=D(2026, 9, 1))
+        # A check method: these tests pay by check, and a rail has to suit
+        # the bill's saved method (PAY-5).
         self.bill.payment_method = VendorPaymentMethodFactory(
-            vendor=self.bill.vendor
+            vendor=self.bill.vendor, check=True
         )
         self.bill.save(update_fields=["payment_method"])
 

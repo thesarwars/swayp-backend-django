@@ -517,6 +517,11 @@ These matter once the bill detail screens are built:
 - **App today:** those notifications open the Pay tab. "Choose payment method" shows "Changing the payment method is not available yet."
 
 #### PAY-5 · major · Rail choice
+- **✅ Fixed, except the per-occurrence rail in a batch**:
+  - **Default:** an omitted `rail` now means **each bill's own rail**, from its saved payment method, as autopay does. It used to be `ACH_STANDARD` for everything, so pay now on a check-only vendor went out on a rail it cannot receive. When omitted, a batch can mix rails.
+  - An explicit `rail` has to suit the bill's method, otherwise 400 on `errors.rail`.
+  - **New `POST /payments/quote`:** for each occurrence, every rail with `available` and an `unavailable_reason`, the `fee`, `initiated_date` and `estimated_arrival`, the expedited option for checks, and `default_rail`. It handles the same-day cutoff and creates nothing.
+  - **Not done:** choosing a *different* explicit rail per occurrence within one batch. Omitting `rail` already gives each bill its own; ask if a per-occurrence override is still needed. See e6 §2, step 1 and "Quote first".
 - **Endpoint:** `POST /payments`.
 - **Needed:**
   - Say what `rail` defaults to when omitted: the bill's saved method, or always `ACH_STANDARD`?

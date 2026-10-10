@@ -35,27 +35,12 @@ from apps.payments.services.payment_create_service import PaymentCreateService
 
 logger = logging.getLogger(__name__)
 
-#: Rail per stored payment-method type.
-RAIL_BY_METHOD = {
-    "ACH": PaymentRail.ACH_STANDARD,
-    "NETWORK": PaymentRail.NETWORK,
-    "CHECK": PaymentRail.CHECK,
-}
-
-
-def rail_for_bill(bill):
-    """The rail a bill's stored payment method implies.
-
-    Module-level because E8-S4's reminder window is measured from
-    ``initiation_date(due_date, rail)`` — a check has to be approved three
-    business days earlier than an ACH debit for the same due date.
-    """
-    method = bill.payment_method
-
-    if method is None:
-        return PaymentRail.ACH_STANDARD
-
-    return RAIL_BY_METHOD.get(method.method_type, PaymentRail.ACH_STANDARD)
+# Moved to rails.py (PAY-5) so the create service can share them without a
+# circular import; re-exported because callers reach them through here.
+from apps.payments.services.rails import (  # noqa: E402,F401
+    RAIL_BY_METHOD,
+    rail_for_bill,
+)
 
 
 class AutopayService:

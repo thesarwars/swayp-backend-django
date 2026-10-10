@@ -12,7 +12,7 @@ from rest_framework.exceptions import ValidationError
 from apps.banking.models import BankAccount, BankConnectionStatus
 from apps.common.enums import PaymentRail, VendorStatus
 from apps.payments.services.authorization_text import for_recurring
-from apps.payments.services.autopay_service import RAIL_BY_METHOD
+from apps.payments.services.rails import RAIL_BY_METHOD
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
 #: Used in the text when the account has no linked bank yet.

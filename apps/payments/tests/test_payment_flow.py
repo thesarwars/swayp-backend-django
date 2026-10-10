@@ -856,3 +856,81 @@ class UnconfirmedPaymentTests(PayFlowTestCase):
         self.assertIsNotNone(after["authorized_at"])
         self.assertEqual(after["authorization_text"], AUTH_TEXT)
         self.assertIsNone(after["confirm_by"])
+
+
+class RailDefaultAndQuoteTests(PayFlowTestCase):
+    """PAY-5: an omitted rail follows the bill's saved method, an explicit
+    one has to suit it, and the quote prices every rail up front."""
+
+    def use_check_method(self):
+        check = VendorPaymentMethodFactory(
+            vendor=self.bill.vendor, check=True, is_primary=False
+        )
+        self.bill.payment_method = check
+        self.bill.save(update_fields=["payment_method"])
+
+    def test_an_omitted_rail_follows_the_bills_method(self):
+        self.use_check_method()
+
+        payment = self.create([self.occurrence()])["payments"][0]
+
+        self.assertEqual(payment.rail, PaymentRail.CHECK)
+
+    def test_an_ach_bill_still_defaults_to_standard_ach(self):
+        payment = self.create([self.occurrence()])["payments"][0]
+
+        self.assertEqual(payment.rail, PaymentRail.ACH_STANDARD)
+
+    def test_an_explicit_rail_the_method_cannot_take_is_refused(self):
+        from rest_framework.exceptions import ValidationError
+
+        self.use_check_method()
+
+        with self.assertRaises(ValidationError) as caught:
+            self.create([self.occurrence()], rail=PaymentRail.ACH_STANDARD)
+
+        self.assertIn("rail", caught.exception.detail)
+
+    def quote(self, **body):
+        body.setdefault("occurrence_ids", [str(self.occurrence().id)])
+        return self.client.post("/api/v1/payments/quote", body, format="json")
+
+    def rails(self, response):
+        return {
+            row["rail"]: row
+            for row in response.json()["data"]["occurrences"][0]["rails"]
+        }
+
+    def test_the_quote_lists_every_rail_with_availability(self):
+        response = self.quote()
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]["occurrences"][0]
+        self.assertEqual(data["default_rail"], "ACH_STANDARD")
+
+        rails = self.rails(response)
+        self.assertTrue(rails["ACH_STANDARD"]["available"])
+        self.assertFalse(rails["CHECK"]["available"])
+        self.assertIn("paid by ACH", rails["CHECK"]["unavailable_reason"])
+
+    def test_the_quote_creates_nothing(self):
+        self.quote()
+
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_no_plan_means_no_fees_as_at_execution(self):
+        rails = self.rails(self.quote())
+
+        self.assertEqual(rails["ACH_SAMEDAY"]["fee"], "0.00")
+
+    def test_with_a_plan_same_day_and_expedited_are_priced(self):
+        from apps.billing.factories import SubscriptionFactory
+
+        SubscriptionFactory(account=self.user)
+        self.use_check_method()
+
+        rails = self.rails(self.quote())
+
+        self.assertEqual(rails["ACH_SAMEDAY"]["fee"], "4.99")
+        self.assertEqual(rails["CHECK"]["expedited"]["fee"], "8.99")
+        self.assertTrue(rails["CHECK"]["available"])

@@ -12,6 +12,7 @@ from apps.payments.api.views.payment import (
     PaymentResolveAPIView,
     PaymentStatusAPIView,
 )
+from apps.payments.api.views.quote import PaymentQuoteAPIView
 from apps.payments.views import (
     PaymentFailedAPIView,
     PaymentHistoryAPIView,
@@ -23,6 +24,7 @@ app_name = "payments"
 
 urlpatterns = [
     path("", PaymentCreateAPIView.as_view(), name="payment-create"),
+    path("/quote", PaymentQuoteAPIView.as_view(), name="payment-quote"),
     path(
         "/history",
         PaymentHistoryAPIView.as_view(),

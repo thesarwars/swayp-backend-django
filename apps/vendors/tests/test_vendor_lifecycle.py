@@ -238,3 +238,96 @@ class SpendTests(VendorTestCase):
         self.assertIn("monthly_spend", data)
         self.assertIn("next_bill", data)
         self.assertEqual(len(data["monthly_spend"]), 12)
+
+
+class DeleteStopsBillsTests(TestCase):
+    """VEND-11: deleting a vendor stops its bills — no new occurrences, no
+    autopay — and restore brings them back on REMIND."""
+
+    def setUp(self):
+        from apps.bills.factories import BillFactory, BillOccurrenceFactory
+        from apps.bills.models.standing_authorization import (
+            StandingAuthorization,
+        )
+        from apps.common.enums import AutopayMode
+        from apps.vendors.factories import UserFactory, VendorFactory
+
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.vendor = VendorFactory(user=self.user)
+        self.bill = BillFactory(
+            user=self.user, vendor=self.vendor,
+            autopay_mode=AutopayMode.AUTO,
+            anchor_date=dt.date(2030, 1, 1),
+        )
+        self.upcoming = BillOccurrenceFactory(
+            bill=self.bill, due_date=dt.date(2030, 1, 1)
+        )
+        StandingAuthorization.objects.create(
+            bill=self.bill, authorization_text="I authorize…",
+            accepted_at=dt.datetime(2026, 1, 1, tzinfo=dt.timezone.utc),
+            ip="203.0.113.9",
+        )
+        self.StandingAuthorization = StandingAuthorization
+
+    def delete(self):
+        return self.client.delete(f"/api/v1/vendors/{self.vendor.id}")
+
+    def test_delete_takes_the_bills_down_with_it(self):
+        from apps.bills.models.bill_occurrence import BillOccurrence
+
+        self.assertEqual(self.delete().status_code, 204)
+
+        self.bill.refresh_from_db()
+        self.assertIsNotNone(self.bill.deleted_at)
+        self.assertFalse(
+            BillOccurrence.objects.filter(pk=self.upcoming.pk).exists()
+        )
+        self.assertIsNotNone(
+            self.StandingAuthorization.objects.get().revoked_at
+        )
+
+    def test_autopay_no_longer_finds_the_bill(self):
+        from apps.payments.services.autopay_service import AutopayService
+
+        self.delete()
+
+        due = AutopayService().due_occurrences(today=dt.date(2030, 1, 1))
+
+        self.assertFalse(any(o.bill_id == self.bill.id for o in due))
+
+    def test_restore_brings_the_bills_back_on_remind(self):
+        from apps.common.enums import AutopayMode
+
+        self.delete()
+
+        response = self.client.post(f"/api/v1/vendors/{self.vendor.id}/restore")
+
+        self.assertEqual(response.status_code, 200)
+        self.vendor.refresh_from_db()
+        self.bill.refresh_from_db()
+        self.assertEqual(self.vendor.status, VendorStatus.ACTIVE)
+        self.assertIsNone(self.bill.deleted_at)
+        self.assertEqual(self.bill.autopay_mode, AutopayMode.REMIND)
+        self.assertTrue(self.bill.occurrences.exists())
+
+    def test_a_bill_deleted_earlier_stays_deleted(self):
+        from apps.bills.factories import BillFactory
+        from django.utils import timezone
+
+        earlier = BillFactory(
+            user=self.user, vendor=self.vendor,
+            deleted_at=timezone.now() - dt.timedelta(days=3),
+        )
+
+        self.delete()
+        self.client.post(f"/api/v1/vendors/{self.vendor.id}/restore")
+
+        earlier.refresh_from_db()
+        self.assertIsNotNone(earlier.deleted_at)
+
+    def test_restoring_an_active_vendor_is_a_400(self):
+        response = self.client.post(f"/api/v1/vendors/{self.vendor.id}/restore")
+
+        self.assertEqual(response.status_code, 400)

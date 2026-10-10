@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.enums import PaymentStatus, VendorStatus
@@ -69,8 +70,59 @@ class VendorService:
                 }
             )
 
+        # The vendor's bills go with it (VEND-11). Marking only the vendor
+        # left its bills live: the nightly job kept creating occurrences,
+        # reminders kept going out, and autopay kept paying a vendor the user
+        # had deleted. Each bill is soft-deleted the way a bill delete does it
+        # (open occurrences dropped, autopay authorization revoked, paid
+        # history kept), stamped with the vendor's own deletion time.
+        from apps.bills.services.bill_service import BillService
+
+        now = timezone.now()
+        bills = BillService()
+
+        for bill in vendor.bills.filter(deleted_at__isnull=True):
+            bills.occurrence_service.drop_open_occurrences(bill)
+            bills.consent_service.revoke(bill=bill)
+            bill.deleted_at = now
+            bill.save(update_fields=["deleted_at", "updated_at"])
+
         vendor.status = VendorStatus.DELETED
-        vendor.save(update_fields=["status"])
+        vendor.deleted_at = now
+        vendor.save(update_fields=["status", "deleted_at", "updated_at"])
+
+    @staticmethod
+    @transaction.atomic
+    def restore(vendor):
+        """Undo a delete, bringing back the bills that went with it (VEND-11).
+
+        Only bills deleted at the vendor's deletion time come back; one the
+        user deleted earlier stays deleted. Restored bills come back on
+        REMIND: their autopay authorization was revoked, and paying
+        automatically again needs fresh consent.
+        """
+        from apps.bills.services.bill_service import BillService
+        from apps.common.enums import AutopayMode
+
+        if vendor.status != VendorStatus.DELETED:
+            raise ValidationError({"vendor": "This vendor is not deleted."})
+
+        bills = BillService()
+
+        if vendor.deleted_at is not None:
+            for bill in vendor.bills.filter(deleted_at=vendor.deleted_at):
+                bill.deleted_at = None
+                bill.autopay_mode = AutopayMode.REMIND
+                bill.save(
+                    update_fields=["deleted_at", "autopay_mode", "updated_at"]
+                )
+                bills.occurrence_service.generate_occurrences(bill)
+
+        vendor.status = VendorStatus.ACTIVE
+        vendor.deleted_at = None
+        vendor.save(update_fields=["status", "deleted_at", "updated_at"])
+
+        return vendor
 
 
 class VendorPaymentMethodService:

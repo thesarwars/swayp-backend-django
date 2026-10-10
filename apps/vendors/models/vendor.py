@@ -76,6 +76,11 @@ class Vendor(BaseModel):
         blank=True
     )
 
+    # When the vendor was deleted (VEND-11). Its bills are soft-deleted with
+    # this same timestamp, which is how restore tells them apart from bills
+    # the user had deleted on their own before.
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "vendors"
 

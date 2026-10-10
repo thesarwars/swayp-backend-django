@@ -652,6 +652,7 @@ These matter once the bill detail screens are built:
 - **App today:** treats a 400 as "Routing number invalid", a 429 as a rate-limit message, and anything else as "unavailable".
 
 #### VEND-11 · minor · Delete semantics
+- **✅ Fixed, plus a bug found**: deleting a vendor only marked the vendor, so its bills stayed live. Occurrences kept being created, reminders kept going out, and **autopay kept paying the deleted vendor**. Now delete also deletes its bills: upcoming unpaid occurrences are dropped, autopay is revoked, paid history is kept. Delete **is** refused (400) while a payment is scheduled or in flight. New `POST /vendors/{id}/restore` undoes it: the bills that went with it come back **on REMIND**, because autopay needs fresh consent. Bills deleted separately stay deleted. Your "Its bills and payment history are kept" copy should become "Its upcoming bills stop; payment history is kept." See e3 §7.
 - **Endpoint:** `DELETE /vendors/{id}`.
 - **Needed:**
   - A restore endpoint (for "undo").

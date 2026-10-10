@@ -1,3 +1,5 @@
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import (
     ListCreateAPIView,
@@ -22,6 +24,7 @@ from apps.vendors.services.vendor_service import (
     VendorService,
 )
 from apps.teams.access import AccountScopedMixin
+from apps.vendors.models import Vendor
 
 
 class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
@@ -92,3 +95,29 @@ class VendorSummaryAPIView(AccountScopedMixin, APIView):
         serializer = VendorSummarySerializer(instance=data)
 
         return Response(serializer.data)
+
+@extend_schema(
+    tags=["Vendors"],
+    summary="Restore a deleted vendor",
+    description=(
+        "Undoes a delete. The vendor's bills that were deleted with it come "
+        "back on REMIND (their autopay authorization was revoked; turning "
+        "autopay back on needs fresh consent), and their upcoming "
+        "occurrences are regenerated. Bills deleted separately stay deleted. "
+        "400 if the vendor is not deleted."
+    ),
+    request=None,
+    responses={200: VendorDetailSerializer},
+)
+class VendorRestoreAPIView(AccountScopedMixin, APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, vendor_id):
+        vendor = get_object_or_404(
+            Vendor, id=vendor_id, user=self.account(request)
+        )
+
+        VendorService.restore(vendor)
+
+        return Response(VendorDetailSerializer(vendor).data)

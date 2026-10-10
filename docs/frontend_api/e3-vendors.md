@@ -173,7 +173,31 @@ format is provisional.
 
 `DELETE /api/v1/vendors/<id>` is a **soft delete** — 204, and the vendor
 disappears from the default list but is still readable under
-`?status=DELETED`. Bills and payment history that reference it survive.
+`?status=DELETED`.
+
+**Its bills stop with it.** Each of the vendor's bills is deleted the same
+way a bill delete does it:
+- upcoming unpaid occurrences are removed, so no reminders and no new due
+  dates;
+- the autopay authorization is revoked, so **autopay never pays a deleted
+  vendor**;
+- **paid history is kept**, so payments and receipts still show.
+
+**Refused while money is moving:** a vendor with a payment scheduled or in
+flight is a 400 on `errors.vendor`. Cancel the payment or wait for it to
+settle first.
+
+**Undo:**
+
+```
+POST /api/v1/vendors/<id>/restore
+```
+
+Answers with the vendor detail. The bills deleted *with* the vendor come
+back, with their upcoming occurrences regenerated, **on REMIND**: their
+autopay authorization was revoked, so turning autopay back on needs the user's
+consent again. A bill deleted separately before the vendor stays deleted.
+Restoring a vendor that isn't deleted is a 400.
 
 Deleting the **primary** payment method promotes another automatically, so the
 rail chip on the vendor row keeps working. Deleting the last one leaves the

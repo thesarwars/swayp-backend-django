@@ -153,9 +153,8 @@ class EasternEveningTests(TestCase):
         self.assertEqual(
             onboarding["bills"],
             {
-                "total_due_this_month": Decimal(
-                    bills["total_due_this_month"]
-                ),
+                # Both are the same money string now, not just equal sums.
+                "total_due_this_month": bills["total_due_this_month"],
                 "overdue_count": bills["overdue_count"],
                 "due_count": bills["due_count"],
                 "upcoming_count": bills["upcoming_count"],
@@ -229,6 +228,6 @@ class EasternMonthEndTests(TestCase):
         onboarding = self.client.get(ONBOARDING_SUMMARY_URL).data["data"]
 
         self.assertEqual(
-            onboarding["bills"]["total_due_this_month"], Decimal("600.00")
+            onboarding["bills"]["total_due_this_month"], "600.00"
         )
         self.assertEqual(onboarding["bills"]["overdue_count"], 0)

@@ -1,12 +1,15 @@
+import uuid
 from decimal import Decimal
 
 from django.db.models import Count, Q
 from django.db.models.aggregates import Sum
+from rest_framework.exceptions import ValidationError
 
 from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.bills.selectors.bill_selector import BillSelector
 from apps.bills.selectors.occurrence_status import (
     TERMINAL_STATUSES,
+    annotate_row,
     annotate_status,
     open_occurrences,
 )
@@ -17,7 +20,23 @@ _RELATED = (
     "bill",
     "bill__vendor",
     "bill__category",
+    "bill__payment_method",
 )
+
+
+def _multi(filters, key):
+    """Every value of ``key``: repeated params, comma-separated, or both."""
+    if hasattr(filters, "getlist"):
+        raw = filters.getlist(key)
+    else:
+        raw = [filters.get(key) or ""]
+
+    return [
+        part.strip()
+        for value in raw
+        for part in str(value).split(",")
+        if part.strip()
+    ]
 
 
 class BillOccurrenceSelector:
@@ -66,6 +85,11 @@ class BillOccurrenceSelector:
             upcoming_count=Count("id", filter=open_q & Q(due_date__gt=today)),
             due_count=Count("id", filter=open_q & Q(due_date=today)),
             overdue_count=Count("id", filter=open_q & Q(due_date__lt=today)),
+            # Any month: everything queued to pay, for the "Scheduled" chip
+            # (BILLS-8). Same aggregate, so no extra query.
+            scheduled_count=Count(
+                "id", filter=Q(status=BillOccurrenceStatus.SCHEDULED)
+            ),
         )
 
         return {
@@ -80,6 +104,7 @@ class BillOccurrenceSelector:
             "due_count": agg["due_count"],
             "overdue_count": agg["overdue_count"],
             "paid_count": agg["paid_count"],
+            "scheduled_count": agg["scheduled_count"],
             # Bills, not occurrences — "Overdue 14 / Due 9 / Upcoming 14" and
             # "Total Bills 6" only reconcile if they count different units
             # (docs/epics/epic-4-bills.md:7).
@@ -99,7 +124,7 @@ class BillOccurrenceSelector:
         today = today or today_eastern()
 
         return (
-            annotate_status(
+            annotate_row(
                 self._for_user(user).filter(due_date__lte=today), today
             )
             .select_related(*_RELATED)
@@ -109,14 +134,15 @@ class BillOccurrenceSelector:
     def list_occurrences(self, user, filters=None, today=None):
         """Occurrence rows for the bills list screen (E4-S2).
 
-        Filters: ``status`` (the computed one), ``vendor``, ``date_from``,
-        ``date_to``. Status is filtered on the annotation, so "overdue" means
-        what the screen shows rather than what happens to be stored.
+        Filters: ``status`` (the computed one; several allowed), ``vendor``,
+        ``category`` (several allowed), ``date_from``, ``date_to``. Status is
+        filtered on the annotation, so "overdue" means what the screen shows
+        rather than what happens to be stored.
         """
         today = today or today_eastern()
         filters = filters or {}
 
-        queryset = annotate_status(self._for_user(user), today)
+        queryset = annotate_row(self._for_user(user), today)
 
         vendor = (filters.get("vendor") or "").strip()
         if vendor:
@@ -130,9 +156,28 @@ class BillOccurrenceSelector:
         if date_to:
             queryset = queryset.filter(due_date__lte=date_to)
 
-        status = (filters.get("status") or "").strip().upper()
-        if status in BillOccurrenceStatus.values:
-            queryset = queryset.filter(computed_status=status)
+        # Repeatable or comma-separated: ?status=OVERDUE&status=DUE or
+        # ?status=OVERDUE,DUE (BILLS-8). Unknown values are ignored, as a
+        # single unknown status always was.
+        statuses = [
+            value.upper()
+            for value in _multi(filters, "status")
+            if value.upper() in BillOccurrenceStatus.values
+        ]
+        if statuses:
+            queryset = queryset.filter(computed_status__in=statuses)
+
+        # Category ids, repeatable or comma-separated (BILLS-14).
+        categories = _multi(filters, "category")
+        if categories:
+            try:
+                queryset = queryset.filter(
+                    bill__category_id__in=[uuid.UUID(c) for c in categories]
+                )
+            except ValueError:
+                raise ValidationError(
+                    {"category": ["Must be category ids."]}
+                )
 
         return queryset.select_related(*_RELATED).order_by("due_date")
 

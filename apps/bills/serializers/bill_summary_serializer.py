@@ -11,4 +11,9 @@ class BillSummarySerializer(serializers.Serializer):
     overdue_count = serializers.IntegerField()
     # Bills, not occurrences — see docs/epics/epic-4-bills.md:7.
     total_bills = serializers.IntegerField()
-    paid_count = serializers.IntegerField()
+    paid_count = serializers.IntegerField(
+        help_text="Paid occurrences due this month."
+    )
+    scheduled_count = serializers.IntegerField(
+        help_text="Occurrences queued to pay, any month (BILLS-8)."
+    )

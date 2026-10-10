@@ -18,10 +18,27 @@ from apps.teams.access import AccountScopedMixin
     summary="List bill occurrences",
     description=(
         "The rows the bills screen shows. Each row is one due date, not one "
-        "bill — status is computed from the due date at read time."
+        "bill — status is computed from the due date at read time. Ordered "
+        "by due_date, earliest first."
     ),
     parameters=[
-        OpenApiParameter("status", str, description="UPCOMING|DUE|OVERDUE|SCHEDULED|PAID"),
+        OpenApiParameter(
+            "status",
+            str,
+            many=True,
+            description=(
+                "UPCOMING|DUE|OVERDUE|SCHEDULED|PAID. Several allowed, "
+                "repeated or comma-separated."
+            ),
+        ),
+        OpenApiParameter(
+            "category",
+            str,
+            many=True,
+            description=(
+                "Category id. Several allowed, repeated or comma-separated."
+            ),
+        ),
         OpenApiParameter("vendor", str, description="Vendor id"),
         OpenApiParameter("date_from", str, description="YYYY-MM-DD"),
         OpenApiParameter("date_to", str, description="YYYY-MM-DD"),

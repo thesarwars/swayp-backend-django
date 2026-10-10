@@ -794,6 +794,11 @@ class HomePayloadShapeTests(HomeTestCase):
         "amount",
         "status",
         "autopay_mode",
+        # BILLS-8 / BILLS-14, shared with bills/occurrences.
+        "category_id",
+        "payment_method",
+        "days_overdue",
+        "payment_id",
     }
 
     def test_the_payload_has_exactly_the_epics_five_sections(self):

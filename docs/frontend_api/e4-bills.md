@@ -41,7 +41,7 @@ date rolls over; you never refresh to "catch up".
 ## 3. The list screen
 
 ```
-GET /api/v1/bills/occurrences?status=&vendor=&date_from=&date_to=&page=1
+GET /api/v1/bills/occurrences?status=&vendor=&category=&date_from=&date_to=&page=1
 ```
 
 ```json
@@ -51,8 +51,10 @@ GET /api/v1/bills/occurrences?status=&vendor=&date_from=&date_to=&page=1
   "data": [
     { "id": "219b2fdf-…", "bill_id": "d788620d-…",
       "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork", "vendor_logo": "",
-      "category_name": "Rent", "due_date": "2026-09-01",
-      "amount": "3200.00", "status": "UPCOMING", "autopay_mode": "REMIND" }
+      "category_id": "7a1d…", "category_name": "Rent",
+      "due_date": "2026-09-01", "amount": "3200.00",
+      "status": "UPCOMING", "days_overdue": 0, "autopay_mode": "REMIND",
+      "payment_method": "ACH", "payment_id": null }
   ],
   "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
                   "totalItems": 1, "hasNext": false, "hasPrevious": false }
@@ -64,6 +66,29 @@ Note `data` **and** `pagination` both at the top level.
 Each row carries `vendor_name`, `vendor_logo` and `category_name` already —
 no second request to render the list.
 
+- `category_id`: the id behind `category_name`. Match categories by id, never
+  by name.
+- `days_overdue`: calendar days past due on an `OVERDUE` row, `0` otherwise.
+  It is the same number bill detail reports.
+- `payment_method`: the bill's saved method type (`ACH`, `CHECK`,
+  `NETWORK`), or `null`.
+- `payment_id`: on a `SCHEDULED` or `PAID` row, the payment behind it, so
+  the row can open the payment. `null` on other rows, and on a bill marked
+  paid outside Swayp.
+
+**Filters.** Rows are ordered by `due_date`, earliest first.
+
+| Param | Values |
+|---|---|
+| `status` | Several allowed: `?status=OVERDUE&status=DUE` or `?status=OVERDUE,DUE`. |
+| `category` | Category ids, several allowed the same way. A non-id is a 400. |
+| `vendor` | One vendor id. |
+| `date_from`, `date_to` | `YYYY-MM-DD`, inclusive. |
+
+All filters combine. For the Pay tab's "unsettled" view, use
+`status=OVERDUE,DUE,UPCOMING`. For a category screen, use
+`category=<id>&status=…`, with no client-side filtering.
+
 ### Summary chips
 
 ```
@@ -72,8 +97,12 @@ GET /api/v1/bills/summary
 
 ```json
 { "total_due_this_month": "0.00", "upcoming_count": 1, "due_count": 0,
-  "overdue_count": 0, "total_bills": 1, "paid_count": 0 }
+  "overdue_count": 0, "total_bills": 1, "paid_count": 0,
+  "scheduled_count": 0 }
 ```
+
+`paid_count` covers this month. `scheduled_count` covers every queued
+payment, any month.
 
 `total_bills` counts **bills**; the three `_count` fields count
 **occurrences**. See §1.

@@ -413,3 +413,91 @@ class BillDetailIdsTests(BillFixtureMixin, TestCase):
 
         self.assertIsNotNone(data["last_paid_at"])
         self.assertEqual(data["total_paid"], "3200.00")
+
+
+class OccurrenceRowFieldsTests(BillFixtureMixin, TestCase):
+    """BILLS-8 / BILLS-14: rows carry what the Pay tab and the category
+    screen need, and the list filters by several statuses and categories."""
+
+    URL = "/api/v1/bills/occurrences"
+
+    def rows(self, query=""):
+        return self.client.get(f"{self.URL}{query}").json()["data"]
+
+    def test_an_overdue_row_counts_its_days(self):
+        from apps.common.dates import today_eastern
+
+        due = today_eastern() - dt.timedelta(days=11)
+        self.occurrence(self.bill, due)
+
+        row = self.rows()[0]
+
+        self.assertEqual(row["status"], "OVERDUE")
+        self.assertEqual(row["days_overdue"], 11)
+        self.assertEqual(row["category_id"], str(self.category.id))
+        self.assertIsNone(row["payment_method"])
+
+    def test_a_scheduled_row_links_its_live_payment(self):
+        from apps.payments.factories import PaymentFactory
+
+        occurrence = self.occurrence(
+            self.bill, D(2030, 1, 1), status=BillOccurrenceStatus.SCHEDULED
+        )
+        PaymentFactory(
+            user=self.user, bill_occurrence=occurrence,
+            status=PaymentStatus.CANCELLED,
+        )
+        live = PaymentFactory(
+            user=self.user, bill_occurrence=occurrence,
+            status=PaymentStatus.SCHEDULED,
+        )
+
+        row = self.rows()[0]
+
+        self.assertEqual(row["payment_id"], str(live.id))
+
+    def test_an_open_row_has_no_payment(self):
+        self.occurrence(self.bill, D(2030, 1, 1))
+
+        self.assertIsNone(self.rows()[0]["payment_id"])
+
+    def test_several_statuses_in_either_form(self):
+        from apps.common.dates import today_eastern
+
+        self.occurrence(self.bill, today_eastern() - dt.timedelta(days=3))
+        self.occurrence(self.bill, today_eastern())
+        self.occurrence(self.bill, D(2030, 1, 1))
+
+        for query in ("?status=OVERDUE&status=DUE", "?status=overdue,due"):
+            with self.subTest(query=query):
+                self.assertEqual(
+                    sorted(row["status"] for row in self.rows(query)),
+                    ["DUE", "OVERDUE"],
+                )
+
+    def test_category_filter_is_by_id_and_combines_with_status(self):
+        utilities = BillCategory.objects.create(
+            name="Utilities", icon="https://e.com/u.png", color="#222"
+        )
+        self.other_bill.category = utilities
+        self.other_bill.save(update_fields=["category"])
+        self.occurrence(self.bill, D(2030, 1, 1))
+        self.occurrence(self.other_bill, D(2030, 1, 2))
+
+        rows = self.rows(f"?category={utilities.id}&status=UPCOMING")
+
+        self.assertEqual([r["category_id"] for r in rows], [str(utilities.id)])
+
+    def test_a_bad_category_is_a_400(self):
+        response = self.client.get(f"{self.URL}?category=rent")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_summary_counts_scheduled(self):
+        self.occurrence(
+            self.bill, D(2030, 1, 1), status=BillOccurrenceStatus.SCHEDULED
+        )
+
+        summary = self.client.get("/api/v1/bills/summary").json()["data"]
+
+        self.assertEqual(summary["scheduled_count"], 1)

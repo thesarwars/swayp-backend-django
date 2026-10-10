@@ -11,7 +11,7 @@ until the next tick; annotating instead means the transition happens the
 moment the clock does.
 """
 
-from django.db.models import Case, CharField, F, Value, When
+from django.db.models import Case, CharField, F, OuterRef, Subquery, Value, When
 
 from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus
@@ -40,6 +40,31 @@ def annotate_status(queryset, today=None):
     """Attach ``computed_status`` to every row of ``queryset``."""
     return queryset.annotate(
         computed_status=status_expression(today),
+    )
+
+
+#: Payment states that no longer stand behind an occurrence.
+_DEAD_PAYMENT_STATUSES = ("FAILED", "CANCELLED", "REFUNDED", "RETURNED")
+
+
+def annotate_row(queryset, today=None):
+    """``computed_status`` plus ``active_payment_id``: what a row needs.
+
+    The payment is the newest one still standing behind the occurrence, so
+    a SCHEDULED or PAID row can link to it (BILLS-8). A Subquery, so a page
+    of rows stays one query however many rows it holds.
+    """
+    from apps.payments.models import Payment
+
+    payment = (
+        Payment.objects.filter(bill_occurrence=OuterRef("pk"))
+        .exclude(status__in=_DEAD_PAYMENT_STATUSES)
+        .order_by("-created_at")
+        .values("id")[:1]
+    )
+
+    return annotate_status(queryset, today).annotate(
+        active_payment_id=Subquery(payment)
     )
 
 

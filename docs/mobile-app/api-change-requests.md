@@ -393,6 +393,7 @@ Contents:
 - **App today:** Home's "Enter Bill Details" opens the add-bill wizard and its bill-type badges open that category's bills, so these demo flows have no entry point any more.
 
 #### BILLS-14 · major · Bill occurrences cannot be filtered by category
+- **✅ Fixed**: `GET /bills/occurrences` takes `category` (category id; several allowed), combinable with `status` and the other filters, and every row carries `category_id`. The category screen no longer needs to page through everything or match on names. Not done: the optional count per category. Ask if the Home badges still need it. See e4 §3.
 - **Endpoint:** `GET /bills/occurrences`, and the `BillOccurrenceRow` shape.
 - **Today:**
   - The only filters are `status`, `vendor`, `date_from` and `date_to` (confirmed against `/api/schema` on 2026-10-08). There is no `category`, although `GET /vendors` already takes one as a uuid.
@@ -409,6 +410,7 @@ Contents:
   - Matching on the name breaks if a category is renamed or two categories share a name — the app has no id to fall back on. See also [BILLS-9](#bills-9--minor--category-codes).
 
 #### BILLS-8 · minor · Occurrence rows
+- **✅ Fixed**: each occurrence row now has `payment_method` (the bill's method type or `null`), `days_overdue` (calendar days on an `OVERDUE` row, else 0, the same as bill detail) and `payment_id` (the payment behind a `SCHEDULED` or `PAID` row). `status` takes several values (`?status=OVERDUE,DUE` or repeated), and the order is documented: `due_date`, earliest first. `bills/summary` has `scheduled_count`. The same rows feed the home pay panel and recent bills. See e4 §3.
 - **Endpoint:** `GET /bills/occurrences`, `GET /bills/summary`.
 - **Needed:**
   - On each row: `payment_method` (or the default `rail`), `days_overdue`, and the `payment_id` of the active payment for `SCHEDULED` and `PAID` rows.

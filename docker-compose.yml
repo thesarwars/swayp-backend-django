@@ -75,6 +75,41 @@ services:
       redis:
         condition: service_started
 
+  # WebSockets on 5011, the same service and port as docker-compose.prod.yml,
+  # so one nginx config (/ws/ -> 5011, everything else -> 5010; see
+  # docs/deployment.md) works against either stack. runserver on 5010 also
+  # answers /ws/ in dev, because daphne is in INSTALLED_APPS — this service is
+  # for parity with production, not because dev lacks a socket.
+  websocket:
+    build: .
+    container_name: swayp-websocket
+    command: daphne -b 0.0.0.0 -p 5011 --proxy-headers config.asgi:application
+    volumes:
+      - .:/app
+    # Loopback: nginx on the host reaches it there, and nothing else should.
+    ports:
+      - "127.0.0.1:5011:5011"
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      POSTGRES_DB: swayp_db
+      POSTGRES_USER: swayp
+      POSTGRES_PASSWORD: swayp123
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
+      PUSH_ENABLED: ${PUSH_ENABLED:-true}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      # web runs the migrations in this stack; the socket reads users.
+      web:
+        condition: service_started
+
   celery-worker:
     build: .
     container_name: swayp-celery-worker

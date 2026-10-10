@@ -26,6 +26,11 @@ from apps.payments.services.resolution_service import (
 )
 from rest_framework.exceptions import ValidationError
 
+from apps.payments.api.serializers.resolution import (
+    PaymentFailureResponseSerializer,
+    ResolveResponseSerializer,
+)
+
 
 @extend_schema(
     tags=["Payments"],
@@ -295,9 +300,11 @@ class BatchCancelAPIView(AccountScopedMixin, BaseAPIView):
     tags=["Payments"],
     summary="Failure detail",
     description=(
-        "Reason, the balance at the attempt, days overdue and the vendor's "
-        "late-fee countdown."
+        "Display-ready title and explanation, the reason code and the "
+        "balance at the attempt, days overdue, the vendor's late-fee "
+        "countdown and the actions resolve accepts."
     ),
+    responses={200: PaymentFailureResponseSerializer},
 )
 class PaymentFailureAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -316,10 +323,14 @@ class PaymentFailureAPIView(AccountScopedMixin, BaseAPIView):
     tags=["Payments"],
     summary="Resolve a failed payment",
     description=(
-        "retry, change_method or reschedule. Always creates a new payment "
-        "against the same bill; the failed one stays terminal."
+        "retry, change_method or reschedule (lowercase). Always creates a "
+        "new payment against the same bill; the failed one stays terminal. "
+        "The new payment needs confirming: show authorization_text, then "
+        "POST payments/<id>/confirm with it. change_method moves to the new "
+        "method's rail."
     ),
     request=ResolveSerializer,
+    responses={201: ResolveResponseSerializer},
 )
 class PaymentResolveAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -349,6 +360,10 @@ class PaymentResolveAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
                     "action": result["action"],
                     "payment": PaymentSerializer(result["payment"]).data,
                     "replaced_payment_id": result["replaced"].id,
+                    # The replacement needs confirming like any new payment
+                    # (PAY-6): show this, then POST payments/<id>/confirm.
+                    "authorization_text": result["authorization_text"],
+                    "requires_confirmation": True,
                 },
                 message=f"Payment {result['action']} scheduled.",
                 status_code=status.HTTP_201_CREATED,

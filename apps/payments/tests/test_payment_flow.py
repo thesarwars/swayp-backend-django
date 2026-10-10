@@ -971,3 +971,51 @@ class TraceabilityTests(PayFlowTestCase):
         response = self.client.get(f"/api/v1/bills/occurrences/{theirs.id}")
 
         self.assertEqual(response.status_code, 404)
+
+
+class ResolutionShapeTests(PayFlowTestCase):
+    """PAY-6: failure is display-ready, a resolve says what to confirm, and a
+    new method takes its own rail."""
+
+    failed_payment = ResolutionTests.failed_payment
+
+    def test_failure_has_display_ready_words(self):
+        payment = self.failed_payment()
+
+        data = self.client.get(f"/api/v1/payments/{payment.id}/failure").json()[
+            "data"
+        ]
+
+        self.assertEqual(data["title"], "Not enough money in the account")
+        self.assertIn("Add funds", data["explanation"])
+        self.assertEqual(
+            data["available_actions"], ["retry", "change_method", "reschedule"]
+        )
+
+    def test_resolve_returns_the_text_to_confirm(self):
+        payment = self.failed_payment()
+
+        data = self.client.post(
+            f"/api/v1/payments/{payment.id}/resolve",
+            {"action": "retry"},
+            format="json",
+        ).json()["data"]
+
+        self.assertTrue(data["requires_confirmation"])
+        self.assertIn("I authorize Swayp", data["authorization_text"])
+        self.assertEqual(data["replaced_payment_id"], str(payment.id))
+
+    def test_change_method_moves_to_the_new_methods_rail(self):
+        payment = self.failed_payment()
+        check = VendorPaymentMethodFactory(
+            vendor=self.bill.vendor, check=True, is_primary=False
+        )
+
+        result = PaymentResolutionService().resolve(
+            user=self.user,
+            payment_id=payment.id,
+            action="change_method",
+            payment_method_id=check.id,
+        )
+
+        self.assertEqual(result["payment"].rail, PaymentRail.CHECK)

@@ -237,16 +237,45 @@ GET  /api/v1/payments/<payment_id>/failure
 POST /api/v1/payments/<payment_id>/resolve
 ```
 
-`failure/` returns a human explanation and the actions available. It is a
-**400 on a healthy payment** — there is no failure to report.
+`failure/` is a **400 on a healthy payment** — there is no failure to report.
+Otherwise:
 
 ```json
-{ "action": "RETRY", "payment_method_id": "optional",
+{ "payment_id": "…", "transaction_reference": "SWP-…",
+  "title": "Not enough money in the account",
+  "explanation": "Your bank declined the debit because the account didn't have enough funds at the time. …",
+  "amount": "3200.01", "vendor_name": "WeWork", "failed_at": "…",
+  "failure_reason": "NSF", "failure_detail": { "balance": "1200.00" },
+  "due_date": "2026-09-01", "days_overdue": 3,
+  "late_fee": { "amount": "50.00", "grace_days": 5, "days_remaining": 2, "applies": false },
+  "available_actions": ["retry", "change_method", "reschedule"] }
+```
+
+Show `title` and `explanation` as they are; don't map `failure_reason`
+codes yourself. `late_fee` is `null` when the vendor has no late fee.
+
+```json
+{ "action": "retry", "payment_method_id": "optional",
   "funding_account_id": "optional", "scheduled_for": "optional" }
 ```
 
-Resolving creates a **new** payment (see §1.4). Read `replaced_payment_id` on
-the result to link the two in the history.
+**`action` is lowercase:** `retry`, `change_method` or `reschedule`.
+`change_method` needs `payment_method_id` and moves to that method's rail
+(for example to `CHECK`). `reschedule` needs `scheduled_for`.
+
+Resolving creates a **new, unconfirmed** payment (see §1.4). The **201**
+answer:
+
+```json
+{ "action": "retry", "payment": { "id": "…", "…": "…" },
+  "replaced_payment_id": "…",
+  "authorization_text": "I authorize Swayp to debit …",
+  "requires_confirmation": true }
+```
+
+Show `authorization_text`, then `POST payments/<payment.id>/confirm` with it,
+exactly as in step 2. Like any unconfirmed payment, it lapses after 30
+minutes (§1.1). `replaced_payment_id` links the two in the history.
 
 ---
 

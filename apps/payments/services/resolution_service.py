@@ -16,6 +16,7 @@ from apps.common.dates import (
 )
 from apps.common.enums import (
     BillOccurrenceStatus,
+    PaymentRail,
     PaymentStatus,
 )
 from apps.payments.models import Payment
@@ -23,6 +24,7 @@ from apps.payments.models.reference import create_with_reference
 from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
 from apps.payments.services.authorization_text import processor_for_rail
 from apps.payments.services.payment_create_service import PaymentCreateService
+from apps.payments.services.rails import rail_for_bill
 from apps.vendors.services.late_fee import grace_days, has_late_fee_policy
 
 RETRY = "retry"
@@ -30,6 +32,34 @@ CHANGE_METHOD = "change_method"
 RESCHEDULE = "reschedule"
 
 ACTIONS = (RETRY, CHANGE_METHOD, RESCHEDULE)
+
+#: Display-ready wording per failure reason (PAY-6), so every client shows
+#: the same words instead of mapping codes itself. Unknown reasons fall back
+#: to the generic pair.
+FAILURE_COPY = {
+    "NSF": (
+        "Not enough money in the account",
+        "Your bank declined the debit because the account didn't have "
+        "enough funds at the time. Add funds or choose another account, "
+        "then try again.",
+    ),
+    "ACH_RETURN": (
+        "Your bank returned the payment",
+        "The bank sent the debit back. Check the account, or choose another "
+        "account or payment method, then try again.",
+    ),
+    "PROCESSOR_DECLINED": (
+        "The payment was declined",
+        "Our payment provider couldn't process this payment. Try again, or "
+        "choose another payment method.",
+    ),
+}
+
+GENERIC_FAILURE_COPY = (
+    "The payment didn't go through",
+    "Something stopped this payment. Try again, or choose another payment "
+    "method.",
+)
 
 
 class PaymentResolutionService:
@@ -76,9 +106,15 @@ class PaymentResolutionService:
         if occurrence and occurrence.due_date < today:
             days_overdue = (today - occurrence.due_date).days
 
+        title, explanation = FAILURE_COPY.get(
+            payment.failure_reason, GENERIC_FAILURE_COPY
+        )
+
         return {
             "payment_id": payment.id,
             "transaction_reference": payment.transaction_reference,
+            "title": title,
+            "explanation": explanation,
             "amount": payment.total,
             "vendor_name": vendor.name if vendor else None,
             "failed_at": payment.updated_at,
@@ -172,12 +208,23 @@ class PaymentResolutionService:
             funding_account_id=funding_account_id,
             scheduled_for=send_date,
             today=today,
+            method_changed=action == CHANGE_METHOD,
         )
 
         occurrence.status = BillOccurrenceStatus.SCHEDULED
         occurrence.save(update_fields=["status", "updated_at"])
 
-        return {"action": action, "payment": replacement, "replaced": failed}
+        # The replacement is a new payment with no consent behind it yet, so
+        # the user confirms it like any other (PAY-6). The text is what they
+        # agree to; it lapses like any unconfirmed payment (PAY-1).
+        return {
+            "action": action,
+            "payment": replacement,
+            "replaced": failed,
+            "authorization_text": self.create_service._authorization_text(
+                [replacement], replacement.funding_account, None
+            ),
+        }
 
     def _assert_no_live_payment(self, occurrence):
         """An occurrence may only ever have one payment in flight."""
@@ -222,7 +269,7 @@ class PaymentResolutionService:
         return method
 
     def _new_attempt(self, *, failed, occurrence, funding_account_id,
-                     scheduled_for, today):
+                     scheduled_for, today, method_changed=False):
         funding_account = failed.funding_account
 
         if funding_account_id:
@@ -231,11 +278,18 @@ class PaymentResolutionService:
             )
 
         rail = failed.rail
+
+        # A new method takes its own rail. Keeping the failed payment's would
+        # send, say, a check-method payment over ACH, to a vendor who now
+        # has no ACH account on file (PAY-6).
+        if method_changed:
+            rail = rail_for_bill(occurrence.bill)
+
         # A retry of an expedited check stays expedited: the customer paid
         # for speed and the failure was not theirs. It is charged again
         # because it is a second physical check, and it is refunded again
         # under the same guarantee if it is late.
-        expedited = failed.expedited
+        expedited = failed.expedited and rail == PaymentRail.CHECK
         anchor = scheduled_for or occurrence.due_date
         initiated = max(
             initiation_date(anchor, rail, expedited=expedited), today

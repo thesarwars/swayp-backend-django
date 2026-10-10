@@ -533,6 +533,13 @@ These matter once the bill detail screens are built:
 - **App today:** omits `rail` when the bill has no saved method type, and shows the fee only after create.
 
 #### PAY-6 · minor · Failure and resolve bodies
+- **✅ Fixed, and a bug found**:
+  - `GET /payments/{id}/failure` already had `due_date`, `days_overdue`, `late_fee` and `available_actions`, but undocumented. It now also has a display-ready **`title`** and **`explanation`** per failure reason, and OpenAPI declares it all.
+  - **Resolve (201):** answers with the new payment, `replaced_payment_id`, **`authorization_text`** and `requires_confirmation: true`. The new payment is unconfirmed, so always go to Confirm with that text; before, it came back with no text to confirm.
+  - **Casing:** lowercase is correct (`retry`, `change_method`, `reschedule`). e6's `"RETRY"` was wrong and is fixed.
+  - **The bug:** `change_method` kept the failed payment's rail, so switching from an ACH account to a check would have sent the payment over ACH. It now uses the new method's rail.
+
+  See e6 §4.
 - **Endpoint:** `GET /payments/{id}/failure`, `POST /payments/{id}/resolve`.
 - **Needed:**
   - A failure body with a display-ready `title` and `explanation`, `due_date`, `days_overdue`, a late-fee block and `available_actions`.

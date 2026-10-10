@@ -362,6 +362,21 @@ call them.
 
 ---
 
+## 7b. Testing against the mock processor
+
+On dev and staging, payments go through a mock processor that picks the
+outcome from the **cents of the amount**, so QA can reach each screen without
+patching anything:
+
+| Amount ends in | Outcome |
+|---|---|
+| `.01` (e.g. `3200.01`) | **Fails with `NSF`** (insufficient funds): the failure screen, with `failure_detail.available_balance` set. Resolve it from there. |
+| `.02` | **Lost response**: the transfer is sent, then the call errors. The payment stays `PROCESSING` until the hourly reconcile finds it, about 30 minutes later, and completes it. Use it to test a payment that stays in "Processing". |
+| anything else | **Succeeds** at once, with every stage `DONE`. |
+
+Set the amount on the bill or occurrence before paying. There is no
+"slow but successful" amount yet; `.02` is the nearest.
+
 ## 8. Order to build
 
 1. **Create + display authorization text** — get the consent step right first.

@@ -562,6 +562,7 @@ These matter once the bill detail screens are built:
 - **App today:** shares a plain-text receipt built from the payment detail.
 
 #### PAY-9 · minor · Test hooks on the mock processor
+- **🟡 Documented; slow stages deferred**: the mock processor already picks the outcome from the amount's cents. **`.01` gives an `NSF` failure**, with the balance in `failure_detail`. **`.02` loses the response**: it stays `PROCESSING` until the reconcile job completes it, about 30 minutes later. Anything else succeeds at once. See e6 §7b. A deliberately slow but successful outcome is not added: the execution engine treats any result that is not `SUCCESSFUL` as a failure, and there is no real processor integration yet (only the mock) to design an in-progress path against. That comes with the first real provider.
 - **Needed:** a documented way to force `FAILED` and slow stages on the mock processor.
 - **Screen:** processing, failed (QA).
 

@@ -346,23 +346,33 @@ GET /api/v1/vendors/directory-search?q=veri
 ```
 
 ```json
-{
-  "items": [
-    { "id": "67729293-...", "provider_name": "Verizon Business",
-      "provider_code": "VZW-BIZ", "category": "Telecom",
-      "logo": "https://cdn.swayp.com/logos/vz.png",
-      "supports_auto_pay": true }
-  ],
+{ "items": [
+    { "external_id": "dir-verizon", "name": "Verizon Business",
+      "category": "Telecom", "category_id": "7a1d…",
+      "verified": true, "speed": "Same day", "network": "NETWORK" } ],
   "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
-    "totalItems": 1, "hasNext": false, "hasPrevious": false }
-}
+                  "totalItems": 1, "hasNext": false, "hasPrevious": false } }
 ```
 
-Matches `provider_name` or `provider_code`, active entries only. Here `category`
-**is** a name, unlike §1.3.
+An empty `q` returns nothing. `category` is the directory's name for it, and
+`category_id` is the matching Swayp category, or `null` when there's no match.
 
-This searches the global biller directory, not the user's vendors. Use a result
-to prefill §3 with `source: "DIRECTORY"`.
+**Adding a hit as a vendor:**
+
+```json
+POST /api/v1/vendors
+{ "name": "<hit.name>",
+  "category": "<hit.category_id>",
+  "source": "DIRECTORY",
+  "payment_method": { "method_type": "NETWORK",
+                      "network_payee_ref": "<hit.external_id>" } }
+```
+
+Leave `category` out when `category_id` is `null`; the vendor is then filed
+under "Other". The vendor remembers the directory biller it came from.
+`verified` and `speed` are for the result row's badges.
+
+This searches the global biller directory, not the user's vendors.
 
 ---
 

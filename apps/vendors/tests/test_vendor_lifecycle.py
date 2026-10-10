@@ -506,3 +506,49 @@ class ListRowAndCategoryTests(TestCase):
         self.assertEqual(row["category_name"], "Other")
         self.assertIn("created_at", row)
         self.assertIn("updated_at", row)
+
+
+class DirectoryContractTests(TestCase):
+    """VEND-6: a directory hit maps onto a NETWORK vendor without guesswork."""
+
+    def setUp(self):
+        from apps.vendors.factories import UserFactory
+
+        self.client = APIClient()
+        self.client.force_authenticate(user=UserFactory())
+
+    def test_a_hit_becomes_a_network_vendor(self):
+        hits = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()
+        hits = hits.get("items", hits) if isinstance(hits, dict) else hits
+        self.assertTrue(hits, "the mock directory returned nothing")
+        hit = hits[0]
+        self.assertIn("category_id", hit)
+
+        if hit["category_id"] is None:
+            BillCategory.objects.create(
+                name=hit["category"], icon="https://e.com/c.png", color="#123"
+            )
+            hit = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()
+            hit = (hit.get("items", hit) if isinstance(hit, dict) else hit)[0]
+
+        response = self.client.post(
+            "/api/v1/vendors",
+            {
+                "name": hit["name"],
+                "category": hit["category_id"],
+                "source": "DIRECTORY",
+                "payment_method": {
+                    "method_type": "NETWORK",
+                    "network_payee_ref": hit["external_id"],
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        vendor = Vendor.objects.get(id=response.data["id"])
+        self.assertEqual(vendor.directory_payee_id, hit["external_id"])
+        self.assertEqual(
+            response.data["payment_methods"][0]["network_payee_ref"],
+            hit["external_id"],
+        )

@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -6,6 +7,19 @@ from apps.vendors.api.serializers.provider import ProviderSearchSerializer
 from apps.vendors.services.directory_service import DirectoryService
 
 
+@extend_schema(
+    tags=["Vendors"],
+    summary="Search the biller directory",
+    description=(
+        "Billers reachable on the network rail. To add one: POST /vendors "
+        "with name, category = category_id (omit if null), source DIRECTORY "
+        "and payment_method { method_type NETWORK, network_payee_ref = "
+        "external_id }."
+    ),
+    parameters=[
+        OpenApiParameter("q", str, description="Biller name to search for"),
+    ],
+)
 class ProviderDirectorySearchAPIView(ListAPIView):
     """Configured-account directory search — behind the DirectoryProvider
     interface (mock today), paginated, with the verified/network badges."""

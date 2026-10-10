@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.common.enums import PaymentRail
@@ -17,12 +18,29 @@ class ProviderSearchSerializer(serializers.Serializer):
     implementation choice (E1-S4), and swapping it must not be an API change.
     """
 
-    external_id = serializers.CharField()
+    external_id = serializers.CharField(
+        help_text="Send as payment_method.network_payee_ref on POST /vendors."
+    )
     name = serializers.CharField()
-    category = serializers.CharField()
+    category = serializers.CharField(help_text="The directory's category name.")
+    category_id = serializers.SerializerMethodField()
     verified = serializers.BooleanField()
     speed = serializers.CharField(allow_blank=True, default="")
     network = serializers.SerializerMethodField()
 
     def get_network(self, obj):
         return PaymentRail.NETWORK.value
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_category_id(self, obj):
+        """The active BillCategory with the hit's category name, or null
+        (VEND-6), so create needs no name-to-id lookup on the client."""
+        from apps.bill_categories.models import BillCategory
+
+        return (
+            BillCategory.objects.filter(
+                name__iexact=obj.category, is_active=True
+            )
+            .values_list("id", flat=True)
+            .first()
+        )

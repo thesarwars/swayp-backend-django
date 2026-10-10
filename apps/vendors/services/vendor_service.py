@@ -2,7 +2,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from apps.common.enums import PaymentStatus, VendorStatus
+from apps.common.enums import PaymentStatus, VendorSource, VendorStatus
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
 #: A payment in one of these states still expects to pay this vendor.
@@ -32,6 +32,16 @@ class VendorService:
                 raise ValidationError(
                     {"category": "No bill categories are configured."}
                 )
+
+        # A vendor added from a directory hit remembers which biller it is
+        # (VEND-6): the hit's external_id arrives as the network payee ref.
+        if (
+            validated_data.get("source") == VendorSource.DIRECTORY
+            and payment_method_data.get("network_payee_ref")
+        ):
+            validated_data["directory_payee_id"] = payment_method_data[
+                "network_payee_ref"
+            ]
 
         vendor = Vendor.objects.create(
             user=user,

@@ -618,6 +618,7 @@ These matter once the bill detail screens are built:
 - **App today:** this screen stays on demo data.
 
 #### VEND-6 · major · Directory search and NETWORK vendors are undefined
+- **✅ Fixed — one contract**: the real hit shape is the schema's, `external_id, name, category, verified, speed, network`, plus a new **`category_id`** (the matching Swayp category or `null`). The vendors doc's `provider_name`/`provider_code` shape was stale and is replaced. **A NETWORK vendor needs `network_payee_ref`**, not `provider` and `provider_token`; e3's table was wrong. Mapping: `name` → `name`, `category_id` → `category` (omit when null), `external_id` → `payment_method.network_payee_ref`, `source: "DIRECTORY"`. The vendor records which directory biller it is. `q` is declared, and an empty `q` returns nothing. See e3 §5.
 - **Endpoint:** `GET /vendors/directory-search`, `POST /vendors` NETWORK branch.
 - **Today:**
   - The item shape differs between the vendors doc (`id, provider_name, provider_code, category, logo, supports_auto_pay`) and the schema (`external_id, name, category, verified, speed, network`).

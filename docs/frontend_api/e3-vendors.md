@@ -142,7 +142,7 @@ Three method types, and the fields differ per type:
 
 | `method_type` | Needs |
 |---|---|
-| `NETWORK` | `provider`, `provider_token` |
+| `NETWORK` | `network_payee_ref` (a directory hit's `external_id`, §5) |
 | `ACH` | `provider`, `provider_token`, `account_last4`, `account_holder_name` |
 | `CHECK` | `check_legal_name`, `street`, `city`, `state`, `zip_code` |
 
@@ -184,7 +184,34 @@ GET /api/v1/vendors/directory-search?q=chase
 ```
 
 Paginated `{ items, pagination }`. Results are seeded mock data, not a live
-directory, but the shape is final.
+directory, but the shape is final:
+
+```json
+{ "items": [
+    { "external_id": "dir-verizon", "name": "Verizon Business",
+      "category": "Telecom", "category_id": "7a1d…",
+      "verified": true, "speed": "Same day", "network": "NETWORK" } ],
+  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
+                  "totalItems": 1, "hasNext": false, "hasPrevious": false } }
+```
+
+An empty `q` returns nothing. `category` is the directory's name for it, and
+`category_id` is the matching Swayp category, or `null` when there's no match.
+
+**Adding a hit as a vendor:**
+
+```json
+POST /api/v1/vendors
+{ "name": "<hit.name>",
+  "category": "<hit.category_id>",
+  "source": "DIRECTORY",
+  "payment_method": { "method_type": "NETWORK",
+                      "network_payee_ref": "<hit.external_id>" } }
+```
+
+Leave `category` out when `category_id` is `null`; the vendor is then filed
+under "Other". The vendor remembers the directory biller it came from.
+`verified` and `speed` are for the result row's badges.
 
 Use it to help someone add a known biller. It supersedes the old
 `providers/search`, which has been removed.

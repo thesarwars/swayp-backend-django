@@ -155,6 +155,7 @@ Contents:
 - **App today:** a 402 opens the app-wide "Upgrade your plan" prompt, and the onboarding screen stays where it is. The user can skip the bank step.
 
 #### BANK-2 · major · Publish the onboarding response bodies
+- **✅ Fixed**: OpenAPI now declares all four bodies: `OnboardingSummaryResponse`, `ImportResponse` (201), and `OnboardingStateResponse` for both `users/onboarding` and `skip-bank`. `skip-bank` answers with the updated progress. On the disagreement, the code always sends all four fields, so `banking-api-documentation.md` was right and `e5-banking.md` now matches: `connection.institution_logo` (`""` when there is none), `connection.connected_at`, `rail_readiness.check_ready` and `rail_readiness.needs_details`. A test fails if the schemas and the real responses ever disagree. See e5 §7.
 - **Endpoint:** `GET /banking/onboarding-summary`, `POST /banking/scans/{id}/import`, `GET /users/onboarding`, `POST /users/onboarding/skip-bank`.
 - **Today:** OpenAPI says "No response body" for all four. The two banking docs disagree on whether `rail_readiness.needs_details`, `rail_readiness.check_ready`, `connection.institution_logo` and `connection.connected_at` exist.
 - **Needed:** response schemas, and a decision on those fields.

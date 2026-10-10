@@ -5,6 +5,9 @@ from drf_spectacular.utils import extend_schema
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 from apps.teams.access import AccountScopedMixin
+from apps.users.api.serializers.onboarding import (
+    OnboardingStateResponseSerializer,
+)
 from apps.users.services.onboarding_service import OnboardingService
 
 
@@ -17,6 +20,7 @@ from apps.users.services.onboarding_service import OnboardingService
         "reality — connecting a bank from Settings completes step 4 too. "
         "current_step is null once nothing is outstanding."
     ),
+    responses={200: OnboardingStateResponseSerializer},
 )
 class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -35,8 +39,10 @@ class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
     description=(
         "Records the \"Skip for now\" choice on step 4. The only part of "
         "progress that cannot be derived, because declining a step leaves no "
-        "trace in the data."
+        "trace in the data. Answers with the updated progress, the same "
+        "body as GET users/onboarding."
     ),
+    responses={200: OnboardingStateResponseSerializer},
 )
 class OnboardingSkipBankAPIView(AccountScopedMixin, BaseAPIView):
 

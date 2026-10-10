@@ -16,6 +16,10 @@ from apps.banking.api.serializers.banking import (
     StartScanSerializer,
     TransactionScanSerializer,
 )
+from apps.banking.api.serializers.onboarding import (
+    ImportResponseSerializer,
+    OnboardingSummaryResponseSerializer,
+)
 from apps.banking.selectors.onboarding_selector import OnboardingSelector
 from apps.banking.services.connection_service import ConnectionService
 from apps.banking.services.import_service import BillImportService
@@ -299,6 +303,7 @@ class ScanCandidateListAPIView(AccountScopedMixin, BaseAPIView):
         "no-op. Honours the Idempotency-Key header."
     ),
     request=ImportCandidatesSerializer,
+    responses={201: ImportResponseSerializer},
 )
 class ScanImportAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -337,6 +342,7 @@ class ScanImportAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
         "readiness. Bill figures come from the same selector the bills "
         "summary uses, so they reconcile by construction."
     ),
+    responses={200: OnboardingSummaryResponseSerializer},
 )
 class OnboardingSummaryAPIView(AccountScopedMixin, BaseAPIView):
 

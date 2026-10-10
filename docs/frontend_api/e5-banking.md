@@ -185,7 +185,8 @@ GET /api/v1/banking/onboarding-summary
 ```json
 {
   "connection": { "connection_id": "…", "institution_name": "Chase Bank",
-    "status": "ACTIVE", "account_count": 1,
+    "institution_logo": "", "status": "ACTIVE",
+    "connected_at": "2026-07-29T12:06:01Z", "account_count": 1,
     "funding_account": { "account_id": "…", "name": "Chase Business Checking",
                          "mask": "4821",
                          "display": "Chase Business Checking ****4821" } },
@@ -193,9 +194,20 @@ GET /api/v1/banking/onboarding-summary
   "bills": { "total_due_this_month": "0.00", "overdue_count": 0,
              "due_count": 0, "upcoming_count": 1 },
   "rail_readiness": { "total_vendors": 1, "network_matched": 0,
-                      "ach_captured": 1 }
+                      "ach_captured": 1, "check_ready": 0,
+                      "needs_details": 0 }
 }
 ```
+
+Every key above is always present. `connection` is `null` until a bank is
+linked, `funding_account` is `null` when the connection has no accounts,
+`institution_logo` is `""` when the provider has none, and `connected_at` is
+when the user consented to the link. The OpenAPI schema
+(`OnboardingSummaryResponse`) declares the same fields.
+
+`rail_readiness` counts each active vendor once, by its best rail: network,
+else ACH, else check, else **`needs_details`** (no payment method, so it
+cannot be paid yet). The four add up to `total_vendors`.
 
 One call for the whole "here's what we set up" screen. The numbers reconcile
 with [`bills/summary`](e4-bills.md) and

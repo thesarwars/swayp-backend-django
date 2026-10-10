@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -5,7 +6,11 @@ from rest_framework.views import APIView
 from apps.bills.serializers.bill_serializers import BillCreateSerializer, BillListSerializer, BillUpdateSerializer
 from apps.bills.services.bill_service import BillService
 from apps.bills.serializers.bill_detail_serializer import BillDetailSerializer
-from apps.bills.serializers.bill_review_serializer import BillReviewSerializer
+from apps.bills.serializers.bill_review_serializer import (
+    BillReviewResponseSerializer,
+    BillReviewSerializer,
+)
+from apps.common.swagger import BAD_REQUEST_RESPONSE, UNAUTHORIZED_RESPONSE
 from apps.common.request_meta import request_meta
 from apps.teams.access import AccountScopedMixin
 
@@ -16,6 +21,21 @@ class BillCreateAPIView(AccountScopedMixin, APIView):
         super().__init__(**kwargs)
         self.service = BillService()
 
+    @extend_schema(
+        tags=["Bills"],
+        summary="Create a bill",
+        description=(
+            "The add-bill wizard's submit. 201 with the review summary for "
+            "the closing screen. autopay_mode AUTO needs autopay_consent, "
+            "with the text from bills/autopay-authorization/preview."
+        ),
+        request=BillCreateSerializer,
+        responses={
+            201: BillReviewResponseSerializer,
+            400: BAD_REQUEST_RESPONSE,
+            401: UNAUTHORIZED_RESPONSE,
+        },
+    )
     def post(self, request):
         serializer = BillCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -105,6 +125,22 @@ class BillUpdateAPIView(AccountScopedMixin, APIView):
         super().__init__(**kwargs)
         self.service = BillService()
 
+    @extend_schema(
+        tags=["Bills"],
+        summary="Update a bill",
+        description=(
+            "Partial: send only what changed. 200 with a refreshed review "
+            "summary. On an AUTO bill, changing amount, frequency, "
+            "anchor_date, bill_type or payment_method needs a fresh "
+            "autopay_consent in the same request."
+        ),
+        request=BillUpdateSerializer,
+        responses={
+            200: BillReviewResponseSerializer,
+            400: BAD_REQUEST_RESPONSE,
+            401: UNAUTHORIZED_RESPONSE,
+        },
+    )
     def patch(self, request, bill_id):
         serializer = BillUpdateSerializer(
             data=request.data,

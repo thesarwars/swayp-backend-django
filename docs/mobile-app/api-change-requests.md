@@ -334,6 +334,7 @@ Contents:
 ## Bills
 
 #### BILLS-1 · major · Bill create and update have no schema, and the guides disagree on `frequency`
+- **✅ Fixed**: OpenAPI now declares the request bodies and the responses: create **201**, update **200**, both with the review object, and the `frequency`, `bill_type`, `autopay_mode`, `source` and `payment_method` enums. The `frequency` answer is **`MONTHLY · QUARTERLY · WEEKLY · ONE_TIME`**, as the bills reference and `CadenceEnum` say. e4 was wrong and now matches. See e4 §4.
 - **Endpoint:** `POST /bills/create`, `PATCH /bills/{id}/update`.
 - **Today:**
   - OpenAPI has no request body and answers "200 No response body". The docs say 201 with a review summary.

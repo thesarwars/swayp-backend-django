@@ -117,10 +117,26 @@ POST /api/v1/bills/create
   "payment_method": "<method_id>" }
 ```
 
-`frequency`: `WEEKLY` · `BIWEEKLY` · `MONTHLY` · `QUARTERLY` · `YEARLY`
+`frequency`: `MONTHLY` · `QUARTERLY` · `WEEKLY` · `ONE_TIME`. These four
+only; there is no `BIWEEKLY` or `YEARLY`.
 `bill_type`: `FIXED` or `VARIABLE`
+`autopay_mode`: `REMIND` (default) or `AUTO`
+`source`: `MANUAL` (default), `QR` or `DETECTED`
 
 **201** returns a review summary for the wizard's closing screen.
+`PATCH bills/<id>/update` answers **200** with the same shape:
+
+```json
+{ "success": true, "message": "Bill created successfully.",
+  "data": { "id": "…", "vendor": "WeWork", "category": "Rent",
+            "amount": "3200.00", "frequency": "MONTHLY", "bill_type": "FIXED",
+            "autopay_mode": "AUTO", "autopay_authorized": true,
+            "payment_method": "ACH", "next_due_date": "2026-11-01",
+            "summary": "Swayp will pay WeWork $3,200.00 on November 1, 2026." } }
+```
+
+`vendor` and `category` here are **names**, for display. `payment_method` is
+the method's type (`ACH`, `CHECK`, `NETWORK`) or `null`.
 
 ### Step 4 has a trap ⚠️
 

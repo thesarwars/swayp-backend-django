@@ -8,7 +8,12 @@ returned alongside it so a client can lay it out differently.
 
 from rest_framework import serializers
 
-from apps.common.enums import AutopayMode
+from apps.common.enums import (
+    AutopayMode,
+    BillFrequency,
+    BillType,
+    VendorPaymentMethodType,
+)
 
 
 def _format_amount(amount):
@@ -61,13 +66,28 @@ def build_review(bill, next_due_date=None, autopay_authorized=False):
 
 class BillReviewSerializer(serializers.Serializer):
     id = serializers.UUIDField()
-    vendor = serializers.CharField()
-    category = serializers.CharField()
+    vendor = serializers.CharField(help_text="The vendor's name.")
+    category = serializers.CharField(help_text="The category's name.")
     amount = serializers.DecimalField(max_digits=18, decimal_places=2)
-    frequency = serializers.CharField()
-    bill_type = serializers.CharField()
-    autopay_mode = serializers.CharField()
+    # ChoiceFields so OpenAPI publishes the enums (BILLS-1); output only.
+    frequency = serializers.ChoiceField(choices=BillFrequency.choices)
+    bill_type = serializers.ChoiceField(choices=BillType.choices)
+    autopay_mode = serializers.ChoiceField(choices=AutopayMode.choices)
     autopay_authorized = serializers.BooleanField()
-    payment_method = serializers.CharField(allow_null=True)
+    payment_method = serializers.ChoiceField(
+        choices=VendorPaymentMethodType.choices,
+        allow_null=True,
+        help_text="The method's type, or null when the bill has none.",
+    )
     next_due_date = serializers.DateField(allow_null=True)
-    summary = serializers.CharField()
+    summary = serializers.CharField(
+        help_text='E.g. "Swayp will pay WeWork $3,200.00 on November 1, 2026."'
+    )
+
+
+class BillReviewResponseSerializer(serializers.Serializer):
+    """Create (201) and update (200) both answer with the review."""
+
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = BillReviewSerializer()

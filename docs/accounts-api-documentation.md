@@ -182,7 +182,8 @@ Resend an OTP for either registration or login.
 ```json
 {
   "success": true,
-  "message": "OTP sent successfully."
+  "message": "If an account uses j***n@gmail.com, a code has been sent to it.",
+  "data": { "email": "j***n@gmail.com" }
 }
 ```
 
@@ -384,7 +385,8 @@ Send a password reset OTP to the user email.
 ```json
 {
   "success": true,
-  "message": "OTP sent successfully."
+  "message": "If an account uses j***n@gmail.com, a code has been sent to it.",
+  "data": { "email": "j***n@gmail.com" }
 }
 ```
 

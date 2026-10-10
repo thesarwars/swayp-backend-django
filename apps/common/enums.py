@@ -145,6 +145,18 @@ class ScanStatus(models.TextChoices):
     FAILED = "FAILED", "Failed"
 
 
+class ScanErrorCode(models.TextChoices):
+    """Why a FAILED scan failed (BANK-9), so a client branches on a code
+    rather than on the wording of error_message."""
+
+    # The bank wants the user to sign in again; the connection is ERROR too.
+    REAUTH_REQUIRED = "REAUTH_REQUIRED", "Reauthentication required"
+    # The provider never finished preparing the history; scanning later works.
+    HISTORY_NOT_READY = "HISTORY_NOT_READY", "History not ready"
+    # Anything else. The detail is in the server log, never in the response.
+    SCAN_FAILED = "SCAN_FAILED", "Scan failed"
+
+
 class VendorStatus(models.TextChoices):
     ACTIVE="ACTIVE","Active"
     INACTIVE="INACTIVE","Inactive"

@@ -69,7 +69,7 @@ def _retry_until_ready(task, scan):
     """Re-queue a waiting scan, or give up in a way somebody can act on."""
     from django.utils import timezone
 
-    from apps.common.enums import ScanStatus
+    from apps.common.enums import ScanErrorCode, ScanStatus
 
     attempt = task.request.retries
 
@@ -81,6 +81,7 @@ def _retry_until_ready(task, scan):
         )
 
         scan.status = ScanStatus.FAILED
+        scan.error_code = ScanErrorCode.HISTORY_NOT_READY
         scan.error_message = (
             "Your bank is still preparing your transaction history. "
             "Try scanning again in a few minutes."
@@ -89,6 +90,7 @@ def _retry_until_ready(task, scan):
         scan.save(
             update_fields=[
                 "status",
+                "error_code",
                 "error_message",
                 "completed_at",
                 "updated_at",

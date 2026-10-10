@@ -211,6 +211,7 @@ Contents:
 - **App today:** candidates are imported as detected.
 
 #### BANK-9 · minor · Failed scans
+- **✅ Fixed**: `progress.is_complete` **is** `true` for a `FAILED` scan; it means "stop polling". Scans now carry `error_code`: `REAUTH_REQUIRED` (sign in to the bank again; the connection is `ERROR`), `HISTORY_NOT_READY` (try again later), `SCAN_FAILED` (anything else), or `""` when not failed. `error_message` is now always text written for the user. Before, an unexpected failure showed the raw error text; old scans were cleaned up by a migration. See e5 §3, "When a scan fails".
 - **Endpoint:** `GET /banking/scans/{id}`.
 - **Needed:** say whether `progress.is_complete` becomes true for a `FAILED` scan, and add a machine-readable failure `code` next to `error_message`.
 - **Screen:** scanning.

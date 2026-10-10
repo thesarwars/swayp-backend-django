@@ -21,8 +21,11 @@ from apps.banking.factories import (
     TransactionScanFactory,
 )
 from apps.banking.models import BankConnectionStatus
-from apps.banking.services.scan_service import ScanService
-from apps.common.enums import ScanStatus
+from apps.banking.services.scan_service import (
+    SCAN_FAILED_MESSAGE,
+    ScanService,
+)
+from apps.common.enums import ScanErrorCode, ScanStatus
 from integrations.bank_data.base import (
     BankDataNotReady,
     BankDataProviderError,
@@ -85,4 +88,48 @@ class ScanProviderErrorTests(TestCase):
         self.scan.refresh_from_db()
 
         self.assertEqual(self.scan.status, ScanStatus.FAILED)
-        self.assertIn("INTERNAL", self.scan.error_message)
+        self.assertEqual(self.scan.error_code, ScanErrorCode.SCAN_FAILED)
+
+    def test_a_real_failure_never_shows_the_raw_error(self):
+        """BANK-9: error_message is shown to the user as-is, so it must not
+        carry a provider error body or an internal message."""
+        with self.assertRaises(BankDataProviderError):
+            self.run_scan_raising(
+                BankDataProviderError('{"error_code": "INTERNAL_SERVER_ERROR"}')
+            )
+
+        self.scan.refresh_from_db()
+
+        self.assertEqual(self.scan.error_message, SCAN_FAILED_MESSAGE)
+        self.assertNotIn("INTERNAL", self.scan.error_message)
+
+    def test_reauth_has_its_own_code(self):
+        self.run_scan_raising(BankReauthRequired("ITEM_LOGIN_REQUIRED"))
+        self.scan.refresh_from_db()
+
+        self.assertEqual(self.scan.error_code, ScanErrorCode.REAUTH_REQUIRED)
+
+    def test_not_ready_carries_no_code(self):
+        self.run_scan_raising(BankDataNotReady("PRODUCT_NOT_READY"))
+        self.scan.refresh_from_db()
+
+        self.assertEqual(self.scan.error_code, "")
+
+
+class HistoryNeverArrivedTests(TestCase):
+    """BANK-9: when the provider's history never lands, the scan fails with
+    HISTORY_NOT_READY, so the app can say "try again later" rather than
+    "something broke"."""
+
+    def test_giving_up_sets_history_not_ready(self):
+        from apps.banking.tasks import NOT_READY_MAX_RETRIES, _retry_until_ready
+
+        scan = TransactionScanFactory(status=ScanStatus.RUNNING)
+        task = mock.Mock()
+        task.request.retries = NOT_READY_MAX_RETRIES
+
+        _retry_until_ready(task, scan)
+        scan.refresh_from_db()
+
+        self.assertEqual(scan.status, ScanStatus.FAILED)
+        self.assertEqual(scan.error_code, ScanErrorCode.HISTORY_NOT_READY)

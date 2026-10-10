@@ -99,8 +99,9 @@ GET /api/v1/banking/scans/<scan_id>
 ```json
 { "id": "a2f1c210-…", "status": "RUNNING", "months_history": 24,
   "transactions_scanned": 0, "detected_count": 0,
-  "error_message": "", "completed_at": null,
-  "progress": { "is_complete": false, "thin_history": false } }
+  "error_code": "", "error_message": "", "completed_at": null,
+  "progress": { "is_complete": false, "thin_history": false,
+                "stages": [ … ] } }
 ```
 
 **Poll on `progress.is_complete`, not on `status`.** `transactions_scanned`
@@ -111,7 +112,21 @@ than a spinner.
 than it would like. Degrade the copy ("we found what we could") rather than
 treating it as a failure.
 
-A failed scan sets `status` and fills `error_message`; show that text.
+### When a scan fails
+
+**`progress.is_complete` is `true` for a failed scan as well as a finished
+one.** It means "stop polling", not "succeeded". Then check `status`: `DONE`,
+or `FAILED` with `error_code` and `error_message` set. `error_code` is `""`
+on any scan that has not failed.
+
+| `error_code` | Meaning | What to show |
+|---|---|---|
+| `REAUTH_REQUIRED` | The bank wants the user to sign in again. The connection is now `ERROR` too. | Send them through Plaid Link again for that bank. |
+| `HISTORY_NOT_READY` | The bank never finished preparing the history (about 30 minutes of retries). | "Try again in a few minutes", then start a new scan. |
+| `SCAN_FAILED` | Anything else. | "Try Again" (a new scan). The details are in the server log. |
+
+`error_message` is always text written for the user, never a raw error, so it
+is safe to show. Branch on `error_code`, not on the wording.
 
 ---
 

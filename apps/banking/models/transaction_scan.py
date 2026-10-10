@@ -1,6 +1,6 @@
 from django.db import models
 
-from apps.common.enums import ScanStatus
+from apps.common.enums import ScanErrorCode, ScanStatus
 from apps.common.models import BaseModel
 
 from .bank_connection import BankConnection
@@ -34,6 +34,14 @@ class TransactionScan(BaseModel):
     detected_count = models.PositiveIntegerField(default=0)
 
     error_message = models.TextField(blank=True)
+
+    # Set with status FAILED, blank otherwise (BANK-9).
+    error_code = models.CharField(
+        max_length=30,
+        choices=ScanErrorCode.choices,
+        blank=True,
+        default="",
+    )
 
     completed_at = models.DateTimeField(null=True, blank=True)
 

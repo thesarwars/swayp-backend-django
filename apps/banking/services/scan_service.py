@@ -21,7 +21,7 @@ from apps.banking.models import (
 )
 from apps.banking.services.recurring_detector import detect
 from apps.bill_categories.models import BillCategory
-from apps.common.enums import ScanStatus
+from apps.common.enums import ScanErrorCode, ScanStatus
 from integrations.bank_data.base import (
     BankDataNotReady,
     BankReauthRequired,
@@ -32,6 +32,13 @@ logger = logging.getLogger(__name__)
 
 #: BRD §3.1. Screens 836:8984/9052 say 24 months — design bug, PRD §11.
 MAX_MONTHS_HISTORY = 24
+
+#: What the user reads for an unexpected failure (BANK-9). Fixed text: the
+#: real cause goes to the log, not to the screen.
+SCAN_FAILED_MESSAGE = (
+    "We couldn't finish reading your bank history. Try scanning again; if "
+    "it keeps failing, contact support."
+)
 
 #: Below this, a "no recurring bills" result means "not enough history",
 #: not "you have none". Surfaced so the UI can say so (thin-history AC).
@@ -171,7 +178,10 @@ class ScanService:
             )
 
             scan.error_message = ""
-            scan.save(update_fields=["error_message", "updated_at"])
+            scan.error_code = ""
+            scan.save(
+                update_fields=["error_message", "error_code", "updated_at"]
+            )
 
             return scan
 
@@ -186,6 +196,7 @@ class ScanService:
             scan.connection.save(update_fields=["status", "updated_at"])
 
             scan.status = ScanStatus.FAILED
+            scan.error_code = ScanErrorCode.REAUTH_REQUIRED
             scan.error_message = (
                 "Your bank needs you to sign in again before Swayp can read "
                 "this account."
@@ -194,6 +205,7 @@ class ScanService:
             scan.save(
                 update_fields=[
                     "status",
+                    "error_code",
                     "error_message",
                     "completed_at",
                     "updated_at",
@@ -206,11 +218,15 @@ class ScanService:
             logger.exception("scan %s failed", scan.pk)
 
             scan.status = ScanStatus.FAILED
-            scan.error_message = str(exc)[:500]
+            scan.error_code = ScanErrorCode.SCAN_FAILED
+            # Never str(exc): that put provider error bodies and internal
+            # messages on the user's screen. The detail is in the log above.
+            scan.error_message = SCAN_FAILED_MESSAGE
             scan.completed_at = timezone.now()
             scan.save(
                 update_fields=[
                     "status",
+                    "error_code",
                     "error_message",
                     "completed_at",
                     "updated_at",

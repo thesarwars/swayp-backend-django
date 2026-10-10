@@ -121,6 +121,7 @@ class TransactionScanSerializer(serializers.ModelSerializer):
             "months_history",
             "transactions_scanned",
             "detected_count",
+            "error_code",
             "error_message",
             "completed_at",
             "created_at",

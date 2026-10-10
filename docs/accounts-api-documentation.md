@@ -242,6 +242,60 @@ error for unknown number, wrong code and expired code alike.
 
 ---
 
+## 5c. Sign in with Google
+
+### Endpoint
+- `POST /api/v1/auth/login/google`
+
+### Purpose
+Sign in, or sign up, with a Google ID token obtained on the device. The
+server verifies the token against Google's public keys and against every
+client ID in `GOOGLE_OAUTH_CLIENT_IDS` (web, iOS, Android). No redirect URI.
+
+### Request body
+```json
+{
+  "id_token": "eyJhbGciOiJSUzI1NiIs…",
+  "account_type": "BUSINESS",
+  "terms_accepted": true,
+  "marketing_opt_in": false
+}
+```
+
+`account_type` (`BUSINESS` default, or `INDIVIDUAL`), `terms_accepted` and
+`marketing_opt_in` are used only when the account is created.
+
+### Success response
+```json
+{
+  "success": true,
+  "message": "Login successful.",
+  "data": { "access": "…", "refresh": "…", "is_new_user": false }
+}
+```
+
+`message` is "Account created." and `is_new_user` is `true` when this call
+created the account.
+
+### Matching
+1. Google's subject id (`sub`), once linked. It survives a change of Google
+   email.
+2. Otherwise the email, case-insensitively. A password account is linked,
+   not duplicated. A signup that never verified its code is verified and
+   activated, since Google has proved the email.
+3. Otherwise a new account: email verified, active, no usable password
+   (forgot password sets one), business profile empty, so onboarding starts
+   at step 1.
+
+### Refusals
+| Status | When |
+|---|---|
+| 400 `errors.id_token` | Signature, audience, issuer or expiry fails; email not verified by Google; email already linked to another Google account |
+| 400 `message` "Account is inactive." | Deactivated account |
+| 503 | `GOOGLE_OAUTH_CLIENT_IDS` empty, or Google's keys unreachable |
+
+---
+
 ## 6. Refresh Access Token
 
 ### Endpoint

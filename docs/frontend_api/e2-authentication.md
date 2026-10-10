@@ -161,6 +161,55 @@ Only usable by accounts that have a phone number. The Create Account screen
 has no phone field, so an account adds one later from Settings — see
 [§5, Adding or changing the phone number](#adding-or-changing-the-phone-number).
 
+### Continue with Google
+
+```
+POST auth/login/google
+{ "id_token": "<from Google Sign-In>",
+  "account_type": "BUSINESS",          ← only used if the account is new
+  "terms_accepted": true,              ← only used if the account is new
+  "marketing_opt_in": false }          ← only used if the account is new
+```
+
+```json
+{ "success": true, "message": "Login successful.",
+  "data": { "access": "…", "refresh": "…", "is_new_user": false } }
+```
+
+Sign in with Google **on the device**, then send the **ID token** it returns
+(not an access token, not an auth code). There is no redirect URI: the server
+checks the token's Google signature, its audience and its issuer directly.
+
+| Platform | SDK | Client ID it must use |
+|---|---|---|
+| Web | Google Identity Services ("Sign in with Google" button / One Tap) | the **Web** client. Authorised JavaScript origins: `https://www.getswayp.com`, `https://getswayp.com`, `http://localhost:3000` |
+| iOS | Google Sign-In for iOS | the **iOS** client |
+| Android | Credential Manager / Google Sign-In | the **Web** client as `serverClientId`. The Android client only registers the package and SHA-1 |
+
+Every one of those IDs is listed in the server's `GOOGLE_OAUTH_CLIENT_IDS`.
+A token minted for any other client is refused.
+
+**What happens:**
+
+- **New email:** the account is created with the email already verified, and
+  you get `is_new_user: true`. Send them to onboarding: a business account
+  starts at step 1 (business name), because Google doesn't supply it.
+  Send `account_type`, `terms_accepted` and `marketing_opt_in` from the screen
+  that showed the Google button; they are ignored for an existing account.
+- **Existing email (registered with a password):** the Google identity is
+  linked to it and they're signed in. Their password keeps working.
+- **A signup that never entered its code:** Google has proved the email, so
+  the account is verified and activated.
+- **An account created with Google has no password.** Forgot password sets one.
+
+**Errors:**
+
+| Status | When |
+|---|---|
+| 400 `errors.id_token` | Bad, expired or foreign token; email not verified by Google; the email is already linked to a different Google account |
+| 400 `message: "Account is inactive."` | A deactivated account |
+| 503 | Google sign-in isn't configured on this server, or Google's keys couldn't be fetched. Hide the button on a 503, or retry later |
+
 ---
 
 ## 3. OTP: channel choice and throttling
@@ -455,8 +504,6 @@ still offer it again later.
 ## 7. On the Sign In screen — what isn't built
 
 The design shows **Continue with Google**, **Continue with Microsoft** and
-**Continue with Windows Hello**, plus an **Accountant Portal** link. None of
-those exist. Email + password is the only path, and phone login only for the
-accounts that registered with a number.
-
-Hide them, or the first click is a dead end.
+**Continue with Windows Hello**, plus an **Accountant Portal** link. **Google
+is built** ([Continue with Google](#continue-with-google)). The other three
+don't exist: hide them, or the first click is a dead end.

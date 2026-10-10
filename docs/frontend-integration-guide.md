@@ -179,6 +179,19 @@ POST auth/login/phone/verify     { "phone_number": "…", "otp": "123456" }
 > "no account found"; you genuinely don't know. Verify returns one generic
 > error for unknown number, wrong code and expired code alike.
 
+### 2.3b Continue with Google
+
+```
+POST auth/login/google   { "id_token": "<Google ID token>", "account_type": "BUSINESS", "terms_accepted": true }
+```
+
+Sign in with Google on the device and send the **ID token**. There's no
+redirect URI. The answer is the usual `{ access, refresh }` plus
+`is_new_user`; on `true`, go to onboarding. An existing email is linked, not
+duplicated. 503 means Google sign-in is off on this server. Details, client
+IDs per platform and errors:
+[E2 — Continue with Google](frontend_api/e2-authentication.md#continue-with-google).
+
 ### 2.4 OTP resend is throttled
 
 ```
@@ -377,7 +390,7 @@ or the database.
 
 ## 9. Endpoint index
 
-**Auth** — `register` · `verify-otp` · `login` ·
+**Auth** — `register` · `verify-otp` · `login` · `login/google` ·
 `login/phone/request/` · `login/phone/verify/` · `resend-otp/` ·
 `forgot-password/` · `reset-password/` · `refresh/` · `logout/`
 

@@ -472,6 +472,10 @@ PLAID_ANDROID_PACKAGE_NAME = env("PLAID_ANDROID_PACKAGE_NAME", default="")
 # while this is empty never reports that its history is ready — and the scan
 # waiting on it never finishes. Must be publicly reachable.
 PLAID_WEBHOOK_URL = env("PLAID_WEBHOOK_URL", default="")
+# Google sign-in. Every OAuth client ID whose ID tokens are accepted: the web
+# client, the iOS client and the Android client each sign with their own as
+# the audience. Empty turns POST /auth/login/google off (503).
+GOOGLE_OAUTH_CLIENT_IDS = env.list("GOOGLE_OAUTH_CLIENT_IDS", default=[])
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 

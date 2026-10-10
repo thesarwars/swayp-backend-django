@@ -102,6 +102,16 @@ class User(
         blank=True,
     )
 
+    # Google's stable id for the person ("sub"), set on the first Google
+    # sign-in. Matched before the email, because a Google account's email can
+    # change and the sub cannot. Null for anyone who never used Google.
+    google_sub = models.CharField(
+        max_length=255,
+        unique=True,
+        null=True,
+        blank=True,
+    )
+
     USERNAME_FIELD = "email"
 
     REQUIRED_FIELDS = []

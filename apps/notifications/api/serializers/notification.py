@@ -1,7 +1,10 @@
 from rest_framework import serializers
 
 from apps.common.enums import NotificationCategory, NotificationType
-from apps.common.serializers import PaginationQuerySerializer
+from apps.common.serializers import (
+    PaginationQuerySerializer,
+    PaginationResponseSerializer,
+)
 
 
 class NotificationSerializer(serializers.Serializer):
@@ -25,6 +28,10 @@ class NotificationListResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()
     message = serializers.CharField()
     data = NotificationSerializer(many=True)
+    pagination = PaginationResponseSerializer()
+    unreadCount = serializers.IntegerField(
+        help_text="All unread notifications, ignoring the list's filters."
+    )
 
 
 class NotificationQuerySerializer(

@@ -16,6 +16,7 @@ GET /api/v1/dashboard/home?tab=upcoming
 ```json
 {
   "greeting": { "name": "Ada" },
+  "unread_notification_count": 3,
   "stats": { "due_this_month": "0.00", "total_bills": 1, "paid": 0 },
   "recent_bills": [],
   "vendors_preview": [
@@ -52,6 +53,11 @@ clicks.
 
 `pay_panel.items` rows are the same shape as
 [`bills/occurrences`](e4-bills.md) — one row component, two screens.
+
+`unread_notification_count` is the bell badge: the **signed-in person's**
+unread notifications (a team member sees their own count, not the owner's).
+It is the same number as `GET notifications` → `unreadCount` and
+`profile-summary` → `unreadNotificationCount`.
 
 ### Profile summary
 
@@ -162,7 +168,7 @@ omits money is worse than one that flags it.
 ## 4. Notifications
 
 ```
-GET   /api/v1/notifications?page=1
+GET   /api/v1/notifications?page=1&pageSize=20&category=transactions&isRead=false
 PATCH /api/v1/notifications/<id>/read
 PATCH /api/v1/notifications/read-all
 ```
@@ -170,8 +176,24 @@ PATCH /api/v1/notifications/read-all
 ```json
 { "success": true, "message": "Success", "data": [],
   "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
-                  "totalItems": 0, "hasNext": false, "hasPrevious": false } }
+                  "totalItems": 0, "hasNext": false, "hasPrevious": false },
+  "unreadCount": 3 }
 ```
+
+**Filters**, all optional and applied before paging, so `totalItems` counts
+only matching rows:
+
+| Param | Values |
+|---|---|
+| `type` | Repeatable: `?type=BILL_DUE&type=PAYMENT_FAILED`. |
+| `category` | `transactions` (PAYMENT, BILL_DUE, PAYMENT_FAILED, PAYMENT_REVERSED, AUTOPAY_EXECUTED, PAYMENT_ARRIVED, LATE_FEE_WARNING) or `promotion` (PROMOTION). SYSTEM and SECURITY appear in neither. |
+| `isRead` | `true` or `false`. Omitted means both. |
+
+`type` and `category` together return the rows that match both.
+
+**`unreadCount` ignores the filters.** It is the bell badge, every unread
+notification the person has, so the badge does not change when the user
+switches chips.
 
 Each notification carries `type`, `title`, `message`, `read_at` and a
 `metadata` object with deep-link ids (`bill_id`, `occurrence_id`,

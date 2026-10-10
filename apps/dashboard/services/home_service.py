@@ -3,6 +3,9 @@ from apps.bills.selectors.bill_occurrence_selector import (
 )
 from apps.common.dates import today_eastern
 from apps.common.enums import BillOccurrenceStatus
+from apps.notifications.selectors.notification_selector import (
+    NotificationSelector,
+)
 from apps.vendors.selectors.vendor_selector import VendorSelector
 
 RECENT_BILLS_LIMIT = 5
@@ -28,7 +31,11 @@ class HomeService:
     def __init__(self):
         self.occurrences = BillOccurrenceSelector()
 
-    def build(self, *, user, tab=None):
+    def build(self, *, user, tab=None, viewer=None):
+        """``user`` is the account whose bills are shown; ``viewer`` is the
+        person signed in. They differ for a team member, and notifications
+        belong to the person, so the unread count is the viewer's — the same
+        number dashboard/profile-summary reports."""
         today = today_eastern()
 
         summary = self.occurrences.get_summary(user, today)
@@ -44,6 +51,10 @@ class HomeService:
             # authentication; re-fetching it the way get_profile_summary does
             # would buy a 404 branch on the landing screen and nothing else.
             "greeting": {"name": user.first_name or user.get_full_name()},
+            # The home bell (DASH-4), so the screen needs no second request.
+            "unread_notification_count": NotificationSelector().unread_count(
+                user=viewer or user
+            ),
             "stats": summary,
             "recent_bills": list(
                 self.occurrences.get_recent_occurrences(

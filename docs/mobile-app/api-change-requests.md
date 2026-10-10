@@ -257,6 +257,7 @@ Contents:
 - **Screen:** none yet. Realtime is not integrated.
 
 #### DASH-4 · minor · Unread count
+- **✅ Fixed**: `GET /notifications` now has a top-level `unreadCount` next to `pagination`. It ignores the list's filters, so it is the bell badge. `GET /dashboard/home` has `unread_notification_count`, the signed-in person's count, the same as `profile-summary`. The home screen no longer needs to poll the profile summary. See e8 §1 and §4.
 - **Endpoint:** `GET /notifications`, `GET /dashboard/home`.
 - **Today:** the count exists only in `/dashboard/profile-summary`. `GET /notifications/unread-count` is a 404.
 - **Needed:** `unreadCount` next to `pagination` in the list, and in `dashboard/home`.

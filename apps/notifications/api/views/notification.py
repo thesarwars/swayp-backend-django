@@ -60,6 +60,11 @@ class NotificationListAPIView(BaseAPIView):
         return ApiResponse.success(
             data=serializer.data,
             pagination=result["pagination"],
+            # Unfiltered: the bell badge counts every unread notification,
+            # whatever chip the list is showing (DASH-4).
+            extra={
+                "unreadCount": self.service.unread_count(user=request.user),
+            },
         )
 
 

@@ -75,6 +75,9 @@ class HomeVendorPreviewSerializer(serializers.Serializer):
 
 class HomeSerializer(serializers.Serializer):
     greeting = HomeGreetingSerializer()
+    unread_notification_count = serializers.IntegerField(
+        help_text="The signed-in person's unread notifications."
+    )
     stats = HomeStatsSerializer()
     recent_bills = BillOccurrenceRowSerializer(many=True)
     vendors_preview = HomeVendorPreviewSerializer(many=True)

@@ -10,6 +10,7 @@ class ApiResponse:
         data=None,
         message="Success",
         pagination=None,
+        extra=None,
         status_code=status.HTTP_200_OK,
     ):
         body = {
@@ -20,6 +21,11 @@ class ApiResponse:
 
         if pagination:
             body["pagination"] = pagination
+
+        # Top-level keys that describe the whole list rather than one item,
+        # beside pagination (e.g. unreadCount on GET notifications).
+        if extra:
+            body.update(extra)
 
         return Response(body, status=status_code)
 

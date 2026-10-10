@@ -47,15 +47,15 @@ VENDORS_URL = "/api/v1/vendors"
 VENDORS_SUMMARY_URL = "/api/v1/vendors/summary"
 
 #: The endpoint issues one aggregate, one bill count, one recent-bills read,
-#: one vendor-preview read and one pay-panel read — plus one membership
-#: lookup to resolve which account the caller acts on (E10). Exact by
-#: design: this is the N+1 guard, so a seventh query has to be a deliberate
-#: edit to this number.
+#: one vendor-preview read, one pay-panel read and one unread-notification
+#: count (DASH-4) — plus one membership lookup to resolve which account the
+#: caller acts on (E10). Exact by design: this is the N+1 guard, so an eighth
+#: query has to be a deliberate edit to this number.
 #:
 #: The membership lookup is a single indexed read, memoised per request, so
 #: it is a constant and not a per-row cost — which is what
 #: test_home_query_count_is_independent_of_row_count actually guards.
-EXPECTED_QUERIES = 6
+EXPECTED_QUERIES = 7
 
 #: A regression tripwire for AC3, not a production p95 — the suite runs on
 #: in-memory SQLite. The budget is the epic's 500 ms so the number stays
@@ -796,12 +796,14 @@ class HomePayloadShapeTests(HomeTestCase):
     }
 
     def test_the_payload_has_exactly_the_epics_five_sections(self):
+        """Plus the bell's unread count, added for the mobile app (DASH-4)."""
         home = self._home()
 
         self.assertEqual(
             set(home),
             {
                 "greeting",
+                "unread_notification_count",
                 "stats",
                 "recent_bills",
                 "vendors_preview",

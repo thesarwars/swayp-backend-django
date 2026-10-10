@@ -45,6 +45,7 @@ class HomeAPIView(AccountScopedMixin, BaseAPIView):
         result = self.service.build(
             user=self.account(request),
             tab=query.validated_data.get("tab"),
+            viewer=request.user,
         )
 
         return ApiResponse.success(

@@ -119,3 +119,37 @@ class NotificationListFilterTests(TestCase):
         uncategorised = {NotificationType.SYSTEM, NotificationType.SECURITY}
 
         self.assertEqual(placed | uncategorised, set(NotificationType))
+
+
+class UnreadCountTests(TestCase):
+    """DASH-4: the badge number travels with the list and the home screen."""
+
+    def setUp(self):
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_the_list_carries_the_unfiltered_unread_count(self):
+        NotificationFactory(user=self.user, type=NotificationType.PROMOTION)
+        NotificationFactory(user=self.user, type=NotificationType.BILL_DUE)
+        NotificationFactory(user=self.user, is_read=True)
+        NotificationFactory(type=NotificationType.PROMOTION)  # someone else's
+
+        body = self.client.get(f"{LIST_URL}?category=promotion").json()
+
+        self.assertEqual(len(body["data"]), 1)
+        self.assertEqual(body["unreadCount"], 2)
+        self.assertIn("pagination", body)
+
+    def test_dashboard_home_carries_the_same_count(self):
+        NotificationFactory.create_batch(3, user=self.user)
+        NotificationFactory(user=self.user, is_read=True)
+
+        home = self.client.get("/api/v1/dashboard/home").json()["data"]
+        summary = self.client.get("/api/v1/dashboard/profile-summary").json()["data"]
+
+        self.assertEqual(home["unread_notification_count"], 3)
+        self.assertEqual(
+            home["unread_notification_count"],
+            summary["unreadNotificationCount"],
+        )

@@ -171,6 +171,7 @@ Contents:
 - **App today:** treats an unknown answer as skippable.
 
 #### BANK-4 · major (product) · History window: the designs say 24 months, the server caps at 12
+- **✅ Fixed**: the answer is **24**. The server has scanned 24 months since `0dcb29c` (2026-08-25): `months` accepts 1–24, defaults to 24, and the scan reports `months_history: 24`. The "1–12, 24 is a design bug" text in `banking-api-documentation.md` was out of date and has been corrected, along with the `12`s in the e5 examples. `POST /banking/link/token` now also returns `months_history`, so the pre-link copy can come from data. Note that the mock provider only has 12 months of transactions, so on dev a scan says 24 but finds 12 months of data. If the dev server still reports 12, it is running a build older than `0dcb29c`.
 - **Endpoint:** `POST /banking/scans` (`months`), `TransactionScan.months_history`.
 - **Today:**
   - The onboarding designs and the product owner say the scan reads **24 months** of history.

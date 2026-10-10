@@ -14,6 +14,7 @@ from apps.banking.models import (
     BankConnection,
     BankConnectionStatus,
 )
+from apps.banking.services.scan_service import MAX_MONTHS_HISTORY
 from apps.common.enums import BankAccountType
 from apps.common.exceptions import PlanLimitExceededException
 from integrations.factory import get_bank_data_provider
@@ -43,6 +44,7 @@ class BankLinkService:
             "link_token": token.token,
             "expiration": token.expiration,
             "provider": self.provider.name,
+            "months_history": MAX_MONTHS_HISTORY,
         }
 
     @transaction.atomic

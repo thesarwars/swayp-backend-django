@@ -71,8 +71,11 @@ POST /api/v1/banking/link/token
 ```json
 { "success": true, "message": "Link token created.",
   "data": { "link_token": "link-mock-96d92229-…", "expiration": null,
-    "provider": "mock" } }
+    "provider": "mock", "months_history": 24 } }
 ```
+
+`months_history` is the window the scan will read, so the screens before the
+link can show it from data.
 
 Short-lived. Hand `link_token` to the bank link widget; it returns a
 `public_token` when the user finishes.
@@ -114,7 +117,7 @@ POST /api/v1/banking/link/exchange
     ],
     "created_at": "2026-07-28T12:04:14.405874Z",
     "scan": { "id": "b8302eb4-…", "status": "RUNNING",
-      "months_history": 12, "transactions_scanned": 0,
+      "months_history": 24, "transactions_scanned": 0,
       "detected_count": 0, "error_message": "", "completed_at": null,
       "progress": { "is_complete": false, "thin_history": false } }
   }
@@ -143,7 +146,7 @@ GET /api/v1/banking/scans/<scan_id>
 
 ```json
 { "success": true, "message": "Scan fetched successfully.",
-  "data": { "id": "46fdcd18-…", "status": "DONE", "months_history": 12,
+  "data": { "id": "46fdcd18-…", "status": "DONE", "months_history": 24,
     "transactions_scanned": 46, "detected_count": 4,
     "error_message": "", "completed_at": "2026-07-28T12:05:39.961799Z",
     "created_at": "2026-07-28T12:05:39.690801Z",
@@ -372,14 +375,14 @@ source at a time.
 ## 5. Re-scanning
 
 ```
-POST /api/v1/banking/scans    { "connection_id": "…", "months": 12 }
+POST /api/v1/banking/scans    { "connection_id": "…", "months": 24 }
 ```
 
 **202** with a scan object; poll it as in step 3.
 
-`months` is optional, 1–12, default 12. Values above 12 are clamped — the 24
-months shown on some designs is a known design bug; the data agreement caps at
-12.
+`months` is optional, 1–24, default 24. Values above 24 are clamped. 24
+months is the product decision (2026-08-25), matching the designs; it
+replaced an earlier cap of 12.
 
 Re-scanning an existing connection **does not duplicate candidates** — the
 detector recognises patterns it has already recorded and `detected_count`
@@ -461,7 +464,9 @@ name:
 | `public-mock-usbank` | U.S. Bank ****5580 |
 
 The mock returns a fixed 12-month history of **46 transactions** that always
-detects the same **four** candidates:
+detects the same **four** candidates. The scan still reports
+`months_history: 24`, the window it asked for; the mock simply has no older
+data. Real Plaid serves the full 24 months.
 
 | Vendor | Amount | Cadence | Day | Occurrences |
 |---|---|---|---|---|

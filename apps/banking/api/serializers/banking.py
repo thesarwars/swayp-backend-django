@@ -12,6 +12,9 @@ class LinkTokenSerializer(serializers.Serializer):
     link_token = serializers.CharField()
     expiration = serializers.CharField(allow_null=True)
     provider = serializers.CharField()
+    # The history window a scan reads (BANK-4), returned before the link so
+    # the pre-link copy ("Returns 24 months of history") can come from data.
+    months_history = serializers.IntegerField()
 
 
 class InstitutionSerializer(serializers.Serializer):

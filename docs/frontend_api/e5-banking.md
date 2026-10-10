@@ -34,7 +34,9 @@ GET  banking/onboarding-summary      → the "here's what we set up" screen
 POST /api/v1/banking/link/token     { }
 ```
 
-Returns a `link_token` for the bank widget.
+Returns a `link_token` for the bank widget, plus `months_history: 24`, the
+window the scan will read. Use it for the pre-link copy ("Returns 24 months of
+history") instead of hard-coding the number.
 
 ```
 POST /api/v1/banking/link/exchange
@@ -58,7 +60,7 @@ records a consent timestamp, so the user has to actually agree.
       "account_type": "CHECKING", "is_default_funding_source": true,
       "available_balance": "41200.00", "current_balance": "41200.00",
       "balance_as_of": "2026-07-29T…" } ],
-  "scan": { "id": "f1550c32-…", "status": "RUNNING", "months_history": 12,
+  "scan": { "id": "f1550c32-…", "status": "RUNNING", "months_history": 24,
             "transactions_scanned": 0, "detected_count": 0,
             "progress": { "is_complete": false, "thin_history": false } } }
 ```
@@ -67,7 +69,9 @@ records a consent timestamp, so the user has to actually agree.
 
 Put the institution in the token: `public-mock-chase`, `public-mock-bofa`,
 `public-mock-wellsfargo`, `public-mock-usbank`. Every link yields the same
-12-month history and the same four detected bills.
+12-month history and the same four detected bills. The scan still reports
+`months_history: 24`, the window it asked for; the mock just has no older
+data.
 
 ### Only masks, ever
 
@@ -84,7 +88,7 @@ GET /api/v1/banking/scans/<scan_id>
 ```
 
 ```json
-{ "id": "a2f1c210-…", "status": "RUNNING", "months_history": 12,
+{ "id": "a2f1c210-…", "status": "RUNNING", "months_history": 24,
   "transactions_scanned": 0, "detected_count": 0,
   "error_message": "", "completed_at": null,
   "progress": { "is_complete": false, "thin_history": false } }

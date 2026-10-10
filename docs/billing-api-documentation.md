@@ -160,6 +160,21 @@ GET /api/v1/billing/plans
 }
 ```
 
+Each plan also carries the pricing screen's copy (abridged above):
+
+```json
+{ "description": "The founder rate, price locked for the first 500 customers.",
+  "features": [ "Up to 3 team members", "1 connected bank account",
+                "Unlimited bills and vendors", "Free standard ACH transfers",
+                "2 physical checks a month included", "Full access to Flo" ],
+  "billing_interval": "month" }
+```
+
+Render `features` in order, as given. The numeric lines are generated from the
+plan's own limits, so they always match what a 402 enforces. Don't build them
+on the client. `billing_interval` is always `"month"`: there is no annual
+price, so don't show "/year".
+
 Sorted by price ascending, so the array order is the pricing-page order.
 
 `unlimited_seats` / `unlimited_banks` are conveniences over the `null` check

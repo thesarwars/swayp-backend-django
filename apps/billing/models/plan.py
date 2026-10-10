@@ -112,3 +112,78 @@ PLAN_SPECS = {
         "trial_days": 0,
     },
 }
+
+
+#: Every plan bills monthly; there is no annual price (BILLING-8).
+BILLING_INTERVAL = "month"
+
+#: The pricing screen's copy, from the BRD §6.2 positioning column. Not on
+#: the model: it is product copy, versioned with the code, not data to edit.
+PLAN_DESCRIPTIONS = {
+    PlanCode.FOUNDING: (
+        "The founder rate, price locked for the first 500 customers."
+    ),
+    PlanCode.STANDARD: "For growing teams paying from several banks.",
+    PlanCode.ENTERPRISE: (
+        "Multiple entities, approval workflows and ERP sync, with a "
+        "dedicated account manager."
+    ),
+}
+
+#: What a plan includes beyond its numbers (BRD §6.2).
+PLAN_EXTRAS = {
+    PlanCode.FOUNDING: ("Full access to Flo",),
+    PlanCode.STANDARD: (
+        "Full access to Flo",
+        "1099 reporting",
+        "Priority support",
+    ),
+    PlanCode.ENTERPRISE: (
+        "Everything in Standard",
+        "Approval workflows and advanced ERP sync (add-ons)",
+        "Dedicated account manager",
+    ),
+}
+
+
+def _count(n, singular, plural):
+    return f"{n} {singular if n == 1 else plural}"
+
+
+def plan_features(plan):
+    """The pricing screen's feature lines, generated from the plan's own
+    limits so they cannot disagree with what the 402 enforces."""
+    features = []
+
+    if plan.seat_limit is None:
+        features.append("Unlimited team members")
+    else:
+        features.append(
+            f"Up to {_count(plan.seat_limit, 'team member', 'team members')}"
+        )
+
+    if plan.bank_limit is None:
+        features.append("Unlimited connected bank accounts")
+    elif plan.bank_limit == 1:
+        features.append("1 connected bank account")
+    else:
+        features.append(f"Up to {plan.bank_limit} connected bank accounts")
+
+    features.append("Unlimited bills and vendors")
+    features.append("Free standard ACH transfers")
+
+    if plan.free_checks_per_month:
+        features.append(
+            _count(
+                plan.free_checks_per_month,
+                "physical check a month included",
+                "physical checks a month included",
+            )
+        )
+
+    if plan.included_entities > 1:
+        features.append(f"Up to {plan.included_entities} entities")
+
+    features.extend(PLAN_EXTRAS.get(plan.code, ()))
+
+    return features

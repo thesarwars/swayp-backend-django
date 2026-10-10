@@ -10,6 +10,11 @@ from apps.billing.models import (
     Subscription,
     SubscriptionStatus,
 )
+from apps.billing.models.plan import (
+    BILLING_INTERVAL,
+    PLAN_DESCRIPTIONS,
+    plan_features,
+)
 from apps.common.serializers import PaginationQuerySerializer
 
 
@@ -19,6 +24,13 @@ class PlanSerializer(serializers.ModelSerializer):
     )
     unlimited_banks = serializers.BooleanField(
         source="has_unlimited_banks", read_only=True
+    )
+    description = serializers.SerializerMethodField()
+    features = serializers.SerializerMethodField(
+        help_text="Feature lines for the pricing screen, in display order."
+    )
+    billing_interval = serializers.SerializerMethodField(
+        help_text='Always "month"; there is no annual price.'
     )
 
     class Meta:
@@ -35,7 +47,19 @@ class PlanSerializer(serializers.ModelSerializer):
             "included_entities",
             "price_locked",
             "trial_days",
+            "description",
+            "features",
+            "billing_interval",
         )
+
+    def get_description(self, plan) -> str:
+        return PLAN_DESCRIPTIONS.get(plan.code, "")
+
+    def get_features(self, plan) -> list[str]:
+        return plan_features(plan)
+
+    def get_billing_interval(self, plan) -> str:
+        return BILLING_INTERVAL
 
 
 class PlanOfferSerializer(PlanSerializer):

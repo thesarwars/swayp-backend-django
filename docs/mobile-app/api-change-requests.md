@@ -724,6 +724,7 @@ These matter once the bill detail screens are built:
 - **App today:** warns before a downgrade with its own copy, then shows the server's message.
 
 #### BILLING-8 · minor · Plan display content
+✅ Fixed: each plan carries `description`, `features` (display-ordered lines, the numeric ones generated from the plan's own limits) and `billing_interval: "month"`. There is no annual price.
 - **Endpoint:** `GET /billing/plans`.
 - **Needed:** `description`, `features: string[]`, and `billing_interval` if annual billing is ever planned. The design has a feature list and a "/year" plan.
 - **App today:** builds the feature lines from the plan's allowances.

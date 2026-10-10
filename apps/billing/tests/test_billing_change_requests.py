@@ -418,3 +418,40 @@ class ErrorCodeTests(BillingTestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertNotIn("code", response.json())
+
+
+class PlanDisplayTests(BillingTestCase):
+    """BILLING-8: the pricing screen's copy comes from the server."""
+
+    def _plans(self):
+        return {
+            row["code"]: row
+            for row in self.client.get("/api/v1/billing/plans").json()["data"]
+        }
+
+    def test_every_plan_has_a_description_features_and_interval(self):
+        for code, row in self._plans().items():
+            with self.subTest(code=code):
+                self.assertTrue(row["description"])
+                self.assertTrue(row["features"])
+                self.assertEqual(row["billing_interval"], "month")
+
+    def test_features_follow_the_plans_limits(self):
+        plans = self._plans()
+
+        self.assertIn("Up to 3 team members", plans["FOUNDING"]["features"])
+        self.assertIn("1 connected bank account", plans["FOUNDING"]["features"])
+        self.assertIn(
+            "2 physical checks a month included", plans["FOUNDING"]["features"]
+        )
+        self.assertIn(
+            "Unlimited connected bank accounts", plans["STANDARD"]["features"]
+        )
+        self.assertIn("Up to 3 entities", plans["ENTERPRISE"]["features"])
+
+    def test_a_changed_limit_changes_the_line(self):
+        Plan.objects.filter(code=PlanCode.FOUNDING).update(seat_limit=4)
+
+        self.assertIn(
+            "Up to 4 team members", self._plans()["FOUNDING"]["features"]
+        )

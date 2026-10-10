@@ -119,6 +119,21 @@ GET /api/v1/billing/plans
 
 Sorted by price — array order is display order.
 
+Each plan also carries the pricing screen's copy (abridged above):
+
+```json
+{ "description": "The founder rate, price locked for the first 500 customers.",
+  "features": [ "Up to 3 team members", "1 connected bank account",
+                "Unlimited bills and vendors", "Free standard ACH transfers",
+                "2 physical checks a month included", "Full access to Flo" ],
+  "billing_interval": "month" }
+```
+
+Render `features` in order, as given. The numeric lines are generated from the
+plan's own limits, so they always match what a 402 enforces. Don't build them
+on the client. `billing_interval` is always `"month"`: there is no annual
+price, so don't show "/year".
+
 ⚠️ **The design shows four plans including Solo $29, and "unlimited team
 members" on every one. Both are wrong.** BRD §6.2 is the source of truth:
 three plans, seats 3 / 10 / unlimited. Build from this response.

@@ -381,12 +381,14 @@ Contents:
 - **App today:** the Pay tab prefetches bill detail, and the schedule screen reads `days_overdue` from it. No screen edits a bill yet.
 
 #### BILLS-6 · major · No bill document upload
+- **⏸ Valid, a new feature; not built.** Upload and OCR need an OCR provider, file storage and a review flow (extracted fields, each with provenance, confirmed by the user). This is its own piece of work, to be scoped separately. The Upload to Import screens stay on demo data until then.
 - **Endpoint:** new, for example `POST /bills/import/document` (photo or PDF → vendor, amount, due date, reference, with provenance).
 - **Today:** there is no upload, OCR or import route under `bills`. `POST /bills/upload` and `POST /bills/import` are 404s (observed).
 - **Screen:** Upload to Import (`(import-bill)/upload`, `details`).
 - **App today:** these screens stay on demo data.
 
 #### BILLS-7 · major (product + API) · The consumer utility flows have no backing
+- **⏸ Product decision; no API work.** None of this exists, and the app has already removed the entry points. Unless product brings the consumer utility flows back, treat them as dropped. If it does, the meter or account reference, biller lookup and amount-due lookup need their own spec first.
 - **Endpoint:** none exists.
 - **Today:** the electricity, capture and manual-bill flows need a meter or customer-account reference on a vendor or bill, biller-account validation, an amount-due lookup, and account-holder and phone fields. None exist, and there is no wallet to pay from.
 - **Needed:** confirm that these flows are dropped, or specify the endpoints.
@@ -446,11 +448,13 @@ Contents:
 - **App today:** the earliest date is today in US Eastern time. A method that cannot meet the due date is greyed out, based on the `schedule` the payment-methods call returns.
 
 #### BILLS-12 · minor · Please confirm
+- **✅ Answered from the code**: ① **Yes**, `source: "QR"` is accepted on create; the bill `source` enum is `MANUAL`, `QR` or `DETECTED`. ② **Yes**, `GET /bills/next-due` answers **200 with `data: null`** when nothing is outstanding. ③ **No**, `GET /bills/occurrences/upcoming` does **not** include overdue rows: it returns occurrences due today or later that are not yet scheduled or paid. The e4 wording that caused the disagreement is fixed. For "everything still to pay", use `bills/occurrences?status=OVERDUE,DUE,UPCOMING` (BILLS-8).
 - Is `source: "QR"` accepted on create? (`SourceEnum` in OpenAPI is the vendor one.) The app sends it for scanned bills only.
 - Does `GET /bills/next-due` answer 200 with `data: null` when nothing is outstanding? The success screen hides "Next up" then.
 - Does `GET /bills/occurrences/upcoming` include overdue rows? The two docs disagree.
 
 #### BILLS-13 · minor · Screens not built yet
+- **⏸ Deferred until the screens are built.** Raise each one again with the screen that needs it. `GET /providers` → vendor waits on the NETWORK vendor contract in VEND-6.
 These matter once the bill detail screens are built:
 - `GET /bills/{id}/invoice`: invoice number and date, vendor address, bill-to block, line description and tax. Or confirm the invoice screen should drop them.
 - `GET /bills/{id}/payments`: a `status` filter, counts per status, and the masked account of the method used.

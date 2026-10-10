@@ -127,8 +127,10 @@ error.
 GET /api/v1/bills/occurrences/upcoming
 ```
 
-Excludes anything already `SCHEDULED` or `PAID`, so it is the "what still
-needs paying" list rather than a date filter.
+Occurrences **due today or later** that are **not yet `SCHEDULED` or
+`PAID`**, earliest first. **Overdue rows are not included.** For "everything
+still to pay", overdue included, use
+`GET bills/occurrences?status=OVERDUE,DUE,UPCOMING`.
 
 ---
 

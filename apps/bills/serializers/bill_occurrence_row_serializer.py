@@ -10,7 +10,11 @@ from rest_framework import serializers
 
 from apps.bills.models.bill_occurrence import BillOccurrence
 from apps.common.dates import today_eastern
-from apps.common.enums import BillOccurrenceStatus, VendorPaymentMethodType
+from apps.common.enums import (
+    AutopayMode,
+    BillOccurrenceStatus,
+    VendorPaymentMethodType,
+)
 
 
 class BillOccurrenceRowSerializer(serializers.ModelSerializer):
@@ -34,7 +38,8 @@ class BillOccurrenceRowSerializer(serializers.ModelSerializer):
     payment_method = serializers.SerializerMethodField()
     days_overdue = serializers.SerializerMethodField()
     payment_id = serializers.SerializerMethodField()
-    autopay_mode = serializers.CharField(
+    autopay_mode = serializers.ChoiceField(
+        choices=AutopayMode.choices,
         source="bill.autopay_mode", read_only=True
     )
     status = serializers.SerializerMethodField()
@@ -59,6 +64,9 @@ class BillOccurrenceRowSerializer(serializers.ModelSerializer):
         )
 
     @extend_schema_field(serializers.ChoiceField(choices=BillOccurrenceStatus.choices))
+    @extend_schema_field(
+        serializers.ChoiceField(choices=BillOccurrenceStatus.choices)
+    )
     def get_status(self, obj):
         return getattr(obj, "computed_status", obj.status)
 

@@ -11,6 +11,8 @@ renderer for both.
 
 from rest_framework import serializers
 
+from apps.common.enums import VendorPaymentMethodType
+
 from apps.bills.serializers.bill_occurrence_row_serializer import (
     BillOccurrenceRowSerializer,
 )
@@ -53,7 +55,7 @@ class PayPanelSerializer(serializers.Serializer):
     # Which tab `items` belongs to. Without it the client cannot tell whether
     # it is looking at overdue rows or the fallback, so it would have to guess
     # or re-fetch.
-    active_tab = serializers.CharField()
+    active_tab = serializers.ChoiceField(choices=TAB_CHOICES)
     tabs = PayPanelTabsSerializer()
     items = BillOccurrenceRowSerializer(
         many=True,
@@ -78,7 +80,11 @@ class HomeVendorPreviewSerializer(serializers.Serializer):
             "later month."
         ),
     )
-    rail = serializers.CharField(allow_null=True)
+    rail = serializers.ChoiceField(
+        choices=VendorPaymentMethodType.choices,
+        allow_null=True,
+        help_text="The primary payment method's type; null with none.",
+    )
     # From the vendor list's next-bill subqueries, which preview() inherits
     # by building on VendorSelector.list, so they cost no extra query
     # (DASH-8). The same values and meaning as on GET /vendors.

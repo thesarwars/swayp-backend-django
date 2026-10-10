@@ -21,3 +21,30 @@ class QRDecodeSerializer(serializers.Serializer):
             )
 
         return attrs
+
+
+class DirectoryMatchSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    provider_name = serializers.CharField()
+    category = serializers.CharField(allow_null=True)
+    supports_auto_pay = serializers.BooleanField()
+    verified = serializers.BooleanField()
+
+
+class VendorQRDecodeResponseSerializer(serializers.Serializer):
+    """Bare (no envelope), unlike bills/qr/decode."""
+
+    vendor_name = serializers.CharField(allow_null=True)
+    category = serializers.CharField(allow_null=True)
+    payment_ref = serializers.CharField(allow_null=True)
+    amount = serializers.DecimalField(
+        max_digits=18, decimal_places=2, allow_null=True
+    )
+    due_date = serializers.DateField(allow_null=True)
+    provenance = serializers.DictField(
+        child=serializers.CharField(),
+        help_text="For each field read from the QR, where it came from.",
+    )
+    directory_match = DirectoryMatchSerializer(
+        allow_null=True, help_text="A biller-directory entry by that name."
+    )

@@ -4,7 +4,11 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.bill_categories.models import BillCategory
-from apps.common.enums import VendorSource
+from apps.common.enums import (
+    BillFrequency,
+    VendorPaymentMethodType,
+    VendorSource,
+)
 from apps.vendors.models.vendor import Vendor
 from apps.vendors.selectors.vendor_selector import VendorSelector
 
@@ -50,6 +54,11 @@ class VendorListSerializer(serializers.ModelSerializer):
     # extra queries, and the page got slower the more successful the customer
     # was.
 
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=VendorPaymentMethodType.choices, allow_null=True
+        )
+    )
     def get_payment_rail(self, obj):
         # ``primary_methods`` is the Prefetch(to_attr=...) from
         # VendorSelector.list. Calling obj.payment_methods.filter() here would
@@ -83,6 +92,11 @@ class VendorListSerializer(serializers.ModelSerializer):
         """
         return getattr(obj, attr, _MISSING)
 
+    @extend_schema_field(
+        serializers.DecimalField(
+            max_digits=18, decimal_places=2, allow_null=True
+        )
+    )
     def get_recurring_amount(self, obj):
         value = self._annotated(obj, "next_amount")
 
@@ -99,6 +113,11 @@ class VendorListSerializer(serializers.ModelSerializer):
         # the difference until it was reconciling to the cent.
         return Decimal(value).quantize(Decimal("0.01"))
 
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=BillFrequency.choices, allow_null=True
+        )
+    )
     def get_amount_period(self, obj):
         value = self._annotated(obj, "next_frequency")
 
@@ -109,6 +128,7 @@ class VendorListSerializer(serializers.ModelSerializer):
 
         return occ.bill.frequency if occ else None
 
+    @extend_schema_field(serializers.DateField(allow_null=True))
     def get_next_due(self, obj):
         value = self._annotated(obj, "next_due_date")
 
@@ -297,3 +317,20 @@ class VendorSummarySerializer(serializers.Serializer):
     ach = serializers.IntegerField()
     check = serializers.IntegerField()
     check_total = serializers.DecimalField(max_digits=18,decimal_places=2,)
+
+class VendorListQuerySerializer(serializers.Serializer):
+    """Filters shared by the vendor list and the summary. An unknown rail or
+    status is ignored rather than refused (status falls back to ACTIVE)."""
+
+    search = serializers.CharField(
+        required=False, help_text="Name contains, case-insensitive."
+    )
+    category = serializers.UUIDField(required=False)
+    rail = serializers.ChoiceField(
+        choices=VendorPaymentMethodType.choices, required=False,
+        help_text="The primary payment method's type.",
+    )
+    status = serializers.ChoiceField(
+        choices=["ACTIVE", "INACTIVE", "DELETED"], required=False,
+        help_text="Default ACTIVE. DELETED lists removed vendors to restore.",
+    )

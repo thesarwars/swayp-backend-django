@@ -1,5 +1,6 @@
 """The vendor activity feed (VEND-5)."""
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.vendors.models import VendorActivity, VendorActivityAction
@@ -30,6 +31,7 @@ class VendorActivitySerializer(serializers.ModelSerializer):
             "created_at",
         )
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_actor_name(self, obj):
         actor = obj.actor
 

@@ -1,3 +1,4 @@
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -7,14 +8,27 @@ from rest_framework.views import APIView
 from apps.common.responses import ApiResponse
 
 from apps.providers.models import Provider
-from apps.vendors.api.serializers.qr import QRDecodeSerializer
+from apps.vendors.api.serializers.qr import (
+    QRDecodeSerializer,
+    VendorQRDecodeResponseSerializer,
+)
 from apps.vendors.services.qr_decoder import QRDecodeService
 
 
+@extend_schema(
+    tags=["Vendors"],
+    summary="Decode a vendor QR",
+    description=(
+        "JSON {payload} or multipart image. Bare body. 422 when the QR "
+        "cannot be read: ask to scan again."
+    ),
+    request=QRDecodeSerializer,
+    responses={
+        200: VendorQRDecodeResponseSerializer,
+        422: OpenApiResponse(description="Unreadable QR (code unprocessable)."),
+    },
+)
 class QRDecodeAPIView(APIView):
-
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
     """
     POST /vendors/qr/decode/
     Accepts:
@@ -26,6 +40,9 @@ class QRDecodeAPIView(APIView):
     2. multipart/form-data
     image=<qr image>
     """
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
 
     permission_classes = [IsAuthenticated]
 

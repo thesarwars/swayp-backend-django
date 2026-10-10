@@ -1,13 +1,26 @@
 from decimal import Decimal
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.vendors.models import VendorPaymentMethod
 from apps.vendors.services.payment_method_schedule import schedule_for_method
 from apps.common.crypto import reject_masked_value
 from apps.common.enums import (
+    PaymentRail,
     VendorPaymentMethodType,
 )
+
+
+class PaymentMethodScheduleSerializer(serializers.Serializer):
+    """When a payment by this method must start to land by due_date."""
+
+    rail = serializers.ChoiceField(choices=PaymentRail.choices)
+    due_date = serializers.DateField()
+    lead_business_days = serializers.IntegerField()
+    initiate_by = serializers.DateField()
+    estimated_arrival = serializers.DateField()
+    can_meet_due_date = serializers.BooleanField()
 
 
 class PaymentMethodScheduleQuerySerializer(serializers.Serializer):
@@ -60,6 +73,7 @@ class VendorPaymentMethodSerializer(serializers.ModelSerializer):
             "schedule",
         )
 
+    @extend_schema_field(serializers.CharField(allow_null=True))
     def get_account_ref(self, obj):
 
         if obj.account_last4:
@@ -67,6 +81,12 @@ class VendorPaymentMethodSerializer(serializers.ModelSerializer):
 
         return None
 
+    @extend_schema_field(
+        PaymentMethodScheduleSerializer(
+            allow_null=True,
+            help_text="Only when the request passes due_date; else null.",
+        )
+    )
     def get_schedule(self, obj):
         due_date = self.context.get("due_date")
 

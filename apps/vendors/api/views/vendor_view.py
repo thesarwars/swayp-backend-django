@@ -13,6 +13,7 @@ from apps.vendors.api.serializers.vendor import (
     VendorListSerializer,
     VendorDetailSerializer,
     VendorUpdateSerializer,
+    VendorListQuerySerializer,
     VendorSummarySerializer,
 )
 
@@ -33,6 +34,11 @@ from apps.vendors.models import (
 
 
 @extend_schema_view(
+    get=extend_schema(
+        summary="Vendors",
+        description="{items, pagination}, filtered before paging.",
+        parameters=[VendorListQuerySerializer],
+    ),
     post=extend_schema(
         summary="Create a vendor",
         description=(
@@ -146,6 +152,13 @@ class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
             actor=self.request.user,
         )
 
+@extend_schema(
+    tags=["Vendors"],
+    summary="Vendor counts by rail",
+    description="Takes the list's filters. Bare body.",
+    parameters=[VendorListQuerySerializer],
+    responses={200: VendorSummarySerializer},
+)
 class VendorSummaryAPIView(AccountScopedMixin, APIView):
 
     # Bare body, no {success, message, data} (see apps/common/schema.py).

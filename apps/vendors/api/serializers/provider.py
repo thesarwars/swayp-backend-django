@@ -28,6 +28,7 @@ class ProviderSearchSerializer(serializers.Serializer):
     speed = serializers.CharField(allow_blank=True, default="")
     network = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.CharField())
     def get_network(self, obj):
         return PaymentRail.NETWORK.value
 

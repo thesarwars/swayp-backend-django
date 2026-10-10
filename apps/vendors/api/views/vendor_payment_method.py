@@ -1,5 +1,9 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import status
+from drf_spectacular.utils import (
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+from rest_framework import serializers, status
 from rest_framework.generics import (
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView,
@@ -51,9 +55,6 @@ from apps.teams.access import AccountScopedMixin
     ),
 )
 class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
-
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
@@ -63,6 +64,9 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
     forward compatibility but does not yet change the schedule — per-payment
     fees and same-day limits arrive with E9.
     """
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
 
     permission_classes = [IsAuthenticated]
 
@@ -141,14 +145,14 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
     ),
 )
 class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
-
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
     """
     GET
     PUT/PATCH
     DELETE
     """
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
 
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "method_id"
@@ -201,14 +205,24 @@ class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroy
         )
 
 
+@extend_schema(
+    tags=["Vendors"],
+    summary="Make a payment method the vendor's primary",
+    request=None,
+    responses={
+        200: inline_serializer(
+            "SetPrimaryResponse", {"message": serializers.CharField()}
+        )
+    },
+)
 class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
-
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
     """
     POST
     /vendors/{vendor_id}/payment-methods/{method_id}/set-primary/
     """
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
 
     permission_classes = [IsAuthenticated]
 

@@ -448,3 +448,55 @@ class PaymentsContractTests(ContractTestCase):
                    path=B + "/status", status=200)
         self.check("POST", f"/api/v1/payments/batches/{bid}/cancel",
                    path=B + "/cancel", status=None)
+
+
+class VendorsContractTests(ContractTestCase):
+
+    NETWORK = {"method_type": "NETWORK", "network_payee_ref": "payee_1"}
+    CHECK = {"method_type": "CHECK", "check_legal_name": "WeWork Inc",
+             "street": "115 W 18th St", "city": "New York", "state": "NY",
+             "zip_code": "10011"}
+
+    def setUp(self):
+        super().setUp()
+        from apps.vendors.factories import BillCategoryFactory
+
+        self.category = BillCategoryFactory()
+
+    def test_vendor_lifecycle(self):
+        V = "/api/v1/vendors/{vendor_id}"
+        vendor = self.check("POST", "/api/v1/vendors", body={
+            "name": "WeWork", "category": str(self.category.id),
+            "source": "MANUAL", "payment_method": self.NETWORK,
+        }, status=201).json()
+        vid = vendor["id"]
+
+        self.check("GET", "/api/v1/vendors?search=we&rail=NETWORK",
+                   path="/api/v1/vendors", status=200)
+        self.check("GET", "/api/v1/vendors/summary", status=200)
+        self.check("GET", f"/api/v1/vendors/{vid}", path=V, status=200)
+        self.check("PATCH", f"/api/v1/vendors/{vid}", path=V,
+                   body={"name": "WeWork NYC"}, status=200)
+
+        M = V + "/payment-methods"
+        method = self.check("POST", f"/api/v1/vendors/{vid}/payment-methods",
+                            path=M, body=self.CHECK, status=201).json()
+        mid = method["id"]
+        self.check("GET", f"/api/v1/vendors/{vid}/payment-methods", path=M,
+                   status=200)
+        self.check("GET", f"/api/v1/vendors/{vid}/payment-methods/{mid}",
+                   path=M + "/{method_id}", status=200)
+        self.check("POST",
+                   f"/api/v1/vendors/{vid}/payment-methods/{mid}/set-primary",
+                   path=M + "/{method_id}/set-primary", status=200)
+        self.check("GET", "/api/v1/vendors/activity", status=200)
+
+        self.client.delete(f"/api/v1/vendors/{vid}")
+        self.check("POST", f"/api/v1/vendors/{vid}/restore",
+                   path=V + "/restore", status=200)
+
+    def test_directory_and_qr(self):
+        self.check("GET", "/api/v1/vendors/directory-search?q=con",
+                   path="/api/v1/vendors/directory-search", status=200)
+        self.check("POST", "/api/v1/vendors/qr/decode", body={
+            "payload": "SWAYP:vendor=WeWork;amount=3200.00"}, status=200)

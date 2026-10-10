@@ -18,11 +18,17 @@ class NotificationService:
         user,
         page=1,
         page_size=20,
+        types=None,
+        category=None,
+        is_read=None,
     ):
         return self.selector.list_notifications(
             user=user,
             page=page,
             page_size=page_size,
+            types=types,
+            category=category,
+            is_read=is_read,
         )
 
     def unread_count(

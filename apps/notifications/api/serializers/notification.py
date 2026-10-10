@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.common.enums import NotificationCategory, NotificationType
 from apps.common.serializers import PaginationQuerySerializer
 
 
@@ -29,7 +30,23 @@ class NotificationListResponseSerializer(serializers.Serializer):
 class NotificationQuerySerializer(
     PaginationQuerySerializer
 ):
-    pass
+    # Repeatable: ?type=BILL_DUE&type=PAYMENT_FAILED.
+    type = serializers.ListField(
+        child=serializers.ChoiceField(choices=NotificationType.choices),
+        required=False,
+    )
+    category = serializers.ChoiceField(
+        choices=NotificationCategory.choices,
+        required=False,
+    )
+    # allow_null so an absent isRead means "both". Without it DRF reads a
+    # missing boolean query param as false and the list would silently drop
+    # every read notification.
+    isRead = serializers.BooleanField(
+        required=False,
+        allow_null=True,
+        default=None,
+    )
 
 
 class MarkNotificationReadResponseSerializer(

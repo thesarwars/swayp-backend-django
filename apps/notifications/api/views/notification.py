@@ -23,7 +23,12 @@ class NotificationListAPIView(BaseAPIView):
     @extend_schema(
         tags=["Notifications"],
         summary="List Notifications",
-        description="Returns notifications for the authenticated user.",
+        description=(
+            "Returns notifications for the authenticated user. `type` "
+            "(repeatable), `category` and `isRead` narrow the list before "
+            "pagination, so totals and pages describe the filtered set. "
+            "`type` and `category` together return their intersection."
+        ),
         parameters=[NotificationQuerySerializer],
         responses={
             200: NotificationListResponseSerializer,
@@ -42,6 +47,9 @@ class NotificationListAPIView(BaseAPIView):
             user=request.user,
             page=query.validated_data["page"],
             page_size=query.validated_data["pageSize"],
+            types=query.validated_data.get("type"),
+            category=query.validated_data.get("category"),
+            is_read=query.validated_data.get("isRead"),
         )
 
         serializer = NotificationSerializer(

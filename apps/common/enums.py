@@ -30,6 +30,31 @@ class NotificationType(models.TextChoices):
     LATE_FEE_WARNING = "LATE_FEE_WARNING", "Late fee warning"
 
 
+class NotificationCategory(models.TextChoices):
+    """The chips on the notifications screen. A grouping of types, not a
+    stored column — see NOTIFICATION_CATEGORY_TYPES."""
+
+    TRANSACTIONS = "transactions", "Transactions"
+    PROMOTION = "promotion", "Promotion"
+
+
+#: Which types each chip shows. SYSTEM and SECURITY belong to neither chip and
+#: only appear under "All". A new NotificationType must be placed here (or
+#: deliberately left out), or it will silently never show under a chip.
+NOTIFICATION_CATEGORY_TYPES = {
+    NotificationCategory.TRANSACTIONS: (
+        NotificationType.PAYMENT,
+        NotificationType.BILL_DUE,
+        NotificationType.PAYMENT_FAILED,
+        NotificationType.PAYMENT_REVERSED,
+        NotificationType.AUTOPAY_EXECUTED,
+        NotificationType.PAYMENT_ARRIVED,
+        NotificationType.LATE_FEE_WARNING,
+    ),
+    NotificationCategory.PROMOTION: (NotificationType.PROMOTION,),
+}
+
+
 class ProviderStatus(models.TextChoices):
     ACTIVE = "ACTIVE", "Active"
     INACTIVE = "INACTIVE", "Inactive"

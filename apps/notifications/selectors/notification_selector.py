@@ -1,3 +1,4 @@
+from apps.common.enums import NOTIFICATION_CATEGORY_TYPES
 from apps.common.pagination import PaginationService
 
 from apps.notifications.repositories import NotificationRepository
@@ -14,8 +15,24 @@ class NotificationSelector:
         user,
         page=1,
         page_size=20,
+        types=None,
+        category=None,
+        is_read=None,
     ):
         queryset = self.repository.list_by_user(user)
+
+        # Filtered before paginating, so an empty page means "none match"
+        # rather than "the matches are on a later page".
+        if types:
+            queryset = queryset.filter(type__in=types)
+
+        if category:
+            queryset = queryset.filter(
+                type__in=NOTIFICATION_CATEGORY_TYPES[category],
+            )
+
+        if is_read is not None:
+            queryset = queryset.filter(is_read=is_read)
 
         return PaginationService.paginate(
             queryset=queryset,

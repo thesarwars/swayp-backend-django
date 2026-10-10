@@ -130,10 +130,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_client_secret(self, subscription) -> str | None:
         return getattr(subscription, "pending_client_secret", "") or ""
 
-    def get_is_trialing(self, subscription):
+    def get_is_trialing(self, subscription) -> bool:
         return subscription.is_trialing()
 
-    def get_trial_days_remaining(self, subscription):
+    def get_trial_days_remaining(self, subscription) -> int:
         return subscription.trial_days_remaining()
 
     class Meta:

@@ -45,7 +45,29 @@ class ResetPasswordService:
             account.set_password(password)
             account.save(update_fields=["password"])
 
+            ResetPasswordService._end_sessions(account)
+
         return account
+
+    @staticmethod
+    def _end_sessions(account):
+        """Sign out every session (SEC-5). A reset is often how someone takes
+        an account back; leaving the old refresh tokens alive would let
+        whoever held one carry on for weeks. Access tokens cannot be
+        recalled and lapse on their own lifetime."""
+        from rest_framework_simplejwt.token_blacklist.models import (
+            BlacklistedToken,
+            OutstandingToken,
+        )
+
+        from apps.authentication.models import RefreshToken
+
+        RefreshToken.objects.filter(
+            user=account, revoked_at__isnull=True
+        ).update(revoked_at=timezone.now())
+
+        for outstanding in OutstandingToken.objects.filter(user=account):
+            BlacklistedToken.objects.get_or_create(token=outstanding)
 
     @staticmethod
     def _check_code(email, otp):

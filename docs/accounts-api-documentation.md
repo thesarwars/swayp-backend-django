@@ -26,6 +26,12 @@ All of these endpoints are public and do not require a bearer token.
 
 ---
 
+## Email addresses
+
+An address is one account whatever its case: `Jane@Acme.com` signs in to the
+account registered as `jane@acme.com`, and registering both is refused. The
+server stores and returns addresses lowercased.
+
 ## 1. Register Account
 
 ### Endpoint
@@ -402,6 +408,13 @@ Reset the user password using the OTP received via email.
   "message": "Password reset successful."
 }
 ```
+
+### Every session ends
+
+A successful reset revokes every refresh token on the account, so each
+device has to sign in again with the new password. Treat the next 401 from
+refresh as "signed out". Access tokens already issued still work until they
+expire; they cannot be recalled.
 
 ### Password reuse is rejected
 

@@ -846,6 +846,10 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **Needed:** accept an `Authorization` header on the handshake (React Native can send one), or issue a short-lived single-use ticket.
 
 #### SEC-5 · minor · Session questions
+✅ Fixed and answered:
+- **Email case:** yes, case-insensitive everywhere. Addresses are stored lowercased on every path (the admin included). Sign-in matches any case. A database constraint refuses a second account that differs only in case (migration `users/0006`).
+- **Reset:** a password reset now revokes and blacklists every refresh token, so all devices must sign in again. Already-issued access tokens lapse on their own lifetime.
+- **`provider_token`:** no longer echoed since VEND-2; tests assert it.
 - Is the email compared case-insensitively at sign-in and registration?
 - Does a password reset revoke existing refresh tokens? (It should.)
 - `POST /vendors/{id}/payment-methods` echoes `provider_token` in its response (VEND-2). Please stop echoing it.

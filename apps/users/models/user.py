@@ -4,11 +4,23 @@ from django.contrib.auth.models import (
 )
 from django.contrib.auth.base_user import BaseUserManager
 from django.db import models
+from django.db.models.functions import Lower
 
 from apps.common.models import BaseModel
 
 
 class UserManager(BaseUserManager):
+
+    @classmethod
+    def normalize_email(cls, email):
+        """The whole address lowercased (SEC-5), not only the domain as
+        Django does: Jane@acme.com and jane@acme.com are one inbox, so they
+        must be one account."""
+        return (email or "").strip().lower()
+
+    def get_by_natural_key(self, username):
+        # Sign-in matches whatever case was typed.
+        return self.get(**{f"{self.model.USERNAME_FIELD}__iexact": username})
 
     def create_user(
         self,
@@ -120,6 +132,22 @@ class User(
 
     class Meta:
         db_table = "users"
+        constraints = [
+            # unique=True on the column compares exactly, so Jane@ and jane@
+            # could both be stored (admin, a script). This compares them as
+            # the same address.
+            models.UniqueConstraint(
+                Lower("email"), name="uniq_user_email_ci"
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        # Every path that writes a user, the admin included, stores the
+        # address lowercased.
+        if self.email:
+            self.email = UserManager.normalize_email(self.email)
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.email

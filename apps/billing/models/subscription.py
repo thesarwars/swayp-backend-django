@@ -45,6 +45,12 @@ class Subscription(BaseModel):
 
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
+    # Set when the customer cancels (BILLING-5): the day the plan ends. Until
+    # then it stays live, because the period is paid for. Null means no
+    # cancellation is pending. It is the trial's end during a trial, which is
+    # when Stripe ends a cancelled trialing subscription.
+    cancels_on = models.DateField(null=True, blank=True)
+
     # When the free period ends, or null if there was never one. The
     # entitlement is ACTIVE throughout: a trial is a promise not to charge
     # yet, not a reduced product.

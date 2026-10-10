@@ -294,6 +294,15 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
 
         return self._to_ref(cancelled)
 
+    def set_cancel_at_period_end(self, *, subscription_id, cancel):
+        updated = self._call(
+            self._client.v1.subscriptions.update,
+            subscription_id,
+            {"cancel_at_period_end": bool(cancel)},
+        )
+
+        return self._to_ref(updated)
+
     # --- fees -------------------------------------------------------------
 
     def add_invoice_item(self, *, customer_id, amount, description,

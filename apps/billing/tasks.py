@@ -38,6 +38,15 @@ def renew_subscriptions():
 
     renewed = 0
     failed = 0
+    ended = 0
+
+    # Cancellations whose date has come end instead of renewing (BILLING-5).
+    for subscription in Subscription.objects.filter(
+        status__in=(SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE),
+        cancels_on__lte=today,
+    ):
+        if subscriptions.end_if_due(subscription, today=today):
+            ended += 1
 
     due = Subscription.objects.filter(
         status=SubscriptionStatus.ACTIVE, period_end__lte=today
@@ -77,4 +86,4 @@ def renew_subscriptions():
             failed,
         )
 
-    return {"renewed": renewed, "failed": failed}
+    return {"renewed": renewed, "failed": failed, "ended": ended}

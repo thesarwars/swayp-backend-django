@@ -106,6 +106,11 @@ class CollectingStub(SubscriptionBillingProvider):
 
         return SubscriptionRef(id=subscription_id, status="canceled")
 
+    def set_cancel_at_period_end(self, *, subscription_id, cancel):
+        self._record("set_cancel_at_period_end", cancel=cancel)
+
+        return SubscriptionRef(id=subscription_id, status=self.status)
+
     def add_invoice_item(self, *, customer_id, amount, description,
                          currency="usd", idempotency_key=""):
         self._record(

@@ -116,7 +116,9 @@ class SubscriptionTests(TestCase):
         self.service.subscribe(
             account=self.user, plan_code=PlanCode.STANDARD
         )
-        self.service.cancel(account=self.user)
+        cancelled = self.service.cancel(account=self.user)
+        # Cancellation takes effect at the end of the paid period (BILLING-5).
+        self.service.end_if_due(cancelled, today=cancelled.cancels_on)
 
         again = self.service.subscribe(
             account=self.user, plan_code=PlanCode.FOUNDING

@@ -185,6 +185,29 @@ DELETE /api/v1/billing/subscription
 Cycle boundaries are kept and **there is no proration** — the change takes
 effect at the new price with no credit. Don't promise one.
 
+**Cancelling keeps the paid period.** `DELETE` doesn't end the plan at once:
+it stays `ACTIVE`, with every allowance, until `cancels_on`, then ends. That
+date is the end of the paid month, or the trial's end during a trial.
+Nothing is refunded, because nothing is lost. The response has:
+
+| Field | Meaning |
+|---|---|
+| `cancel_pending` | `true` once cancelled |
+| `cancels_on` | The last day of access; `null` when nothing is pending |
+
+Show "Your plan ends on <date>" and offer **Undo**:
+
+```
+POST /api/v1/billing/subscription/resume
+```
+
+That withdraws the cancellation, and the plan continues as before. Without a
+pending cancellation it's a 400. While a cancellation is pending the account
+still holds its plan, so subscribing to another is refused; use `PATCH` to
+change plans. If the payment provider can't be reached, cancel and resume
+fail with a message to try again, rather than leave the customer billed after
+they were told the plan ends.
+
 ⚠️ **Leaving Founding gives up the price lock permanently.** Warn when
 `locked_price !== null`.
 

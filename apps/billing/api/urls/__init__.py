@@ -9,10 +9,16 @@ from apps.billing.api.views.billing import (
     PaymentMethodSetupAPIView,
     PlanListAPIView,
     SubscriptionAPIView,
+    SubscriptionResumeAPIView,
 )
 
 urlpatterns = [
     path("/plans", PlanListAPIView.as_view(), name="billing-plan-list"),
+    path(
+        "/subscription/resume",
+        SubscriptionResumeAPIView.as_view(),
+        name="billing-subscription-resume",
+    ),
     path(
         "/subscription",
         SubscriptionAPIView.as_view(),

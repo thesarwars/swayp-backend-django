@@ -205,7 +205,15 @@ class SubscriptionService:
         return subscription
 
     @transaction.atomic
-    def cancel(self, *, account):
+    def cancel(self, *, account, today=None):
+        """Cancel at the end of the paid period (BILLING-5).
+
+        It used to end the subscription at once, with no refund, so the
+        customer lost the rest of the month they had paid for. Now the plan
+        stays live until ``cancels_on`` and then ends; nothing is refunded
+        because nothing is lost. The customer can withdraw it until then.
+        """
+        today = today or timezone.localdate()
         subscription = self.current(account)
 
         if subscription is None:
@@ -213,15 +221,53 @@ class SubscriptionService:
                 {"subscription": "No active subscription to cancel."}
             )
 
-        subscription.status = SubscriptionStatus.CANCELLED
+        if subscription.cancels_on is not None:
+            return subscription
+
+        subscription.cancels_on = (
+            subscription.trial_end
+            if subscription.is_trialing(today)
+            else subscription.period_end
+        )
         subscription.cancelled_at = timezone.now()
         subscription.save(
-            update_fields=["status", "cancelled_at", "updated_at"]
+            update_fields=["cancels_on", "cancelled_at", "updated_at"]
         )
 
-        # Cancels provider-side too, but never lets that failure undo this:
-        # telling a customer their cancellation failed while continuing to
-        # bill them is the one outcome worth avoiding at any cost.
-        self._provider().cancel(subscription)
+        self._provider().schedule_cancel(subscription, cancel=True)
 
         return subscription
+
+    @transaction.atomic
+    def resume(self, *, account):
+        """Withdraw a pending cancellation; the plan simply continues."""
+        subscription = self.current(account)
+
+        if subscription is None or subscription.cancels_on is None:
+            raise ValidationError(
+                {"subscription": "There is no pending cancellation to undo."}
+            )
+
+        subscription.cancels_on = None
+        subscription.cancelled_at = None
+        subscription.save(
+            update_fields=["cancels_on", "cancelled_at", "updated_at"]
+        )
+
+        self._provider().schedule_cancel(subscription, cancel=False)
+
+        return subscription
+
+    @transaction.atomic
+    def end_if_due(self, subscription, today=None):
+        """End a subscription whose cancellation date has come. True if it
+        ended. Stripe ends its side by itself and says so by webhook."""
+        today = today or timezone.localdate()
+
+        if subscription.cancels_on is None or subscription.cancels_on > today:
+            return False
+
+        subscription.status = SubscriptionStatus.CANCELLED
+        subscription.save(update_fields=["status", "updated_at"])
+
+        return True

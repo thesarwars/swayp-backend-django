@@ -700,6 +700,7 @@ These matter once the bill detail screens are built:
 - **Screen:** choose plan (badge), payment (CTA).
 
 #### BILLING-5 · major · Cancellation semantics
+- **✅ Fixed (cancel at period end)**: `DELETE /billing/subscription` used to end the plan **immediately with no refund**. Now the plan stays `ACTIVE` until `cancels_on` (the end of the paid month, or the trial's end), then ends; there is no refund because nothing is lost. The body has `cancel_pending: true` and `cancels_on` (the "ends at" date). New `POST /billing/subscription/resume` undoes it. Treat the cancel as "scheduled", not "cancelled". See e9 §5.
 - **Endpoint:** `DELETE /billing/subscription`.
 - **Needed:** document whether access ends immediately and whether anything is refunded. Return `ends_at`. Cancel at period end is preferred.
 - **Screen:** subscriptions → cancel confirmation.

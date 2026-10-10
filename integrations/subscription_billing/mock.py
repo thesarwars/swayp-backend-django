@@ -59,6 +59,9 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
     def cancel_subscription(self, *, subscription_id):
         return SubscriptionRef(id=subscription_id, status="canceled")
 
+    def set_cancel_at_period_end(self, *, subscription_id, cancel):
+        return SubscriptionRef(id=subscription_id, status="active")
+
     def add_invoice_item(self, *, customer_id, amount, description,
                          currency="usd", idempotency_key=""):
         return _stable("ii", customer_id, description, Decimal(amount))

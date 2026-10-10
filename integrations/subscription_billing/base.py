@@ -106,6 +106,13 @@ class SubscriptionBillingProvider(ABC):
         ...
 
     @abstractmethod
+    def set_cancel_at_period_end(self, *, subscription_id: str,
+                                 cancel: bool) -> SubscriptionRef:
+        """Schedule (True) or withdraw (False) cancellation at the end of the
+        current period. The subscription stays active until then."""
+        ...
+
+    @abstractmethod
     def add_invoice_item(self, *, customer_id: str, amount: Decimal,
                          description: str, currency: str = "usd",
                          idempotency_key: str = "") -> str:

@@ -91,6 +91,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         )
     )
 
+    cancel_pending = serializers.SerializerMethodField(
+        help_text="Cancelled, still live until cancels_on."
+    )
+
+    def get_cancel_pending(self, subscription):
+        return subscription.cancels_on is not None
+
     def get_past_due(self, subscription):
         return subscription.status == SubscriptionStatus.PAST_DUE
 
@@ -115,6 +122,8 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "effective_price",
             "provider_status",
             "past_due",
+            "cancel_pending",
+            "cancels_on",
             "client_secret",
             "trial_end",
             "is_trialing",

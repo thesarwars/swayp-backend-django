@@ -124,11 +124,42 @@ class SubscriptionAPIView(AccountScopedMixin, BaseAPIView):
         )
 
     def delete(self, request):
+        """Cancel at the end of the paid period (BILLING-5)."""
         subscription = self.service.cancel(account=self.account(request))
 
         return ApiResponse.success(
             data=SubscriptionSerializer(subscription).data,
-            message="Subscription cancelled.",
+            message=(
+                f"Your plan stays active until {subscription.cancels_on}, "
+                "then ends."
+            ),
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Undo a pending cancellation",
+    description=(
+        "Withdraws a cancellation before cancels_on; the plan continues as "
+        "if it had never been cancelled. 400 when none is pending."
+    ),
+    request=None,
+    responses={200: SubscriptionSerializer},
+)
+class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
+
+    service_class = SubscriptionService
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BILLING
+
+    def post(self, request):
+        subscription = self.service.resume(account=self.account(request))
+
+        return ApiResponse.success(
+            data=SubscriptionSerializer(subscription).data,
+            message="Cancellation withdrawn; your plan continues.",
         )
 
 

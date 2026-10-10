@@ -193,6 +193,36 @@ class BillingProviderService:
 
         return ref
 
+    def schedule_cancel(self, subscription, *, cancel=True):
+        """Ask the provider to end (or keep) the subscription at period end.
+
+        Unlike an immediate cancel, a failure here raises: if the provider
+        never hears it, it renews and charges a customer who was told their
+        plan ends, which is worse than asking them to try again.
+        """
+        if not self.collects_money or not subscription.provider_subscription_id:
+            return None
+
+        from apps.common.exceptions import ProviderUnavailableException
+
+        try:
+            ref = self.provider.set_cancel_at_period_end(
+                subscription_id=subscription.provider_subscription_id,
+                cancel=cancel,
+            )
+        except BillingProviderError as error:
+            logger.exception(
+                "provider cancel scheduling failed for subscription %s",
+                subscription.pk,
+            )
+            raise ProviderUnavailableException(
+                "Couldn't reach the payment provider. Try again in a moment."
+            ) from error
+
+        self._apply(subscription, ref)
+
+        return ref
+
     def cancel(self, subscription):
         """Cancel provider-side. Never blocks the Swayp-side cancellation.
 

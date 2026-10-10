@@ -6,8 +6,14 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from apps.bills.serializers.qr_serializer import (
+    BillQRDecodeResponseSerializer,
+    BillQRPrefillSerializer,
+)
 from apps.bills.services.qr_service import BillQRService
 from apps.common.responses import ApiResponse
+from apps.common.swagger import BAD_REQUEST_RESPONSE, UNAUTHORIZED_RESPONSE
+from apps.teams.access import AccountScopedMixin
 from apps.vendors.api.serializers.qr import QRDecodeSerializer
 
 
@@ -16,11 +22,19 @@ from apps.vendors.api.serializers.qr import QRDecodeSerializer
     summary="Decode a bill QR",
     description=(
         "Decodes a QR into bill-wizard prefill fields. Shares one parser with "
-        "the vendor QR endpoint — there is no second implementation."
+        "the vendor QR endpoint — there is no second implementation. "
+        "vendor_id and category_id are matched by exact name and are null "
+        "when nothing matches. An unreadable QR is 422 with the standard "
+        "{success: false, message} body."
     ),
     request=QRDecodeSerializer,
+    responses={
+        200: BillQRDecodeResponseSerializer,
+        400: BAD_REQUEST_RESPONSE,
+        401: UNAUTHORIZED_RESPONSE,
+    },
 )
-class BillQRDecodeAPIView(APIView):
+class BillQRDecodeAPIView(AccountScopedMixin, APIView):
 
     permission_classes = [IsAuthenticated]
     parser_classes = (JSONParser, MultiPartParser, FormParser)
@@ -35,6 +49,7 @@ class BillQRDecodeAPIView(APIView):
 
         try:
             result = self.service.decode(
+                user=self.account(request),
                 payload=serializer.validated_data.get("payload"),
                 image=serializer.validated_data.get("image"),
             )
@@ -45,6 +60,6 @@ class BillQRDecodeAPIView(APIView):
             )
 
         return ApiResponse.success(
-            data=result,
+            data=BillQRPrefillSerializer(result).data,
             message="QR decoded successfully.",
         )

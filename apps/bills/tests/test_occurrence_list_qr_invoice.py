@@ -289,3 +289,63 @@ class InvoiceTests(BillFixtureMixin, TestCase):
 
         self.assertEqual(decoded["vendor_name"], "WeWork")
         self.assertEqual(decoded["due_date"], D(2026, 2, 15))
+
+
+class BillQRIdTests(TestCase):
+    """BILLS-2: the decode answers with ids the wizard can use, and an
+    unreadable QR fails in the standard envelope on both QR routes."""
+
+    URL = "/api/v1/bills/qr/decode"
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="qr-ids@example.com", password="Sw@yp-Test-1"
+        )
+        self.rent = BillCategory.objects.create(
+            name="Commercial Rent", icon="https://e.com/i.png", color="#111"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def decode(self, payload):
+        return self.client.post(self.URL, {"payload": payload}, format="json")
+
+    def test_a_saved_vendor_is_matched_and_lends_its_category(self):
+        vendor = Vendor.objects.create(
+            user=self.user, name="WeWork", category=self.rent
+        )
+
+        data = self.decode("SWAYP:vendor=wework;amount=3200.00").json()["data"]
+
+        self.assertEqual(data["vendor_id"], str(vendor.id))
+        self.assertEqual(data["category_id"], str(self.rent.id))
+        self.assertEqual(data["amount"], "3200.00")
+
+    def test_an_unknown_vendor_is_null_not_invented(self):
+        data = self.decode("SWAYP:vendor=Nobody;amount=10.00").json()["data"]
+
+        self.assertIsNone(data["vendor_id"])
+        self.assertEqual(Vendor.objects.count(), 0)
+
+    def test_another_accounts_vendor_is_not_matched(self):
+        stranger = User.objects.create_user(
+            email="stranger@example.com", password="Sw@yp-Test-1"
+        )
+        Vendor.objects.create(user=stranger, name="WeWork", category=self.rent)
+
+        data = self.decode("SWAYP:vendor=WeWork;amount=1.00").json()["data"]
+
+        self.assertIsNone(data["vendor_id"])
+
+    def test_unreadable_is_the_standard_envelope_on_both_routes(self):
+        for url in (self.URL, "/api/v1/vendors/qr/decode"):
+            with self.subTest(url=url):
+                response = self.client.post(
+                    url, {"payload": "@@@@"}, format="json"
+                )
+
+                self.assertEqual(response.status_code, 422)
+                body = response.json()
+                self.assertIs(body["success"], False)
+                self.assertIn("message", body)
+                self.assertNotIn("detail", body)

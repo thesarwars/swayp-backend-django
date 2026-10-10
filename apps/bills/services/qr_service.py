@@ -9,6 +9,9 @@ from decimal import Decimal, InvalidOperation
 
 from django.utils.dateparse import parse_date
 
+from apps.bill_categories.models import BillCategory
+from apps.common.enums import VendorStatus
+from apps.vendors.models import Vendor
 from apps.vendors.services.qr_decoder import QRDecodeService
 
 
@@ -17,7 +20,7 @@ class BillQRService:
     def __init__(self):
         self.decoder = QRDecodeService()
 
-    def decode(self, *, payload=None, image=None):
+    def decode(self, *, user=None, payload=None, image=None):
         """Decode a QR into bill-wizard prefill fields.
 
         Raises ValueError for unreadable input, which the view maps to 422.
@@ -27,7 +30,46 @@ class BillQRService:
         else:
             result = self.decoder.decode_image(image)
 
-        return self._as_bill_prefill(result)
+        prefill = self._as_bill_prefill(result)
+        prefill.update(self._match_ids(user, prefill))
+
+        return prefill
+
+    def _match_ids(self, user, prefill):
+        """The account's own vendor and the category the QR names (BILLS-2).
+
+        The wizard needs ids, and the QR only carries names. Matched exactly
+        (case aside) and never invented: a name that matches nothing is
+        null, and the client falls back to the search box. A matched
+        vendor's own category stands in when the QR names none.
+        """
+        vendor = None
+
+        if user is not None and prefill.get("vendor_name"):
+            vendor = Vendor.objects.filter(
+                user=user,
+                status=VendorStatus.ACTIVE,
+                name__iexact=prefill["vendor_name"].strip(),
+            ).first()
+
+        category_id = None
+
+        if prefill.get("category"):
+            category_id = (
+                BillCategory.objects.filter(
+                    is_active=True, name__iexact=prefill["category"].strip()
+                )
+                .values_list("id", flat=True)
+                .first()
+            )
+
+        if category_id is None and vendor is not None:
+            category_id = vendor.category_id
+
+        return {
+            "vendor_id": vendor.id if vendor else None,
+            "category_id": category_id,
+        }
 
     def _as_bill_prefill(self, result):
         provenance = dict(result.get("provenance") or {})

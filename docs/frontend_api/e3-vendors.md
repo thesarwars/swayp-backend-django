@@ -159,7 +159,9 @@ POST /api/v1/vendors/qr/decode    { "payload": "name=Acme&routing=…" }
 ```
 
 Bare object. **422** when the payload is unreadable — that is "scan again",
-not a server error.
+not a server error. The 422 body is the standard envelope,
+`{ "success": false, "message": "…" }`, the same as `bills/qr/decode`. It used
+to be `{ "detail": "…" }`.
 
 The parser reads `k=v` pairs and returns a `provenance` field; expect
 `guessed` for unfamiliar codes and **let the user confirm before saving**. The

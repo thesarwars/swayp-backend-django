@@ -4,6 +4,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.responses import ApiResponse
+
 from apps.providers.models import Provider
 from apps.vendors.api.serializers.qr import QRDecodeSerializer
 from apps.vendors.services.qr_decoder import QRDecodeService
@@ -47,11 +49,12 @@ class QRDecodeAPIView(APIView):
                 )
 
         except ValueError as exc:
-            return Response(
-                {
-                    "detail": str(exc),
-                },
-                status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            # The standard error envelope, the same as bills/qr/decode
+            # (BILLS-2, VEND-10). It was a bare {detail}, so the two routes
+            # that share one parser failed in two different shapes.
+            return ApiResponse.error(
+                message=str(exc),
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
         directory_match = None

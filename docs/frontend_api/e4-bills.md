@@ -267,7 +267,23 @@ POST /api/v1/bills/qr/decode    { "payload": "…" }
 ```
 
 Same parser and the same **422-on-unreadable** rule as
-[vendors/qr/decode](e3-vendors.md). One code path, two entry points.
+[vendors/qr/decode](e3-vendors.md). One code path, two entry points. Both
+answer a 422 as `{ "success": false, "message": "…" }`.
+
+```json
+{ "success": true, "message": "QR decoded successfully.",
+  "data": { "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork",
+            "category_id": "7a1d…", "category": "Rent",
+            "amount": "3200.00", "due_date": "2026-11-01",
+            "payment_ref": "WW-88", "provenance": { "amount": "parsed", "…": "…" } } }
+```
+
+**Use the ids for the wizard.** `vendor_id` is the account's saved vendor
+whose name matches the QR's exactly (case aside), or `null`, in which case
+put `vendor_name` in the vendor search box. `category_id` is the active
+category the QR names, else the matched vendor's own category, else `null`.
+Nothing is created by decoding. `amount` is a decimal string like everywhere
+else.
 
 ---
 

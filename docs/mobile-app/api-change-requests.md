@@ -344,6 +344,7 @@ Contents:
 - **App today:** sends `vendor`, `category`, `payment_method`, `anchor_date` and `frequency` ∈ `MONTHLY | QUARTERLY | WEEKLY | ONE_TIME` (the four Figma chips) as documented in the bills reference. It accepts any 2xx.
 
 #### BILLS-2 · major · QR decode returns names instead of ids
+- **✅ Fixed**: `POST /bills/qr/decode` now returns `vendor_id` (the account's saved vendor with that exact name, or `null`) and `category_id` (the active category the QR names, else the matched vendor's category, or `null`), next to the names. OpenAPI declares the response, and `amount` is a decimal string. Both QR routes now answer a 422 as `{ success: false, message }`; `vendors/qr/decode` used to send `{ detail }`. See e4 §7.
 - **Endpoint:** `POST /bills/qr/decode`.
 - **Today:**
   - The response has `vendor_name` and `category` as names.
@@ -609,6 +610,7 @@ These matter once the bill detail screens are built:
 - **App today:** after PATCH it uses the values it sent, coerces `total_paid`, and never reads `bills`.
 
 #### VEND-10 · minor · Error bodies for QR decode and routing validation
+- **🟡 Partly fixed** (with BILLS-2): the QR decode 422 is now the standard envelope `{ success: false, message }`. Routing validation is still open.
 - **Endpoint:** `POST /vendors/qr/decode`, `POST /banking/routing/validate`.
 - **Today:** the QR 422 body is `{ detail }` instead of the standard envelope. For routing validation, the status and body for a masked or malformed number, and the 429 body and `Retry-After`, are undocumented.
 - **Screen:** add a payee → bank details.

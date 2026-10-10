@@ -80,20 +80,22 @@ class OnboardingSelector:
         detected = aggregates["detected"] or 0
         imported = aggregates["imported"] or 0
 
-        # The window of the newest scan, for "From N mo history" (BANK-7).
-        # Null before any scan exists.
+        # The newest scan: its id is the way back to the detected bills
+        # (BANK-6), its window is "From N mo history" (BANK-7). Both null
+        # before any scan exists.
         latest = (
             TransactionScan.objects.filter(connection__user=user)
             .order_by("-created_at")
-            .values_list("months_history", flat=True)
+            .values("id", "months_history")
             .first()
-        )
+        ) or {}
 
         return {
             "detected": detected,
             "imported": imported,
             "pending": detected - imported,
-            "months_history": latest,
+            "scan_id": latest.get("id"),
+            "months_history": latest.get("months_history"),
         }
 
     def bill_totals(self, user, today):

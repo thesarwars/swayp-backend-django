@@ -189,6 +189,7 @@ Contents:
 - **App today:** only the mock provider is supported. The app sends `public-mock-<institution>`, never collects bank credentials, and shows "Bank linking isn't available in this version of the app yet" for any other provider.
 
 #### BANK-6 · minor · No way to find a connection's latest scan
+- **✅ Fixed**: every connection in `GET /banking/connections` and `GET /banking/connections/{id}` now carries `latest_scan: { id, status } | null`, and `onboarding-summary` has `detection.scan_id`, the newest scan overall. If the exchange answer is lost, read `latest_scan` from the connections list instead of starting a second scan. See e5 §6, "Getting back to a scan".
 - **Endpoint:** new, for example `GET /banking/scans?connection_id=`, or `detection.scan_id` in the onboarding summary.
 - **Today:** a user who links a bank and leaves can only get back to the detected bills by starting a new scan.
 - **Screen:** onboarding resume, and a future in-app review.

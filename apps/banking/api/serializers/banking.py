@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.banking.models import (
@@ -53,8 +54,17 @@ class BankAccountSerializer(serializers.ModelSerializer):
         )
 
 
+class LatestScanSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    status = serializers.CharField()
+
+
 class BankConnectionSerializer(serializers.ModelSerializer):
     accounts = BankAccountSerializer(many=True, read_only=True)
+    # The way back to a connection's detected bills (BANK-6): a user who
+    # links and leaves, or a client that lost the exchange answer, finds the
+    # scan here instead of starting a new one.
+    latest_scan = serializers.SerializerMethodField()
 
     class Meta:
         model = BankConnection
@@ -67,8 +77,25 @@ class BankConnectionSerializer(serializers.ModelSerializer):
             "status",
             "consented_at",
             "accounts",
+            "latest_scan",
             "created_at",
         )
+
+    @extend_schema_field(LatestScanSerializer(allow_null=True))
+    def get_latest_scan(self, connection):
+        # list_connections prefetches the scans newest-first, so a list is
+        # one query; a single connection falls back to its own.
+        prefetched = getattr(connection, "scans_newest_first", None)
+
+        if prefetched is not None:
+            scan = prefetched[0] if prefetched else None
+        else:
+            scan = connection.scans.order_by("-created_at").first()
+
+        if scan is None:
+            return None
+
+        return {"id": scan.id, "status": scan.status}
 
 
 class TransactionScanSerializer(serializers.ModelSerializer):

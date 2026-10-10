@@ -147,6 +147,15 @@ GET    /api/v1/banking/accounts
 POST   /api/v1/banking/accounts             ← set the default funding source
 ```
 
+### Getting back to a scan
+
+Every connection carries `latest_scan: { "id", "status" }`, or `null` if it
+has never been scanned. A user who linked a bank and left, or a client whose
+`link/exchange` answer was lost, resumes from there: poll
+`scans/<latest_scan.id>` and read its candidates. **Don't start a new scan
+just to find the bills.** `onboarding-summary` also has `detection.scan_id`,
+the newest scan across all connections.
+
 ### Disconnect is guarded ⚠️
 
 ```json
@@ -195,7 +204,7 @@ GET /api/v1/banking/onboarding-summary
                          "mask": "4821",
                          "display": "Chase Business Checking ****4821" } },
   "detection": { "detected": 0, "imported": 0, "pending": 0,
-                 "months_history": 24 },
+                 "scan_id": "f1550c32-…", "months_history": 24 },
   "bills": { "total_due_this_month": "0.00", "overdue_count": 0,
              "due_count": 0, "upcoming_count": 1, "total_bills": 1 },
   "rail_readiness": { "total_vendors": 1, "network_matched": 0,

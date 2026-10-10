@@ -1,12 +1,14 @@
 """Connection and funding-account management (E5-S3)."""
 
 from django.db import transaction
+from django.db.models import Prefetch
 from rest_framework.exceptions import ValidationError
 
 from apps.banking.models import (
     BankAccount,
     BankConnection,
     BankConnectionStatus,
+    TransactionScan,
 )
 from apps.common.enums import PaymentStatus
 
@@ -23,7 +25,14 @@ class ConnectionService:
     def list_connections(self, user):
         return (
             BankConnection.objects.filter(user=user)
-            .prefetch_related("accounts")
+            .prefetch_related(
+                "accounts",
+                Prefetch(
+                    "scans",
+                    queryset=TransactionScan.objects.order_by("-created_at"),
+                    to_attr="scans_newest_first",
+                ),
+            )
             .order_by("-created_at")
         )
 

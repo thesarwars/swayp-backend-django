@@ -34,6 +34,10 @@ class OnboardingDetectionSerializer(serializers.Serializer):
     detected = serializers.IntegerField()
     imported = serializers.IntegerField()
     pending = serializers.IntegerField()
+    scan_id = serializers.UUIDField(
+        allow_null=True,
+        help_text="Newest scan, for its candidates; null before any scan.",
+    )
     months_history = serializers.IntegerField(
         allow_null=True,
         help_text="Window of the newest scan; null before any scan.",

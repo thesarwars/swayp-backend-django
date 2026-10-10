@@ -110,6 +110,22 @@ class BankConnectionSerializer(serializers.ModelSerializer):
         return {"id": scan.id, "status": scan.status}
 
 
+class ScanStageSerializer(serializers.Serializer):
+    key = serializers.ChoiceField(
+        choices=["connected", "verifying", "history", "detecting"]
+    )
+    label = serializers.CharField()
+    status = serializers.ChoiceField(
+        choices=["done", "active", "pending", "failed"]
+    )
+
+
+class ScanProgressSerializer(serializers.Serializer):
+    is_complete = serializers.BooleanField()
+    thin_history = serializers.BooleanField()
+    stages = ScanStageSerializer(many=True)
+
+
 class TransactionScanSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
 
@@ -128,6 +144,7 @@ class TransactionScanSerializer(serializers.ModelSerializer):
             "progress",
         )
 
+    @extend_schema_field(ScanProgressSerializer)
     def get_progress(self, obj):
         from apps.banking.services.scan_service import ScanService
 
@@ -201,6 +218,7 @@ class StartScanSerializer(serializers.Serializer):
 class BillDetectionCandidateSerializer(serializers.ModelSerializer):
     category_guess_name = serializers.CharField(
         source="category_guess.name", read_only=True, default=None,
+        allow_null=True,
     )
     is_imported = serializers.BooleanField(read_only=True)
 
@@ -274,3 +292,12 @@ class ImportCandidatesSerializer(serializers.Serializer):
 
 class SetFundingSourceSerializer(serializers.Serializer):
     account_id = serializers.UUIDField()
+
+
+class LinkedConnectionSerializer(BankConnectionSerializer):
+    """The exchange answer: the connection and the scan it started."""
+
+    scan = TransactionScanSerializer(read_only=True)
+
+    class Meta(BankConnectionSerializer.Meta):
+        fields = (*BankConnectionSerializer.Meta.fields, "scan")

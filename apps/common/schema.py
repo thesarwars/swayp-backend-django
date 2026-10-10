@@ -42,6 +42,40 @@ ERROR_DESCRIPTIONS = {
 
 class SwaypAutoSchema(AutoSchema):
 
+    def _map_basic_serializer(self, serializer, direction):
+        """In a response, every field the serializer outputs is present.
+
+        DRF marks a model field with a default or blank=True as not
+        required, which is about input; spectacular carried that into the
+        response schema, so always-present keys (status, provider, …) were
+        published as optional. A field the serializer itself declares
+        ``required=False`` is still optional: it is omitted when absent.
+        """
+        schema = super()._map_basic_serializer(serializer, direction)
+
+        if direction != "response":
+            return schema
+
+        declared = getattr(serializer, "_declared_fields", {})
+        required = set(schema.get("required", []))
+
+        for name, field in serializer.fields.items():
+            if field.write_only:
+                continue
+
+            if name in declared and field._kwargs.get("required") is False:
+                continue
+
+            required.add(field.field_name)
+
+        properties = schema.get("properties", {})
+        ordered = [name for name in properties if name in required]
+
+        if ordered:
+            schema["required"] = ordered
+
+        return schema
+
     def _get_response_bodies(self, direction="response"):
         responses = super()._get_response_bodies(direction)
 

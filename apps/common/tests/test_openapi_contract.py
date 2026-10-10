@@ -216,3 +216,70 @@ class NotificationContractTests(ContractTestCase):
                    status=None)
         self.check("POST", "/api/v1/notifications/devices/unregister",
                    body={"token": "fcm-token-1"}, status=None)
+
+
+class BankingContractTests(ContractTestCase):
+
+    def setUp(self):
+        super().setUp()
+        from apps.vendors.factories import BillCategoryFactory
+
+        BillCategoryFactory(name="Other")
+        BillCategoryFactory(name="Utilities")
+
+    def link(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.check(
+                "POST", "/api/v1/banking/link/exchange",
+                body={"public_token": "public-mock-chase",
+                      "consent_accepted": True},
+                status=201,
+            ).json()["data"]
+
+    def test_the_onboarding_flow(self):
+        from apps.banking.models import BillDetectionCandidate
+
+        self.check("GET", "/api/v1/banking/institutions", status=200)
+        self.check("POST", "/api/v1/banking/link/token", body={}, status=200)
+        connection = self.link()
+        scan_id = connection["scan"]["id"]
+        cid = connection["id"]
+
+        self.check("GET", "/api/v1/banking/connections", status=200)
+        self.check("GET", f"/api/v1/banking/connections/{cid}",
+                   path="/api/v1/banking/connections/{connection_id}",
+                   status=200)
+        accounts = self.check("GET", "/api/v1/banking/accounts",
+                              status=200).json()["data"]
+        self.check("POST", "/api/v1/banking/accounts",
+                   body={"account_id": accounts[0]["id"]}, status=200)
+
+        self.check("GET", f"/api/v1/banking/scans/{scan_id}",
+                   path="/api/v1/banking/scans/{scan_id}", status=200)
+        self.check("GET", f"/api/v1/banking/scans/{scan_id}/candidates",
+                   path="/api/v1/banking/scans/{scan_id}/candidates",
+                   status=200)
+        candidate = BillDetectionCandidate.objects.filter(
+            scan_id=scan_id).first()
+        self.check(
+            "PATCH",
+            f"/api/v1/banking/scans/{scan_id}/candidates/{candidate.id}",
+            path="/api/v1/banking/scans/{scan_id}/candidates/{candidate_id}",
+            body={"amount": "99.00"}, status=200,
+        )
+        self.check("POST", f"/api/v1/banking/scans/{scan_id}/import",
+                   path="/api/v1/banking/scans/{scan_id}/import",
+                   body={"candidate_ids": [str(candidate.id)]}, status=201)
+        self.check("GET", "/api/v1/banking/onboarding-summary", status=200)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.check("POST", "/api/v1/banking/scans",
+                       body={"connection_id": cid}, status=None)
+
+        self.check("DELETE", f"/api/v1/banking/connections/{cid}",
+                   path="/api/v1/banking/connections/{connection_id}",
+                   status=None)
+
+    def test_routing_validate(self):
+        self.check("POST", "/api/v1/banking/routing/validate",
+                   body={"routing_number": "021000021"}, status=200)

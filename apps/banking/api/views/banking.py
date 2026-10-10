@@ -1,5 +1,6 @@
 """Bank connection, scan and import endpoints (E5-S2 … E5-S6)."""
 
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import status
 
@@ -12,6 +13,7 @@ from apps.banking.api.serializers.banking import (
     ImportCandidatesSerializer,
     InstitutionSerializer,
     LinkExchangeSerializer,
+    LinkedConnectionSerializer,
     LinkTokenRequestSerializer,
     LinkTokenSerializer,
     SetFundingSourceSerializer,
@@ -19,8 +21,10 @@ from apps.banking.api.serializers.banking import (
     TransactionScanSerializer,
 )
 from apps.banking.api.serializers.onboarding import (
+    ImportReportSerializer,
     ImportResponseSerializer,
     OnboardingSummaryResponseSerializer,
+    OnboardingSummarySerializer,
 )
 from apps.banking.selectors.onboarding_selector import OnboardingSelector
 from apps.banking.services.connection_service import ConnectionService
@@ -118,7 +122,7 @@ class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
         "starts a transaction scan. Consent is required."
     ),
     request=LinkExchangeSerializer,
-    responses={201: BankConnectionSerializer},
+    responses={201: LinkedConnectionSerializer},
 )
 class LinkExchangeAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -189,6 +193,11 @@ class BankConnectionDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
 
+    @extend_schema(
+        summary="A bank connection",
+        description="One connection with its latest scan. 404 if not yours.",
+        responses={200: BankConnectionSerializer},
+    )
     def get(self, request, connection_id):
         connection = self.service.get_connection(self.account(request), connection_id)
 
@@ -220,6 +229,15 @@ class BankAccountListAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "connection_id", OpenApiTypes.UUID, required=False,
+                description="Only this connection's accounts.",
+            )
+        ],
+        responses={200: BankAccountSerializer(many=True)},
+    )
     def get(self, request):
         accounts = self.service.list_accounts(
             self.account(request),
@@ -231,6 +249,15 @@ class BankAccountListAPIView(AccountScopedMixin, BaseAPIView):
             message="Accounts fetched successfully.",
         )
 
+    @extend_schema(
+        summary="Choose the default funding account",
+        description=(
+            "Payments debit this account unless they name another. An "
+            "unknown or foreign account_id is a 400 on account_id."
+        ),
+        request=SetFundingSourceSerializer,
+        responses={200: BankAccountSerializer},
+    )
     def post(self, request):
         """Choose the default funding source."""
         serializer = SetFundingSourceSerializer(data=request.data)
@@ -374,7 +401,9 @@ class ScanImportAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             )
 
             return ApiResponse.success(
-                data=report,
+                # Through the serializer, so amount is the "99.00" string
+                # every money field is; the raw Decimal rendered as 99.0.
+                data=ImportReportSerializer(report).data,
                 message=(
                     f"Imported {report['imported_count']} bill(s), "
                     f"skipped {report['skipped_count']}."
@@ -399,6 +428,9 @@ class OnboardingSummaryAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
         return ApiResponse.success(
-            data=OnboardingSelector().summary(self.account(request)),
+            # Serialized so money renders as strings, as declared.
+            data=OnboardingSummarySerializer(
+                OnboardingSelector().summary(self.account(request))
+            ).data,
             message="Onboarding summary fetched successfully.",
         )

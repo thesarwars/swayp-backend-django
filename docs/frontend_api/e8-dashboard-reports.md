@@ -46,6 +46,14 @@ query set, costs a fixed number of queries however much data the account has,
 and its numbers reconcile with [`bills/summary`](e4-bills.md) and
 [`vendors/summary`](e3-vendors.md) by construction.
 
+### Recent bills
+
+`recent_bills` is **up to 5** bill occurrences already due (due date today or
+earlier, US Eastern), **newest due date first**, ties broken by most recently
+created. Every status is included: `OVERDUE` and `DUE` as well as `PAID` and
+`SCHEDULED`. This is the one place the home screen shows that something was
+paid. Future bills are the pay panel's job, not this list's.
+
 ### The pay panel picks its own tab
 
 `active_tab` falls back **overdue → due → upcoming**: if nothing is overdue it
@@ -55,6 +63,12 @@ empty while the user has anything outstanding.
 **Honour `active_tab` from the response** on first paint rather than defaulting
 to a tab yourself. `?tab=overdue|due|upcoming` overrides it once the user
 clicks.
+
+`pay_panel.items` holds **up to 5** rows of the **active tab only**,
+**earliest due date first**. `pay_panel.tabs` gives the full count for every
+tab, so a tab can read "Overdue (12)" while showing 5. For more rows, or
+another tab's rows, call
+`GET bills/occurrences?status=<tab>`; it uses the same order.
 
 `pay_panel.items` rows are the same shape as
 [`bills/occurrences`](e4-bills.md) — one row component, two screens.

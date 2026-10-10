@@ -307,6 +307,7 @@ Contents:
 - **App today:** the "From" row is static design content.
 
 #### DASH-10 · minor · Document `recent_bills` and the pay panel
+- **✅ Documented**: `recent_bills` is up to 5 occurrences due today or earlier (US Eastern), any status, newest due date first. `pay_panel.items` is up to 5 rows of the active tab only, earliest due first. `pay_panel.tabs` has the full count for every tab, and `bills/occurrences?status=` returns the rest in the same order. Also in the OpenAPI field descriptions. See e8 §1.
 - **Endpoint:** `GET /dashboard/home`.
 - **Needed:** the selection rule, order and limit of `recent_bills`, and the page size and order of `pay_panel.items`.
 - **App today:** `pay_panel.items` holds only the server's active tab, so Payment Centre shows that tab's rows (up to 5, earliest due first).

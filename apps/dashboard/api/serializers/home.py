@@ -55,7 +55,10 @@ class PayPanelSerializer(serializers.Serializer):
     # or re-fetch.
     active_tab = serializers.CharField()
     tabs = PayPanelTabsSerializer()
-    items = BillOccurrenceRowSerializer(many=True)
+    items = BillOccurrenceRowSerializer(
+        many=True,
+        help_text="Up to 5 rows of active_tab, earliest due first.",
+    )
 
 
 class HomeVendorPreviewSerializer(serializers.Serializer):
@@ -118,7 +121,13 @@ class HomeSerializer(serializers.Serializer):
         help_text="The signed-in person's unread notifications."
     )
     stats = HomeStatsSerializer()
-    recent_bills = BillOccurrenceRowSerializer(many=True)
+    recent_bills = BillOccurrenceRowSerializer(
+        many=True,
+        help_text=(
+            "Up to 5 occurrences due today or earlier (US Eastern), any "
+            "status, newest due date first."
+        ),
+    )
     vendors_preview = HomeVendorPreviewSerializer(many=True)
     pay_panel = PayPanelSerializer()
 

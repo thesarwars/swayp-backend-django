@@ -681,6 +681,7 @@ These matter once the bill detail screens are built:
 - **App today:** always shows "No card on file".
 
 #### BILLING-2 · major · No invoice history
+✅ Fixed: `GET /billing/invoices?limit=&starting_after=` lists past invoices from the processor, newest first: `{ id, number, status, total, currency, created, period_start, period_end, paid_at, pdf_url, hosted_url }`. Paging is by cursor (`next_cursor` beside `data`), because the processor pages that way. Empty on a deployment that collects no money.
 - **Endpoint:** new: `GET /billing/invoices?page=&pageSize=` with `{ id, period_start, period_end, total, status, paid_at, pdf_url }`.
 - **Today:** only the current-cycle preview exists.
 - **Screen:** subscriptions → payment ("Billing History").

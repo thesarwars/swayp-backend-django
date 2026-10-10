@@ -71,6 +71,23 @@ class CardRef:
     exp_year: int
 
 
+@dataclass(frozen=True)
+class InvoiceRef:
+    """One past invoice, as the billing history shows it (BILLING-2)."""
+
+    id: str
+    number: str
+    status: str
+    total: Decimal
+    currency: str
+    created: Optional[str]
+    period_start: Optional[str]
+    period_end: Optional[str]
+    paid_at: Optional[str]
+    pdf_url: str
+    hosted_url: str
+
+
 class SubscriptionBillingProvider(ABC):
     name = "base"
 
@@ -125,6 +142,13 @@ class SubscriptionBillingProvider(ABC):
                          subscription_id: str = "") -> CardRef:
         """Attach a card collected against a SetupIntent and make it the
         default for the customer and the subscription (BILLING-1)."""
+        ...
+
+    @abstractmethod
+    def list_invoices(self, *, customer_id: str, limit: int = 20,
+                      starting_after: str = "") -> tuple[list, bool]:
+        """Newest first. Returns (invoices, has_more); page on with the last
+        invoice's id as starting_after."""
         ...
 
     @abstractmethod

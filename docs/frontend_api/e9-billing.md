@@ -397,6 +397,37 @@ The line stays deliberately — dropping it would hide that Swayp honoured its
 guarantee. Strike it through or label it "refunded". Render `unit_price` and
 the invoice appears not to add up. `subtotal` is the sum of `total`.
 
+### Past invoices
+
+```
+GET /api/v1/billing/invoices?limit=20&starting_after=
+```
+
+What the payment processor actually billed, newest first:
+
+```json
+{ "success": true, "message": "Invoices fetched successfully.",
+  "data": [
+    { "id": "in_1Q…", "number": "SW-0001", "status": "paid",
+      "total": "49.00", "currency": "usd",
+      "created": "2026-09-01T00:00:00Z",
+      "period_start": "2026-08-01T00:00:00Z", "period_end": "2026-09-01T00:00:00Z",
+      "paid_at": "2026-09-01T00:05:00Z",
+      "pdf_url": "https://pay.stripe.com/invoice/…/pdf",
+      "hosted_url": "https://invoice.stripe.com/i/…" } ],
+  "next_cursor": "in_1Q…" }
+```
+
+- **Cursor paged, not page numbers:** the processor pages by cursor. For the
+  next page send `starting_after=<next_cursor>`. `next_cursor` is `null` on
+  the last page. `limit` is 1–100, default 20.
+- `status`: `paid`, `open` (not yet paid; past due if the subscription is),
+  `void`, `uncollectible`, `draft`.
+- `pdf_url` downloads the invoice; `hosted_url` opens the processor's page
+  for it, where an `open` one can also be paid.
+- On a deployment that collects no money (`collects_money: false`, §1) the
+  list is always empty. Show the empty state, not an error.
+
 ---
 
 ## 10. Enterprise add-ons

@@ -226,3 +226,29 @@ class BillingConfigSerializer(serializers.Serializer):
     publishable_key = serializers.CharField(
         allow_blank=True, help_text="For the processor's client SDK; \"\" when none."
     )
+
+
+class InvoiceHistoryQuerySerializer(serializers.Serializer):
+    limit = serializers.IntegerField(
+        min_value=1, max_value=100, default=20, required=False
+    )
+    starting_after = serializers.CharField(
+        required=False, allow_blank=True, default="",
+        help_text="The last invoice id of the previous page (next_cursor).",
+    )
+
+
+class InvoiceHistoryItemSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    number = serializers.CharField(allow_blank=True)
+    status = serializers.CharField(
+        help_text="paid, open, void, uncollectible or draft."
+    )
+    total = serializers.DecimalField(max_digits=18, decimal_places=2)
+    currency = serializers.CharField()
+    created = serializers.DateTimeField(allow_null=True)
+    period_start = serializers.DateTimeField(allow_null=True)
+    period_end = serializers.DateTimeField(allow_null=True)
+    paid_at = serializers.DateTimeField(allow_null=True)
+    pdf_url = serializers.CharField(allow_blank=True)
+    hosted_url = serializers.CharField(allow_blank=True)

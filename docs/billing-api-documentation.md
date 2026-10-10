@@ -624,6 +624,37 @@ So it already excludes refunded fees. Don't recompute it from `unit_price`.
 Only `PENDING` and `REFUNDED` fees appear. Once a fee is `BILLED` it belongs to
 a closed invoice and drops out of the preview.
 
+### Past invoices
+
+```
+GET /api/v1/billing/invoices?limit=20&starting_after=
+```
+
+What the payment processor actually billed, newest first:
+
+```json
+{ "success": true, "message": "Invoices fetched successfully.",
+  "data": [
+    { "id": "in_1Q…", "number": "SW-0001", "status": "paid",
+      "total": "49.00", "currency": "usd",
+      "created": "2026-09-01T00:00:00Z",
+      "period_start": "2026-08-01T00:00:00Z", "period_end": "2026-09-01T00:00:00Z",
+      "paid_at": "2026-09-01T00:05:00Z",
+      "pdf_url": "https://pay.stripe.com/invoice/…/pdf",
+      "hosted_url": "https://invoice.stripe.com/i/…" } ],
+  "next_cursor": "in_1Q…" }
+```
+
+- **Cursor paged, not page numbers:** the processor pages by cursor. For the
+  next page send `starting_after=<next_cursor>`. `next_cursor` is `null` on
+  the last page. `limit` is 1–100, default 20.
+- `status`: `paid`, `open` (not yet paid; past due if the subscription is),
+  `void`, `uncollectible`, `draft`.
+- `pdf_url` downloads the invoice; `hosted_url` opens the processor's page
+  for it, where an `open` one can also be paid.
+- On a deployment that collects no money (`collects_money: false`, §1) the
+  list is always empty. Show the empty state, not an error.
+
 ---
 
 ## 10. What to build, in order
@@ -645,7 +676,6 @@ a closed invoice and drops out of the preview.
 |---|---|
 | No proration | A mid-cycle plan change takes effect immediately at the new price with no credit for the unused part. Don't promise "you'll be credited". |
 | Renewal rolls the cycle but collects nothing | A nightly job advances `period_start`/`period_end` and resets the free-check allowance, so entitlements are correct. It does **not** charge — that arrives with Stripe. Treat `period_end` as "when the allowance resets", not "when the card is billed". |
-| Invoice history | Only the **current** cycle preview exists. There is no list of past invoices and no PDF. |
 | Per-rail SLA thresholds | The guarantee compares against the arrival estimate at charge time. Explicit per-rail SLA windows are an open product question. |
 
 ---
@@ -663,4 +693,5 @@ a closed invoice and drops out of the preview.
 | GET | `/api/v1/billing/addons` | Enterprise add-ons |
 | POST | `/api/v1/billing/addons` | add, update, or remove (`quantity: 0`) |
 | GET | `/api/v1/billing/invoice` | current-cycle invoice preview |
+| GET | `/api/v1/billing/invoices` | past invoices, cursor paged, with PDF links |
 | GET | `/api/v1/billing/fees` | per-transaction fee ledger |

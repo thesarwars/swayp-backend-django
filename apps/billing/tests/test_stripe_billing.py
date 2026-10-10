@@ -122,6 +122,11 @@ class CollectingStub(SubscriptionBillingProvider):
 
         return CardRef(brand="visa", last4="4242", exp_month=12, exp_year=2030)
 
+    def list_invoices(self, *, customer_id, limit=20, starting_after=""):
+        self._record("list_invoices", limit=limit, starting_after=starting_after)
+
+        return getattr(self, "invoices", []), False
+
     def retry_latest_invoice(self, *, subscription_id):
         self._record("retry_latest_invoice")
 
@@ -678,3 +683,53 @@ class CardEndpointMockTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class InvoiceHistoryTests(TestCase):
+    """BILLING-2: past invoices come from the processor."""
+
+    def test_invoices_are_listed_from_the_provider(self):
+        from decimal import Decimal
+
+        from integrations.subscription_billing.base import InvoiceRef
+
+        stub = CollectingStub()
+        stub.invoices = [
+            InvoiceRef(
+                id="in_1", number="SW-0001", status="paid",
+                total=Decimal("49.00"), currency="usd",
+                created="2026-09-01T00:00:00+00:00",
+                period_start="2026-08-01T00:00:00+00:00",
+                period_end="2026-09-01T00:00:00+00:00",
+                paid_at="2026-09-01T00:05:00+00:00",
+                pdf_url="https://pay.stripe.com/invoice/x/pdf",
+                hosted_url="https://invoice.stripe.com/i/x",
+            )
+        ]
+        subscription = SubscriptionFactory(plan=plan(PlanCode.FOUNDING))
+        service = BillingProviderService(provider=stub)
+        service.start(subscription)
+
+        invoices, has_more = service.invoices(subscription, limit=5)
+
+        self.assertEqual([i.id for i in invoices], ["in_1"])
+        self.assertFalse(has_more)
+        self.assertEqual(dict(stub.calls)["list_invoices"]["limit"], 5)
+
+    def test_the_mock_deployment_has_none(self):
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+        from rest_framework.test import APIClient
+
+        from apps.vendors.factories import UserFactory
+
+        user = UserFactory()
+        SubscriptionService().subscribe(account=user, plan_code=PlanCode.STANDARD)
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        body = client.get("/api/v1/billing/invoices").json()
+
+        self.assertEqual(body["data"], [])
+        self.assertIsNone(body["next_cursor"])

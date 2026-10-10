@@ -213,6 +213,21 @@ class BillingProviderService:
             customer_id=self.customer_id(subscription)
         )
 
+    def invoices(self, subscription, *, limit=20, starting_after=""):
+        """Past invoices, newest first, and whether more exist (BILLING-2).
+        Empty when nothing collects money: no invoices were ever issued."""
+        if not self.collects_money or subscription is None:
+            return [], False
+
+        try:
+            return self.provider.list_invoices(
+                customer_id=self.customer_id(subscription),
+                limit=limit,
+                starting_after=starting_after,
+            )
+        except BillingProviderError as error:
+            raise ServiceUnavailable() from error
+
     def replace_card(self, subscription, payment_method_id):
         """Make a newly collected card the default, and settle a past-due
         balance with it straight away rather than waiting for Stripe's next

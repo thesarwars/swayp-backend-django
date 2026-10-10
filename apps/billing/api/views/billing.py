@@ -10,6 +10,8 @@ from apps.billing.api.serializers.billing import (
     InvoicePreviewSerializer,
     BillingConfigSerializer,
     CardSerializer,
+    InvoiceHistoryItemSerializer,
+    InvoiceHistoryQuerySerializer,
     PlanOfferSerializer,
     ReplaceCardSerializer,
     PlanSerializer,
@@ -435,4 +437,39 @@ class BillingConfigAPIView(BaseAPIView):
                 "publishable_key": provider.publishable_key,
             },
             message="Billing configuration fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Invoice history",
+    description=(
+        "Past invoices from the payment processor, newest first, with "
+        "pdf_url to download each. Cursor paged: pass next_cursor back as "
+        "starting_after; next_cursor is null on the last page. Empty on a "
+        "deployment that collects no money. The current cycle's running "
+        "total is billing/invoice."
+    ),
+    parameters=[InvoiceHistoryQuerySerializer],
+    responses={200: InvoiceHistoryItemSerializer(many=True)},
+)
+class InvoiceHistoryAPIView(AccountScopedMixin, BaseAPIView):
+
+    def get(self, request):
+        query = InvoiceHistoryQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+
+        subscription = SubscriptionService().current(self.account(request))
+        invoices, has_more = BillingProviderService().invoices(
+            subscription,
+            limit=query.validated_data["limit"],
+            starting_after=query.validated_data["starting_after"],
+        )
+
+        return ApiResponse.success(
+            data=InvoiceHistoryItemSerializer(invoices, many=True).data,
+            message="Invoices fetched successfully.",
+            extra={
+                "next_cursor": invoices[-1].id if has_more and invoices else None,
+            },
         )

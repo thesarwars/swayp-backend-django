@@ -67,6 +67,9 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
                          subscription_id=""):
         return CardRef(brand="visa", last4="4242", exp_month=12, exp_year=2030)
 
+    def list_invoices(self, *, customer_id, limit=20, starting_after=""):
+        return [], False
+
     def retry_latest_invoice(self, *, subscription_id):
         return True
 

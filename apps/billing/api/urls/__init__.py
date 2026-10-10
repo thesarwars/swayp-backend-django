@@ -6,6 +6,7 @@ from apps.billing.api.views.billing import (
     AllowanceAPIView,
     BillingConfigAPIView,
     FeeChargeListAPIView,
+    InvoiceHistoryAPIView,
     InvoicePreviewAPIView,
     PaymentMethodAPIView,
     PaymentMethodSetupAPIView,
@@ -34,6 +35,11 @@ urlpatterns = [
     ),
     path("/addons", AddOnAPIView.as_view(), name="billing-addons"),
     path("/invoice", InvoicePreviewAPIView.as_view(), name="billing-invoice"),
+    path(
+        "/invoices",
+        InvoiceHistoryAPIView.as_view(),
+        name="billing-invoice-history",
+    ),
     path("/fees", FeeChargeListAPIView.as_view(), name="billing-fees"),
     path(
         "/payment-method",

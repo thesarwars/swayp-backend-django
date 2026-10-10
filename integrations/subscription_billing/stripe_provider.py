@@ -28,6 +28,7 @@ from django.conf import settings
 
 from integrations.subscription_billing.base import (
     CardRef,
+    InvoiceRef,
     BillingProviderError,
     CardDeclined,
     CustomerRef,
@@ -348,6 +349,49 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
             )
 
         return self._card(attached)
+
+    def list_invoices(self, *, customer_id, limit=20, starting_after=""):
+        import datetime as dt
+
+        params = {"customer": customer_id, "limit": max(1, min(limit, 100))}
+
+        if starting_after:
+            params["starting_after"] = starting_after
+
+        page = self._call(self._client.v1.invoices.list, params=params)
+
+        def when(seconds):
+            if not seconds:
+                return None
+
+            return dt.datetime.fromtimestamp(
+                int(seconds), tz=dt.timezone.utc
+            ).isoformat()
+
+        invoices = []
+
+        for invoice in self._field(page, "data", []) or []:
+            transitions = self._field(invoice, "status_transitions", {}) or {}
+            invoices.append(
+                InvoiceRef(
+                    id=self._field(invoice, "id"),
+                    number=self._field(invoice, "number", "") or "",
+                    status=self._field(invoice, "status", "") or "",
+                    total=Decimal(self._field(invoice, "total", 0) or 0)
+                    / 100,
+                    currency=(self._field(invoice, "currency", "usd") or "usd"),
+                    created=when(self._field(invoice, "created")),
+                    period_start=when(self._field(invoice, "period_start")),
+                    period_end=when(self._field(invoice, "period_end")),
+                    paid_at=when(self._field(transitions, "paid_at")),
+                    pdf_url=self._field(invoice, "invoice_pdf", "") or "",
+                    hosted_url=(
+                        self._field(invoice, "hosted_invoice_url", "") or ""
+                    ),
+                )
+            )
+
+        return invoices, bool(self._field(page, "has_more", False))
 
     def retry_latest_invoice(self, *, subscription_id):
         subscription = self._call(

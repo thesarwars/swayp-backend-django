@@ -33,6 +33,13 @@ _TEMPLATES = {
         "Your verification code is:\n\n{code}\n\n"
         "It will expire in 5 minutes.\n\nThanks,\nSwayp Team\n",
     ),
+    "PHONE_CHANGE": (
+        "Confirm Your New Swayp Phone Number",
+        "Hello,\n\nYou asked to set a new phone number on your Swayp "
+        "account.\n\nYour verification code is:\n\n{code}\n\n"
+        "It will expire in 5 minutes. If this wasn't you, ignore this email "
+        "and your number stays as it is.\n\nThanks,\nSwayp Team\n",
+    ),
 }
 
 _FALLBACK = (

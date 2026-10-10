@@ -7,6 +7,9 @@ class OTPPurpose(models.TextChoices):
     REGISTRATION = "REGISTRATION", "Registration"
     LOGIN = "LOGIN", "Login"
     RESET_PASSWORD = "RESET_PASSWORD", "Reset Password"
+    # Adding or changing the phone number from settings (AUTH-10). The code
+    # is bound to the number it was issued for — see OTP.target.
+    PHONE_CHANGE = "PHONE_CHANGE", "Phone Change"
 
 
 class OTPChannel(models.TextChoices):
@@ -48,6 +51,15 @@ class OTP(BaseModel):
         max_length=10,
         choices=OTPChannel.choices,
         default=OTPChannel.EMAIL,
+    )
+
+    # The value the code authorises, for purposes that change something
+    # (PHONE_CHANGE: the new number). Without it a code requested for one
+    # number could be spent setting another. Blank for every other purpose.
+    target = models.CharField(
+        max_length=32,
+        blank=True,
+        default="",
     )
 
     class Meta:

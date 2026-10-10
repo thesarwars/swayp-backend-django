@@ -39,7 +39,7 @@ def validate_channel(channel):
 class OTPDeliveryService:
 
     @transaction.atomic
-    def issue(self, *, user, purpose, channel=OTPChannel.EMAIL):
+    def issue(self, *, user, purpose, channel=OTPChannel.EMAIL, target=""):
         """Replace any live code for this purpose and queue a new one."""
         channel = validate_channel(channel)
 
@@ -56,6 +56,7 @@ class OTPDeliveryService:
             code_hash=OTPService.hash_otp(code),
             purpose=purpose,
             channel=channel,
+            target=target,
             expires_at=timezone.now() + timedelta(minutes=OTP_TTL_MINUTES),
         )
 

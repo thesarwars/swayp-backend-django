@@ -157,8 +157,9 @@ POST auth/login/phone/verify     { "phone_number": "…", "otp": "123456" }
 > "no account found"; you genuinely don't know. Verify returns one generic
 > error for unknown number, wrong code and expired code alike.
 
-Only usable by accounts that registered *with* a phone. The Create Account
-screen has no phone field, so most accounts cannot use this.
+Only usable by accounts that have a phone number. The Create Account screen
+has no phone field, so an account adds one later from Settings — see
+[§5, Adding or changing the phone number](#adding-or-changing-the-phone-number).
 
 ---
 
@@ -257,10 +258,10 @@ PATCH /api/v1/users/profile
 
 `PATCH` is partial — send only what changed. An empty body is a 400.
 
-**Read-only:** `account_type`, `email`, `phone_number`, `is_verified`. The
-first changes what the account *is*; the other two are login identifiers
-verified by OTP, so changing one would be an authentication flow, not a
-profile edit. Sending them is ignored, not rejected.
+**Read-only here:** `account_type`, `email`, `phone_number`, `is_verified`.
+The first changes what the account *is*; `email` and `phone_number` are login
+identifiers, so changing one is a verified flow, not a profile edit. Sending
+them to `PATCH` is ignored, not rejected.
 
 `business_name`, `poc_name` and the rest are **`null` on an individual
 account** rather than absent, so one form renders both types without branching
@@ -268,6 +269,38 @@ on whether a key exists.
 
 This is the screen onboarding Step 1 means by *"You can update these details
 anytime in Settings"*.
+
+### Adding or changing the phone number
+
+Two calls, both signed in. The same pair adds a first number and replaces an
+existing one.
+
+```
+POST /api/v1/users/profile/phone          { "phone_number": "+14155552671" }
+POST /api/v1/users/profile/phone/verify   { "phone_number": "+14155552671", "otp": "123456" }
+```
+
+The first emails a code to the **account's email address**, not to the new
+number. SMS is not available this release, the same reason phone sign-in
+sends its codes by email. It answers with the masked address:
+
+```json
+{ "success": true, "message": "A code has been sent to x***e@gmail.com.",
+  "data": { "email": "x***e@gmail.com" } }
+```
+
+The second sets the number and answers with the **updated profile**, the same
+body as `GET users/profile`.
+
+- Send the number in international format (`+1…`). It is stored as E.164.
+- **The code only works for the number it was requested for.** If the user
+  edits the number after requesting, request again.
+- 400 with `errors.phone_number` for a number another account holds, the
+  number the account already has, or an unparseable number. 400 with
+  `errors.otp` for a wrong, expired or missing code.
+- Throttled like any OTP (§3): 429 with `Retry-After`. To resend, call the
+  first endpoint again. `auth/resend-otp` refuses `PHONE_CHANGE`, because it
+  cannot know which number the code is for.
 
 ---
 

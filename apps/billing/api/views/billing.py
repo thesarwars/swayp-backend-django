@@ -8,7 +8,9 @@ from apps.billing.api.serializers.billing import (
     AddOnSerializer,
     FeeChargeSerializer,
     InvoicePreviewSerializer,
+    CardSerializer,
     PlanOfferSerializer,
+    ReplaceCardSerializer,
     PlanSerializer,
     SetAddOnSerializer,
     SetupIntentSerializer,
@@ -355,4 +357,56 @@ class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
                 "collects_money": True,
             },
             message="Setup intent created.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Card on file",
+    description=(
+        "GET: the default card (brand, last4, exp_month, exp_year), or null "
+        "when there is none or no processor collects money. POST: replace it "
+        "with a card collected against a SetupIntent (payment-method/setup). "
+        "A past-due subscription is charged with the new card at once. A "
+        "declined card is a 400 on payment_method_id."
+    ),
+    request=ReplaceCardSerializer,
+    responses={200: CardSerializer},
+)
+class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
+
+    service_class = SubscriptionService
+    permission_classes = BaseAPIView.permission_classes + [
+        RequiresCapability
+    ]
+    required_capability = MANAGE_BILLING
+    safe_methods = ("GET",)
+
+    def get(self, request):
+        subscription = self.service.current(self.account(request))
+        card = BillingProviderService().card(subscription)
+
+        return ApiResponse.success(
+            data=CardSerializer(card).data if card else None,
+            message="Card fetched successfully.",
+        )
+
+    def post(self, request):
+        serializer = ReplaceCardSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        subscription = self.service.current(self.account(request))
+
+        if subscription is None:
+            raise ValidationError(
+                {"subscription": "Choose a plan before adding a card."}
+            )
+
+        card = BillingProviderService().replace_card(
+            subscription, serializer.validated_data["payment_method_id"]
+        )
+
+        return ApiResponse.success(
+            data=CardSerializer(card).data,
+            message="Card updated.",
         )

@@ -674,6 +674,7 @@ These matter once the bill detail screens are built:
 ## Billing
 
 #### BILLING-1 · major · No way to read or replace the card on file
+- **✅ Fixed**: `GET /billing/payment-method` returns `{ brand, last4, exp_month, exp_year } | null`. `POST /billing/payment-method { payment_method_id }` (from a SetupIntent, `payment-method/setup`) replaces it, for the customer and the subscription. A **past-due** subscription is charged with the new card at once, which is the recovery path for BILLING-6. A declined card is a 400 on `payment_method_id`. Card entry still needs the Stripe SDK on the app side. See e9 §5b.
 - **Endpoint:** new: `GET /billing/payment-method` → `{ brand, last4, exp_month, exp_year } | null` (or the same on `Subscription`), and `POST /billing/payment-method { payment_method_id }`.
 - **Today:** nothing returns the card on file. `PATCH /billing/subscription` takes only `{ plan }`, so a trialing or past-due customer cannot add a card.
 - **Screen:** subscriptions → payment ("Payment Method").

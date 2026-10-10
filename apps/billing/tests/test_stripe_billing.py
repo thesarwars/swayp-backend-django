@@ -34,6 +34,7 @@ from integrations.factory import get_subscription_billing_provider
 from integrations.subscription_billing.base import (
     BillingProviderError,
     CardDeclined,
+    CardRef,
     CustomerRef,
     SetupIntentRef,
     SubscriptionBillingProvider,
@@ -105,6 +106,26 @@ class CollectingStub(SubscriptionBillingProvider):
         self._record("cancel_subscription")
 
         return SubscriptionRef(id=subscription_id, status="canceled")
+
+    def get_default_card(self, *, customer_id):
+        self._record("get_default_card")
+
+        return getattr(self, "card", None)
+
+    def set_default_card(self, *, customer_id, payment_method_id,
+                         subscription_id=""):
+        self._record(
+            "set_default_card",
+            payment_method_id=payment_method_id,
+            subscription_id=subscription_id,
+        )
+
+        return CardRef(brand="visa", last4="4242", exp_month=12, exp_year=2030)
+
+    def retry_latest_invoice(self, *, subscription_id):
+        self._record("retry_latest_invoice")
+
+        return getattr(self, "retry_pays", True)
 
     def set_cancel_at_period_end(self, *, subscription_id, cancel):
         self._record("set_cancel_at_period_end", cancel=cancel)
@@ -590,3 +611,70 @@ class SetupIntentEndpointTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+
+class CardOnFileTests(TestCase):
+    """BILLING-1: read and replace the card; a new card settles a past-due
+    balance straight away."""
+
+    def setUp(self):
+        self.stub = CollectingStub()
+        self.subscription = SubscriptionFactory(plan=plan(PlanCode.FOUNDING))
+        self.service = BillingProviderService(provider=self.stub)
+        self.service.start(self.subscription)
+
+    def test_no_card_reads_as_none(self):
+        self.assertIsNone(self.service.card(self.subscription))
+
+    def test_replacing_sets_it_on_the_subscription_too(self):
+        card = self.service.replace_card(self.subscription, "pm_new")
+
+        self.assertEqual(card.last4, "4242")
+        call = dict(self.stub.calls)["set_default_card"]
+        self.assertEqual(call["subscription_id"], "sub_stub")
+
+    def test_a_past_due_subscription_recovers_with_the_new_card(self):
+        self.subscription.status = SubscriptionStatus.PAST_DUE
+        self.subscription.save(update_fields=["status"])
+
+        self.service.replace_card(self.subscription, "pm_new")
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.status, SubscriptionStatus.ACTIVE)
+
+    def test_a_declined_card_is_a_field_error(self):
+        from rest_framework.exceptions import ValidationError
+
+        self.stub.fail_with = CardDeclined("Your card was declined.")
+
+        with self.assertRaises(ValidationError) as caught:
+            self.service.replace_card(self.subscription, "pm_bad")
+
+        self.assertIn("payment_method_id", caught.exception.detail)
+
+
+class CardEndpointMockTests(TestCase):
+    """On the mock deployment nothing collects money: no card to show."""
+
+    def test_get_is_null_and_post_is_refused(self):
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+        from rest_framework.test import APIClient
+
+        from apps.vendors.factories import UserFactory
+
+        user = UserFactory()
+        SubscriptionService().subscribe(account=user, plan_code=PlanCode.STANDARD)
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        self.assertIsNone(
+            client.get("/api/v1/billing/payment-method").json()["data"]
+        )
+        response = client.post(
+            "/api/v1/billing/payment-method",
+            {"payment_method_id": "pm_x"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)

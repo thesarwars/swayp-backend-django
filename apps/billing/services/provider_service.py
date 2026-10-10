@@ -193,6 +193,54 @@ class BillingProviderService:
 
         return ref
 
+    # --- card on file (BILLING-1) -----------------------------------------
+
+    def card(self, subscription):
+        """The default card, or None when there is none or nothing collects."""
+        if not self.collects_money or subscription is None:
+            return None
+
+        return self.provider.get_default_card(
+            customer_id=self.customer_id(subscription)
+        )
+
+    def replace_card(self, subscription, payment_method_id):
+        """Make a newly collected card the default, and settle a past-due
+        balance with it straight away rather than waiting for Stripe's next
+        retry. A decline is the customer's to fix, so it is a field error."""
+        from rest_framework.exceptions import ValidationError
+
+        from apps.billing.models import SubscriptionStatus
+
+        if not self.collects_money:
+            raise ValidationError(
+                {"payment_method_id": "No payment processor is configured."}
+            )
+
+        try:
+            card = self.provider.set_default_card(
+                customer_id=self.customer_id(subscription),
+                payment_method_id=payment_method_id,
+                subscription_id=subscription.provider_subscription_id,
+            )
+
+            if (
+                subscription.status == SubscriptionStatus.PAST_DUE
+                and subscription.provider_subscription_id
+                and self.provider.retry_latest_invoice(
+                    subscription_id=subscription.provider_subscription_id
+                )
+            ):
+                subscription.status = SubscriptionStatus.ACTIVE
+                subscription.save(update_fields=["status", "updated_at"])
+
+        except CardDeclined as error:
+            raise ValidationError(
+                {"payment_method_id": [str(error) or "The card was declined."]}
+            ) from error
+
+        return card
+
     def schedule_cancel(self, subscription, *, cancel=True):
         """Ask the provider to end (or keep) the subscription at period end.
 
@@ -202,8 +250,6 @@ class BillingProviderService:
         """
         if not self.collects_money or not subscription.provider_subscription_id:
             return None
-
-        from apps.common.exceptions import ProviderUnavailableException
 
         try:
             ref = self.provider.set_cancel_at_period_end(
@@ -215,7 +261,7 @@ class BillingProviderService:
                 "provider cancel scheduling failed for subscription %s",
                 subscription.pk,
             )
-            raise ProviderUnavailableException(
+            raise ServiceUnavailable(
                 "Couldn't reach the payment provider. Try again in a moment."
             ) from error
 

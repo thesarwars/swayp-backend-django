@@ -241,6 +241,30 @@ charged. Reads are open to the whole team. Gate the screen on
 
 ---
 
+## 5b. Card on file
+
+```
+GET  /api/v1/billing/payment-method
+POST /api/v1/billing/payment-method     { "payment_method_id": "pm_…" }
+```
+
+`GET` returns the default card, or `null` when there is none (or nothing
+collects money, as on the mock):
+
+```json
+{ "brand": "visa", "last4": "4242", "exp_month": 12, "exp_year": 2030 }
+```
+
+To **replace** it: get a SetupIntent from `POST billing/payment-method/setup`,
+confirm the card with Stripe's SDK, then `POST` the resulting
+`payment_method_id` here. The card goes straight to Stripe and never to
+Swayp. The new card becomes the default for future charges. **If the
+subscription is past due, the unpaid invoice is charged to it at once**, and
+on success the subscription returns to `ACTIVE`. A declined card is a 400 on
+`errors.payment_method_id`. With no subscription it's a 400 (choose a plan
+first). On the mock there's nothing to collect, so `POST` is a 400 too. Owner
+only, like the other billing writes.
+
 ## 6. Which price to display
 
 | Field | Means |

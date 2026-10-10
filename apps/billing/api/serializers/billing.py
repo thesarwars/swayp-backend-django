@@ -202,3 +202,18 @@ class InvoicePreviewSerializer(serializers.Serializer):
     lines = InvoiceLineSerializer(many=True)
     subtotal = serializers.DecimalField(max_digits=18, decimal_places=2)
     currency = serializers.CharField()
+
+
+class CardSerializer(serializers.Serializer):
+    """The card on file, as safe to show (BILLING-1)."""
+
+    brand = serializers.CharField(help_text="e.g. visa, mastercard")
+    last4 = serializers.CharField()
+    exp_month = serializers.IntegerField()
+    exp_year = serializers.IntegerField()
+
+
+class ReplaceCardSerializer(serializers.Serializer):
+    payment_method_id = serializers.CharField(
+        help_text="From a SetupIntent confirmed with the processor's SDK."
+    )

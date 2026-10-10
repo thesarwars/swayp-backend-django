@@ -14,6 +14,7 @@ import hashlib
 from decimal import Decimal
 
 from integrations.subscription_billing.base import (
+    CardRef,
     CustomerRef,
     SetupIntentRef,
     SubscriptionBillingProvider,
@@ -58,6 +59,16 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
 
     def cancel_subscription(self, *, subscription_id):
         return SubscriptionRef(id=subscription_id, status="canceled")
+
+    def get_default_card(self, *, customer_id):
+        return None
+
+    def set_default_card(self, *, customer_id, payment_method_id,
+                         subscription_id=""):
+        return CardRef(brand="visa", last4="4242", exp_month=12, exp_year=2030)
+
+    def retry_latest_invoice(self, *, subscription_id):
+        return True
 
     def set_cancel_at_period_end(self, *, subscription_id, cancel):
         return SubscriptionRef(id=subscription_id, status="active")

@@ -61,6 +61,16 @@ class SubscriptionRef:
     client_secret: str = ""
 
 
+@dataclass(frozen=True)
+class CardRef:
+    """The card on file, as safe to show: never a number or a token."""
+
+    brand: str
+    last4: str
+    exp_month: int
+    exp_year: int
+
+
 class SubscriptionBillingProvider(ABC):
     name = "base"
 
@@ -103,6 +113,23 @@ class SubscriptionBillingProvider(ABC):
 
     @abstractmethod
     def cancel_subscription(self, *, subscription_id: str) -> SubscriptionRef:
+        ...
+
+    @abstractmethod
+    def get_default_card(self, *, customer_id: str) -> Optional[CardRef]:
+        """The customer's default card, or None (BILLING-1)."""
+        ...
+
+    @abstractmethod
+    def set_default_card(self, *, customer_id: str, payment_method_id: str,
+                         subscription_id: str = "") -> CardRef:
+        """Attach a card collected against a SetupIntent and make it the
+        default for the customer and the subscription (BILLING-1)."""
+        ...
+
+    @abstractmethod
+    def retry_latest_invoice(self, *, subscription_id: str) -> bool:
+        """Try the subscription's open invoice again now. True if paid."""
         ...
 
     @abstractmethod

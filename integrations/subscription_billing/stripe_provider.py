@@ -27,6 +27,7 @@ from decimal import Decimal
 from django.conf import settings
 
 from integrations.subscription_billing.base import (
+    CardRef,
     BillingProviderError,
     CardDeclined,
     CustomerRef,
@@ -293,6 +294,77 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
         )
 
         return self._to_ref(cancelled)
+
+    # --- card on file (BILLING-1) -----------------------------------------
+
+    def _card(self, payment_method):
+        card = self._field(payment_method, "card") if payment_method else None
+
+        if not card:
+            return None
+
+        return CardRef(
+            brand=str(self._field(card, "brand", "") or ""),
+            last4=str(self._field(card, "last4", "") or ""),
+            exp_month=int(self._field(card, "exp_month", 0) or 0),
+            exp_year=int(self._field(card, "exp_year", 0) or 0),
+        )
+
+    def get_default_card(self, *, customer_id):
+        customer = self._call(
+            self._client.v1.customers.retrieve,
+            customer_id,
+            params={"expand": ["invoice_settings.default_payment_method"]},
+        )
+        settings = self._field(customer, "invoice_settings", {}) or {}
+
+        return self._card(self._field(settings, "default_payment_method"))
+
+    def set_default_card(self, *, customer_id, payment_method_id,
+                         subscription_id=""):
+        attached = self._call(
+            self._client.v1.payment_methods.attach,
+            payment_method_id,
+            params={"customer": customer_id},
+        )
+        # The attached id, not the one sent: see create_subscription.
+        default_id = self._field(attached, "id") or payment_method_id
+
+        self._call(
+            self._client.v1.customers.update,
+            customer_id,
+            params={
+                "invoice_settings": {"default_payment_method": default_id}
+            },
+        )
+
+        # The subscription's own default wins over the customer's, so a
+        # subscription created with the old card would keep charging it.
+        if subscription_id:
+            self._call(
+                self._client.v1.subscriptions.update,
+                subscription_id,
+                params={"default_payment_method": default_id},
+            )
+
+        return self._card(attached)
+
+    def retry_latest_invoice(self, *, subscription_id):
+        subscription = self._call(
+            self._client.v1.subscriptions.retrieve,
+            subscription_id,
+            params={"expand": ["latest_invoice"]},
+        )
+        invoice = self._field(subscription, "latest_invoice")
+
+        if not invoice or self._field(invoice, "status") != "open":
+            return False
+
+        paid = self._call(
+            self._client.v1.invoices.pay, self._field(invoice, "id")
+        )
+
+        return self._field(paid, "status") == "paid"
 
     def set_cancel_at_period_end(self, *, subscription_id, cancel):
         updated = self._call(

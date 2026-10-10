@@ -6,6 +6,9 @@ from apps.authentication.models import OTP, OTPPurpose
 from apps.authentication.services.password_history_service import (
     PasswordHistoryService,
 )
+from apps.authentication.services.reset_token_service import (
+    ResetTokenService,
+)
 from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
 
 #: Also the answer for an email with no account, so this endpoint cannot be
@@ -16,7 +19,36 @@ NO_CODE = "No reset code is pending. Request a new one."
 class ResetPasswordService:
 
     @staticmethod
-    def reset(email, otp, password):
+    def reset(email, otp, password, reset_token=None):
+        if reset_token:
+            # The code was already checked and spent at verify-otp. The token
+            # dies when the password below changes, so it is single-use.
+            account = ResetTokenService.resolve(email=email, token=reset_token)
+            otp_obj = None
+        else:
+            otp_obj = ResetPasswordService._check_code(email, otp)
+            account = otp_obj.user
+
+        # Reject reuse before the OTP is consumed, so a rejected attempt does
+        # not force the user to request a fresh code (E2-S4).
+        history = PasswordHistoryService()
+        history.assert_not_reused(user=account, raw_password=password)
+
+        with transaction.atomic():
+            if otp_obj is not None:
+                otp_obj.used_at = timezone.now()
+                otp_obj.save(update_fields=["used_at"])
+
+            # Record the outgoing hash before overwriting it.
+            history.record(user=account)
+
+            account.set_password(password)
+            account.save(update_fields=["password"])
+
+        return account
+
+    @staticmethod
+    def _check_code(email, otp):
         # Not one transaction: a wrong guess has to be counted, and an error
         # raised inside an atomic block would roll the count back with it.
         otp_obj = (
@@ -45,21 +77,4 @@ class ResetPasswordService:
 
             raise ValidationError({"otp": ["Invalid OTP."]})
 
-        account = otp_obj.user
-
-        # Reject reuse before the OTP is consumed, so a rejected attempt does
-        # not force the user to request a fresh code (E2-S4).
-        history = PasswordHistoryService()
-        history.assert_not_reused(user=account, raw_password=password)
-
-        with transaction.atomic():
-            otp_obj.used_at = timezone.now()
-            otp_obj.save(update_fields=["used_at"])
-
-            # Record the outgoing hash before overwriting it.
-            history.record(user=account)
-
-            account.set_password(password)
-            account.save(update_fields=["password"])
-
-        return account
+        return otp_obj

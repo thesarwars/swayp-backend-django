@@ -174,7 +174,9 @@ POST auth/resend-otp    { "email": "…", "purpose": "LOGIN", "channel": "EMAIL"
 On the web flows you want `REGISTRATION` or `RESET_PASSWORD`. **`LOGIN` codes
 can only be spent at `auth/login/phone/verify`**, which needs the phone number
 as well — `auth/verify-otp` refuses them, so that email login cannot be done
-with an inbox instead of a password.
+with an inbox instead of a password. `auth/verify-otp` accepts
+`RESET_PASSWORD` only to check a reset code early (§4); it never signs anyone
+in with one.
 
 ⚠️ **`channel: "SMS"` returns 501**, not a silent no-op:
 
@@ -236,8 +238,34 @@ A throttled resend does **not** invalidate the code the user already holds, so
 
 ```
 POST auth/forgot-password   { "email": "…" }
-POST auth/reset-password    { "email": "…", "otp": "…", "password": "…" }
+POST auth/verify-otp        { "email": "…", "otp": "…", "purpose": "RESET_PASSWORD" }
+POST auth/reset-password    { "email": "…", "reset_token": "…", "password": "…" }
 ```
+
+The design is email → code → new password, so **check the code on the code
+screen**. `verify-otp` with `purpose: "RESET_PASSWORD"` checks the code and
+uses it up. A wrong, expired or over-limit code fails right there, with the
+§3 errors on `errors.otp`. A right one answers with a `reset_token`, and
+**nobody is signed in**:
+
+```json
+{ "success": true, "message": "Code verified. Set a new password.",
+  "data": { "purpose": "RESET_PASSWORD", "reset_token": "eyJ1Ijoi…",
+            "expires_in": 600 } }
+```
+
+Send that token to `reset-password` in place of the code. It lasts
+`expires_in` seconds (10 minutes), only works for that email, and stops
+working once the password changes. If the new password is rejected (reuse,
+rules), the same token can be sent again. An expired or used token is 400 with
+`errors.reset_token`; send the user back to request a new code.
+
+`purpose` must be named: without it, `verify-otp` only finishes
+registrations. Once a code is verified, it can no longer be sent to
+`reset-password`; use the token.
+
+The one-step form still works: `reset-password` with `{ email, otp,
+password }` and no early check. Send `otp` or `reset_token`, never both.
 
 `forgot-password` answers with the masked address, same shape as registration:
 

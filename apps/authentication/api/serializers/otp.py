@@ -20,18 +20,26 @@ User = get_user_model()
 #: ``/auth/login/phone/verify``, where the caller has to know the phone number
 #: as well.
 #:
-#: RESET_PASSWORD is excluded for a different reason: that code is spent by
-#: ``/auth/reset-password`` together with the new password, so consuming it
-#: here would leave the user holding a used code and no way to finish.
-VERIFIABLE_PURPOSES = (OTPPurpose.REGISTRATION,)
+#: RESET_PASSWORD is verifiable so a wrong code shows on the code screen,
+#: before the user has typed a new password twice (AUTH-4). It does not sign
+#: anyone in: it answers with a short-lived ``reset_token`` that
+#: ``/auth/reset-password`` takes in place of the code. See
+#: ``ResetTokenService``.
+VERIFIABLE_PURPOSES = (
+    OTPPurpose.REGISTRATION,
+    OTPPurpose.RESET_PASSWORD,
+)
+
+#: What a request without ``purpose`` searches. Registration only: a reset
+#: code has to be named, so a client finishing a sign-up can never be handed a
+#: reset token instead of its session.
+DEFAULT_PURPOSES = (OTPPurpose.REGISTRATION,)
 
 
 class ResendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
-    purpose = serializers.ChoiceField(
-        choices=OTPPurpose.choices
-    )
+    purpose = serializers.ChoiceField(choices=OTPPurpose.choices)
 
     # Accepted so the SMS screens can be built, but validated to EMAIL by the
     # service — SMS is deferred this release (E2-S1).
@@ -47,9 +55,7 @@ class ResendOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError(
-                {"email": "User does not exist."}
-            )
+            raise serializers.ValidationError({"email": "User does not exist."})
 
         attrs["user"] = user
 
@@ -57,12 +63,12 @@ class ResendOTPSerializer(serializers.Serializer):
 
 
 class VerifyOTPSerializer(serializers.Serializer):
-    """Finish a registration by spending the code that was emailed for it.
+    """Spend an emailed code: finish a registration, or check a reset code.
 
-    ``purpose`` is optional and there is one value it can take today. It is
-    kept so a client sending ``LOGIN`` is answered with a validation error
-    naming what is valid, rather than the older "OTP not found." — which read
-    as "your code is wrong" when it meant "that flow no longer has a code".
+    ``purpose`` defaults to REGISTRATION. ``RESET_PASSWORD`` has to be named.
+    A client sending ``LOGIN`` is answered with a validation error naming what
+    is valid, rather than the older "OTP not found." — which read as "your
+    code is wrong" when it meant "that flow has no code here".
     """
 
     email = serializers.EmailField()
@@ -73,10 +79,7 @@ class VerifyOTPSerializer(serializers.Serializer):
     )
 
     purpose = serializers.ChoiceField(
-        choices=[
-            (purpose.value, purpose.label)
-            for purpose in VERIFIABLE_PURPOSES
-        ],
+        choices=[(purpose.value, purpose.label) for purpose in VERIFIABLE_PURPOSES],
         required=False,
     )
 
@@ -86,14 +89,10 @@ class VerifyOTPSerializer(serializers.Serializer):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError(
-                {"email": "User does not exist."}
-            )
+            raise serializers.ValidationError({"email": "User does not exist."})
 
         purposes = (
-            [attrs["purpose"]]
-            if attrs.get("purpose")
-            else list(VERIFIABLE_PURPOSES)
+            [attrs["purpose"]] if attrs.get("purpose") else list(DEFAULT_PURPOSES)
         )
 
         pending = list(
@@ -105,9 +104,12 @@ class VerifyOTPSerializer(serializers.Serializer):
         )
 
         if not pending:
-            raise serializers.ValidationError(
-                {"otp": self._nothing_pending(user)}
-            )
+            if purposes == [OTPPurpose.RESET_PASSWORD]:
+                raise serializers.ValidationError(
+                    {"otp": "No reset code is pending. Request a new one."}
+                )
+
+            raise serializers.ValidationError({"otp": self._nothing_pending(user)})
 
         now = timezone.now()
         live = [otp for otp in pending if otp.expires_at >= now]
@@ -140,9 +142,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         newest.attempts += 1
         newest.save(update_fields=["attempts"])
 
-        raise serializers.ValidationError(
-            {"otp": "Invalid OTP."}
-        )
+        raise serializers.ValidationError({"otp": "Invalid OTP."})
 
     @staticmethod
     def _nothing_pending(user):

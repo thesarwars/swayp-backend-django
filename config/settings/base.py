@@ -530,6 +530,11 @@ OTP_RESEND_HOURLY_LIMIT = env.int("OTP_RESEND_HOURLY_LIMIT", default=5)
 # the six digits are guessable at leisure inside the code's lifetime.
 OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)
 
+# How long the reset_token from verify-otp stays usable (AUTH-4).
+PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS = env.int(
+    "PASSWORD_RESET_TOKEN_MAX_AGE_SECONDS", default=600
+)
+
 # Password reuse (E2-S4). Compare against the last N; retain the last K.
 PASSWORD_HISTORY_COMPARE_DEPTH = env.int(
     "PASSWORD_HISTORY_COMPARE_DEPTH", default=1

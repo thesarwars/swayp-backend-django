@@ -12,6 +12,7 @@ from apps.authentication.api.serializers.otp import (
     ResendOTPSerializer,
     VerifyOTPSerializer,
 )
+from apps.authentication.models import OTPPurpose
 from apps.authentication.services.resend_otp_service import (
     ResendOTPService,
 )
@@ -24,9 +25,13 @@ from apps.authentication.services.verify_otp_service import (
     tags=["Authentication"],
     summary="Verify OTP",
     description=(
-        "Verify the registration OTP, activate the account and return JWT "
-        "tokens. There is no login OTP — a password signs in on its own — so "
-        "REGISTRATION is the only `purpose` this accepts."
+        "Spend an emailed code. `purpose` defaults to REGISTRATION: the "
+        "account is activated and access/refresh tokens are returned. With "
+        "`purpose: RESET_PASSWORD` the code is checked and spent, and the "
+        "answer is a `reset_token` (with `expires_in` seconds) to send to "
+        "/auth/reset-password instead of the code. Nobody is signed in. "
+        "LOGIN codes are refused here; they are spent at "
+        "/auth/login/phone/verify."
     ),
     request=VerifyOTPSerializer,
     responses={
@@ -59,10 +64,13 @@ class VerifyOTPView(PublicAPIView):
         return Response(
             {
                 "success": True,
-                "message": "Account verified successfully.",
-                # purpose is still echoed: it was here when this endpoint
-                # answered for two flows, and dropping a key breaks clients
-                # that read it for no gain.
+                "message": (
+                    "Code verified. Set a new password."
+                    if otp_obj.purpose == OTPPurpose.RESET_PASSWORD
+                    else "Account verified successfully."
+                ),
+                # purpose is echoed so a client can tell a session (access,
+                # refresh) from a reset (reset_token, expires_in) by key.
                 "data": {"purpose": otp_obj.purpose, **tokens},
             },
             status=status.HTTP_200_OK,

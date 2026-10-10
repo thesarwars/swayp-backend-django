@@ -142,10 +142,11 @@ class MergedVerifyTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_reset_password_codes_are_not_verifiable_here(self):
-        """That code is spent by /auth/reset-password with the new password.
+        """Not without naming the purpose.
 
-        Consuming it here would leave the user holding a used code and no way
-        to finish the reset.
+        A request without ``purpose`` only finishes a registration, so a
+        sign-up client can never spend a reset code by accident. Naming
+        RESET_PASSWORD is covered in test_reset_token.py.
         """
         user = self.register()
         OTP.objects.filter(user=user).delete()

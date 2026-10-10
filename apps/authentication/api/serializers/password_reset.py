@@ -30,12 +30,22 @@ class ResetPasswordVerifySerializer(serializers.Serializer):
 
 
 class ResetPasswordSerializer(serializers.Serializer):
+    """Exactly one of ``otp`` and ``reset_token``.
+
+    ``reset_token`` is what verify-otp returns for a RESET_PASSWORD code
+    (AUTH-4). ``otp`` is the original one-step form, kept so a client that
+    checks nothing early still works.
+    """
+
     email = serializers.EmailField()
 
     otp = serializers.CharField(
         min_length=6,
         max_length=6,
+        required=False,
     )
+
+    reset_token = serializers.CharField(required=False)
 
     password = serializers.CharField(
         # min_length=12,
@@ -45,6 +55,16 @@ class ResetPasswordSerializer(serializers.Serializer):
     # confirm_password = serializers.CharField(
     #     write_only=True,
     # )
+
+    def validate(self, attrs):
+        if bool(attrs.get("otp")) == bool(attrs.get("reset_token")):
+            raise serializers.ValidationError(
+                "Send either otp or reset_token, not both."
+                if attrs.get("otp")
+                else "Send otp or reset_token."
+            )
+
+        return attrs
 
     # def validate(self, attrs):
     #     # if attrs["password"] != attrs["confirm_password"]:

@@ -64,7 +64,11 @@ class ForgotPasswordView(PublicAPIView):
 @extend_schema(
     tags=["Authentication"],
     summary="Reset Password",
-    description="Reset account password using OTP.",
+    description=(
+        "Set a new password with either the emailed `otp`, or the "
+        "`reset_token` that verify-otp returns for a RESET_PASSWORD code. "
+        "Send exactly one. A rejected password leaves either usable."
+    ),
     request=ResetPasswordSerializer,
     responses={
         200: OpenApiResponse(description="Password reset successful."),
@@ -93,8 +97,9 @@ class ResetPasswordView(PublicAPIView):
 
         ResetPasswordService.reset(
             email=serializer.validated_data["email"],
-            otp=serializer.validated_data["otp"],
+            otp=serializer.validated_data.get("otp"),
             password=serializer.validated_data["password"],
+            reset_token=serializer.validated_data.get("reset_token"),
         )
 
         return Response(

@@ -40,7 +40,8 @@ class BillCategoryFactory(factory.django.DjangoModelFactory):
     name = factory.Sequence(lambda n: f"Category {n}")
     icon = "https://cdn.swayp.com/icons/default.png"
     color = "#4F46E5"
-    display_order = factory.Sequence(lambda n: n)
+    # display_order is left to the model, which places each new category at
+    # the end: it is unique (BILLS-9), and a counter here collides with that.
 
 
 class VendorFactory(factory.django.DjangoModelFactory):

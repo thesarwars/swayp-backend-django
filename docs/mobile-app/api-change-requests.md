@@ -420,6 +420,7 @@ Contents:
 - **App today:** the Pay tab loads one list per pill (Overdue / Due / Upcoming). The schedule strip fetches bill detail to get `days_overdue`.
 
 #### BILLS-9 · minor · Category codes
+- **✅ Fixed (no `code`; `displayOrder` is the key)**: product chose `displayOrder` over a new `code`. It is now **unique** in the database, so it is stable for picking and ordering Home's badges, and renaming a category cannot reorder them. A migration renumbered existing categories 1..n in their current order, so nothing visibly moved. A new category with no order goes to the end. e1 now spells it `displayOrder`, as the API sends it. Pick a badge's artwork by `id` or `displayOrder`, not by keywords in the name.
 - **Endpoint:** `GET /bill-categories`.
 - **Today:** no stable `code`. e1 documents `display_order`, but the API sends `displayOrder`.
 - **Needed:** a stable `code`. `displayOrder` now decides which categories a user sees first, so please also confirm it is meant to be stable and unique.

@@ -64,11 +64,17 @@ GET /api/v1/bill-categories
 ```json
 { "success": true, "message": "Bill categories fetched successfully.",
   "data": [ { "id": "…", "name": "Rent", "icon": "…", "color": "#3B82F6",
-              "display_order": 1 } ] }
+              "displayOrder": 1 } ] }
 ```
 
-Already sorted by `display_order`. Cache it — it changes rarely and every bill
-and vendor form needs it.
+The key is **`displayOrder`** (camelCase). The list is already sorted by it.
+Cache it — it changes rarely and every bill and vendor form needs it.
+
+**`displayOrder` is unique**, so it is a stable way to pick and order
+categories, for example Home's first four badges. Two categories never share
+a number, and renaming one never reorders the list. Match a category to its
+artwork by `id` (or `displayOrder`), not by name. Only active categories are
+listed, and there is no separate `code`.
 
 ---
 

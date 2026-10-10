@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.authentication.models import OTP, OTPChannel, OTPPurpose
-from apps.authentication.utils.otp import OTPService
+from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
 
 User = get_user_model()
 
@@ -116,6 +116,11 @@ class VerifyOTPSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"otp": "OTP expired. Request a new one."}
             )
+
+        live = [otp for otp in live if not otp.is_exhausted]
+
+        if not live:
+            raise serializers.ValidationError({"otp": TOO_MANY_ATTEMPTS})
 
         # Matched by hash rather than by "whichever is newest". With one
         # verifiable purpose the two rarely differ, but a resend issued while

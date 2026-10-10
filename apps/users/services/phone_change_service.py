@@ -26,7 +26,7 @@ from apps.authentication.services.otp_delivery_service import (
 from apps.authentication.services.otp_throttle_service import (
     OTPThrottleService,
 )
-from apps.authentication.utils.otp import OTPService
+from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
 from apps.common.crypto import mask_email
 
 User = get_user_model()
@@ -71,6 +71,9 @@ class PhoneChangeService:
 
         if otp_obj.expires_at < timezone.now():
             raise ValidationError({"otp": [EXPIRED]})
+
+        if otp_obj.is_exhausted:
+            raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]})
 
         if not OTPService.verify_otp(otp, otp_obj.code_hash):
             # Saved outside any transaction, so the count survives the error

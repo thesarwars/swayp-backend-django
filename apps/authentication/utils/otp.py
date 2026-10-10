@@ -4,6 +4,9 @@ from django.contrib.auth.hashers import check_password, make_password
 
 OTP_LENGTH = 6
 
+#: Shared by every path that checks a code, so the client sees one message.
+TOO_MANY_ATTEMPTS = "Too many incorrect attempts. Request a new code."
+
 
 class OTPService:
     

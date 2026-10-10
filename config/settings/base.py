@@ -526,6 +526,10 @@ MESSAGING_PROVIDER = env("MESSAGING_PROVIDER", default="django_email")
 OTP_RESEND_MIN_GAP_SECONDS = env.int("OTP_RESEND_MIN_GAP_SECONDS", default=60)
 OTP_RESEND_HOURLY_LIMIT = env.int("OTP_RESEND_HOURLY_LIMIT", default=5)
 
+# Wrong guesses one code survives before it is dead (AUTH-11). Without a cap
+# the six digits are guessable at leisure inside the code's lifetime.
+OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)
+
 # Password reuse (E2-S4). Compare against the last N; retain the last K.
 PASSWORD_HISTORY_COMPARE_DEPTH = env.int(
     "PASSWORD_HISTORY_COMPARE_DEPTH", default=1

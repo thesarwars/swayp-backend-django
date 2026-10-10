@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from apps.common.models import BaseModel
@@ -61,6 +62,15 @@ class OTP(BaseModel):
         blank=True,
         default="",
     )
+
+    @property
+    def is_exhausted(self):
+        """True once the code has taken OTP_MAX_ATTEMPTS wrong guesses.
+
+        An exhausted code is refused even when the guess is right: the cap is
+        only a cap if the next correct guess cannot still get through.
+        """
+        return self.attempts >= getattr(settings, "OTP_MAX_ATTEMPTS", 5)
 
     class Meta:
         db_table = "otps"

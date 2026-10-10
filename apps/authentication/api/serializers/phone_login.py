@@ -58,7 +58,13 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
             .first()
         )
 
-        if otp_obj is None or otp_obj.expires_at < timezone.now():
+        # An exhausted code answers with the same generic error: a distinct
+        # message would confirm the number has an account.
+        if (
+            otp_obj is None
+            or otp_obj.expires_at < timezone.now()
+            or otp_obj.is_exhausted
+        ):
             raise serializers.ValidationError(
                 {"detail": GENERIC_VERIFY_ERROR}
             )

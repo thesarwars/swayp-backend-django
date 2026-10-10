@@ -199,6 +199,37 @@ count down — the message already contains the number.
 A throttled resend does **not** invalidate the code the user already holds, so
 "wait and use the code you have" is valid advice.
 
+### Lifetimes and limits
+
+| | Value | Applies to |
+|---|---|---|
+| Code length | 6 digits | every code |
+| Lifetime | **5 minutes** from issue | every code |
+| Wrong guesses | **5 per code**, then the code is dead | `verify-otp`, `reset-password`, `login/phone/verify`, `users/profile/phone/verify` |
+| Gap between sends | **60 seconds** | per user and purpose |
+| Sends per hour | **5** | per user and purpose |
+
+- **A new code replaces the old one.** Requesting a code (resend, forgot
+  password, phone change) deletes any unused code for the same purpose, so
+  only the newest code works.
+- **After 5 wrong guesses the code is refused even when it is right**, with
+  400 `errors.otp: ["Too many incorrect attempts. Request a new code."]`.
+  Send the user to "Send again"; there is no cooldown beyond the resend
+  throttle. Phone sign-in answers with its usual generic error instead, so it
+  still cannot reveal whether a number is registered.
+- **`resend-otp` returns the masked address** in `data.email`, the same as
+  registration and forgot-password:
+
+  ```json
+  { "success": true, "message": "OTP has been sent to x***e@gmail.com.",
+    "data": { "email": "x***e@gmail.com" } }
+  ```
+
+- **`login/phone/request` is throttled on the server** with the same 60 s / 5
+  per hour limits. Its answer stays neutral, so a throttled request still
+  says "a code has been sent" and no new code goes out. Keep your own 60 s
+  countdown on "Send again".
+
 ---
 
 ## 4. Password reset
@@ -221,8 +252,14 @@ and **no `confirm_password`**.
 **A new password cannot match the previous one** — 400 with `errors.password`.
 Say so before submit if you can; the design's helper text already does.
 
-A rejected reset **does not consume the OTP**, so the user can retry with a
-different password using the same code.
+A rejected password **does not consume the OTP**, so the user can retry with a
+different password using the same code. A wrong code counts toward the
+5-guess limit (§3).
+
+Code errors are 400 with `errors.otp`: `"Invalid OTP."`, `"OTP expired.
+Request a new one."`, `"Too many incorrect attempts. Request a new code."`, or
+`"No reset code is pending. Request a new one."` That last one is also the
+answer for an email with no account.
 
 > There is no "change password while signed in". Settings has to route through
 > this OTP flow.

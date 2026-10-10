@@ -1,19 +1,25 @@
 from django.db import transaction
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from apps.authentication.models import OTP, OTPPurpose
 from apps.authentication.services.password_history_service import (
     PasswordHistoryService,
 )
+from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
+
+#: Also the answer for an email with no account, so this endpoint cannot be
+#: used to find out who is registered.
+NO_CODE = "No reset code is pending. Request a new one."
 
 
 class ResetPasswordService:
 
     @staticmethod
-    @transaction.atomic
     def reset(email, otp, password):
-
-        user = (
+        # Not one transaction: a wrong guess has to be counted, and an error
+        # raised inside an atomic block would roll the count back with it.
+        otp_obj = (
             OTP.objects.select_related("user")
             .filter(
                 user__email=email,
@@ -24,21 +30,20 @@ class ResetPasswordService:
             .first()
         )
 
-        if not user:
-            raise Exception("OTP not found.")
-
-        otp_obj = user
+        if otp_obj is None:
+            raise ValidationError({"otp": [NO_CODE]})
 
         if otp_obj.expires_at < timezone.now():
-            raise Exception("OTP expired.")
+            raise ValidationError({"otp": ["OTP expired. Request a new one."]})
 
-        from apps.authentication.utils.otp import OTPService
+        if otp_obj.is_exhausted:
+            raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]})
 
-        if not OTPService.verify_otp(
-            otp,
-            otp_obj.code_hash,
-        ):
-            raise Exception("Invalid OTP.")
+        if not OTPService.verify_otp(otp, otp_obj.code_hash):
+            otp_obj.attempts += 1
+            otp_obj.save(update_fields=["attempts"])
+
+            raise ValidationError({"otp": ["Invalid OTP."]})
 
         account = otp_obj.user
 
@@ -47,13 +52,14 @@ class ResetPasswordService:
         history = PasswordHistoryService()
         history.assert_not_reused(user=account, raw_password=password)
 
-        otp_obj.used_at = timezone.now()
-        otp_obj.save(update_fields=["used_at"])
+        with transaction.atomic():
+            otp_obj.used_at = timezone.now()
+            otp_obj.save(update_fields=["used_at"])
 
-        # Record the outgoing hash before overwriting it.
-        history.record(user=account)
+            # Record the outgoing hash before overwriting it.
+            history.record(user=account)
 
-        account.set_password(password)
-        account.save(update_fields=["password"])
+            account.set_password(password)
+            account.save(update_fields=["password"])
 
         return account

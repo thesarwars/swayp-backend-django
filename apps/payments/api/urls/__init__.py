@@ -9,6 +9,7 @@ from apps.payments.api.views.payment import (
     PaymentCreateAPIView,
     PaymentDetailAPIView,
     PaymentFailureAPIView,
+    PaymentReceiptPDFAPIView,
     PaymentResolveAPIView,
     PaymentStatusAPIView,
 )
@@ -66,6 +67,11 @@ urlpatterns = [
         "/<uuid:payment_id>/cancel",
         PaymentCancelAPIView.as_view(),
         name="payment-cancel",
+    ),
+    path(
+        "/<uuid:payment_id>/receipt.pdf",
+        PaymentReceiptPDFAPIView.as_view(),
+        name="payment-receipt-pdf",
     ),
     path(
         "/<uuid:payment_id>/failure",

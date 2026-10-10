@@ -201,6 +201,18 @@ GET /api/v1/payments/<payment_id>
 
 Full detail with `stages`, `receipt`, `failure` and `progress`.
 
+For "Download Receipt", fetch the PDF:
+
+```
+GET /api/v1/payments/<payment_id>/receipt.pdf
+```
+
+It is `application/pdf`, sent as a download named
+`swayp-receipt-<reference>.pdf`, with the reference, payee, date, account,
+method, amount, fee and total. It is only available once the payment has
+completed (`SUCCESSFUL`); before that it is a **409**. Send the usual
+`Authorization` header; it is not a public link.
+
 ---
 
 ### Changing the date before confirming

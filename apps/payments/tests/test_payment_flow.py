@@ -1083,3 +1083,28 @@ class RescheduleTests(PayFlowTestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class ReceiptPDFTests(PayFlowTestCase):
+    """PAY-8: a completed payment downloads as a PDF receipt."""
+
+    def test_a_completed_payment_has_a_pdf(self):
+        payment = self.create([self.occurrence()])["payments"][0]
+        payment.status = PaymentStatus.SUCCESSFUL
+        payment.save(update_fields=["status"])
+
+        response = self.client.get(f"/api/v1/payments/{payment.id}/receipt.pdf")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertIn(
+            payment.transaction_reference, response["Content-Disposition"]
+        )
+
+    def test_an_unfinished_payment_has_none(self):
+        payment = self.create([self.occurrence()])["payments"][0]
+
+        response = self.client.get(f"/api/v1/payments/{payment.id}/receipt.pdf")
+
+        self.assertEqual(response.status_code, 409)

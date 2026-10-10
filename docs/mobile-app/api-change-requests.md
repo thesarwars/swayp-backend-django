@@ -556,6 +556,7 @@ These matter once the bill detail screens are built:
 - **App today:** cancels the pay-now payment and creates a scheduled one.
 
 #### PAY-8 · minor · Receipt file
+- **✅ Fixed**: `GET /payments/{id}/receipt.pdf` returns the receipt as a PDF download (reference, payee, date, account, method, amount, fee, total) for a `SUCCESSFUL` payment, and 409 before that. It needs the usual auth header. See e6 §2, step 4.
 - **Needed:** a receipt (PDF) for a settled payment.
 - **Screen:** payment detail → "Download Receipts".
 - **App today:** shares a plain-text receipt built from the payment detail.

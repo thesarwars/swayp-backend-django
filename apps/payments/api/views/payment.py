@@ -5,6 +5,7 @@ from rest_framework import status
 
 from apps.common.base_views import BaseAPIView
 from apps.common.request_meta import request_meta
+from apps.common.enums import PaymentStatus
 from apps.common.responses import ApiResponse
 from apps.payments.api.serializers.payment import (
     ConfirmSerializer,
@@ -402,3 +403,34 @@ class PaymentResolveAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             )
 
         return self.run_idempotent(request, handler)
+
+
+@extend_schema(
+    tags=["Payments"],
+    summary="Receipt PDF",
+    description=(
+        "A completed payment's receipt as a PDF download: reference, payee, "
+        "date, account, method, amount, fee and total. 409 until the payment "
+        "has completed."
+    ),
+    responses={(200, "application/pdf"): bytes},
+)
+class PaymentReceiptPDFAPIView(AccountScopedMixin, BaseAPIView):
+
+    def get(self, request, payment_id):
+        from apps.common.exceptions import ConflictException
+        from apps.payments.services.receipt_pdf import render_receipt
+
+        payment = PaymentDetailSelector().get_payment(
+            self.account(request), payment_id
+        )
+
+        if payment is None:
+            raise ValidationError({"payment": "Payment not found."})
+
+        if payment.status != PaymentStatus.SUCCESSFUL:
+            raise ConflictException(
+                "A receipt is available once the payment has completed."
+            )
+
+        return render_receipt(payment)

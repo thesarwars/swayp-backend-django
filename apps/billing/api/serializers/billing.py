@@ -87,13 +87,13 @@ class PlanOfferSerializer(PlanSerializer):
             "founding_spots_remaining",
         )
 
-    def get_trial_eligible(self, plan):
+    def get_trial_eligible(self, plan) -> bool:
         return bool(plan.trial_days) and self.context["trial_eligible"]
 
-    def get_lock_available(self, plan):
+    def get_lock_available(self, plan) -> bool:
         return plan.price_locked and self.context["spots_remaining"] > 0
 
-    def get_founding_spots_remaining(self, plan):
+    def get_founding_spots_remaining(self, plan) -> int | None:
         return self.context["spots_remaining"] if plan.price_locked else None
 
 
@@ -121,13 +121,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         help_text="Cancelled, still live until cancels_on."
     )
 
-    def get_cancel_pending(self, subscription):
+    def get_cancel_pending(self, subscription) -> bool:
         return subscription.cancels_on is not None
 
-    def get_past_due(self, subscription):
+    def get_past_due(self, subscription) -> bool:
         return subscription.status == SubscriptionStatus.PAST_DUE
 
-    def get_client_secret(self, subscription):
+    def get_client_secret(self, subscription) -> str | None:
         return getattr(subscription, "pending_client_secret", "") or ""
 
     def get_is_trialing(self, subscription):

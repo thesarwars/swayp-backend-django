@@ -147,6 +147,7 @@ Contents:
 ## Banking & onboarding
 
 #### BANK-1 · blocker (unverified) · Can an account with no subscription link a bank?
+- **✅ Answered and fixed**: yes. `link/token` and `link/exchange` work with no subscription; checked with a fresh account on the mock provider (200, then 201). Before, nothing limited an account with no plan, so it could link any number of banks. Now it can link **one**, and a second link without a plan answers 402 *"Choose a plan to connect more than one bank."* Disconnecting frees the slot. See e5, "The bank limit is a plan limit".
 - **Endpoint:** `POST /banking/link/token`, `POST /banking/link/exchange`.
 - **Today:** the backend wizard order is business → plan → payment → bank. The mobile app shows the bank step only, right after the first sign-up, when no plan exists yet. If these endpoints answer 402 or 400 for an account without a subscription, every new user is stuck on the first onboarding screen. We could not verify this without creating an account.
 - **Needed:** allow one connection without a subscription, or tell us the precondition. One call with a fresh account settles it.

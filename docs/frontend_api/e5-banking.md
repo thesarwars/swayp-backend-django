@@ -166,6 +166,11 @@ Connecting past `bank_limit` returns **402**, not 403:
 Show an upgrade prompt. Founding allows 1; Standard and Enterprise are
 unlimited. See [E9](e9-billing.md).
 
+**No plan yet: one bank.** An account can link its first bank before it has
+chosen any plan, which is what the mobile onboarding does straight after
+sign-up. A second link without a plan is the same 402, with *"Choose a plan to
+connect more than one bank."*
+
 Disconnecting frees the slot immediately — the count is derived from live
 connections, so `GET /billing/allowances` and this gate can never disagree.
 

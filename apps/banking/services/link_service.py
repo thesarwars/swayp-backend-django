@@ -15,7 +15,11 @@ from apps.banking.models import (
     BankConnectionStatus,
 )
 from apps.common.enums import BankAccountType
+from apps.common.exceptions import PlanLimitExceededException
 from integrations.factory import get_bank_data_provider
+
+#: Banks an account may connect before it has any plan (BANK-1).
+NO_PLAN_BANK_LIMIT = 1
 
 _ACCOUNT_TYPES = {
     "checking": BankAccountType.CHECKING,
@@ -113,8 +117,19 @@ class BankLinkService:
         subscription = SubscriptionService().current(user)
 
         if subscription is None:
-            # No subscription is not a licence to connect without limit; the
-            # entitlement seam already treats that as the lowest tier.
+            # No subscription is not a licence to connect without limit. The
+            # mobile app links a bank straight after sign-up, before any plan
+            # exists (BANK-1), so one is allowed; more needs a plan. Counted
+            # from the same rows AllowanceService derives bank usage from.
+            connected = BankConnection.objects.filter(
+                user=user, status=BankConnectionStatus.ACTIVE
+            ).count()
+
+            if connected >= NO_PLAN_BANK_LIMIT:
+                raise PlanLimitExceededException(
+                    "Choose a plan to connect more than one bank."
+                )
+
             return
 
         AllowanceService().check_capacity(

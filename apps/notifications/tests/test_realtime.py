@@ -439,3 +439,82 @@ class PushAndSocketAgreeTests(TestCase):
         keys = [channel.key for channel in CHANNELS]
 
         self.assertLess(keys.index("IN_APP"), keys.index("PUSH"))
+
+
+@override_settings(
+    REALTIME_ENABLED=True, CHANNEL_LAYERS=LAYER, ALLOWED_HOSTS=["testserver"]
+)
+class HeaderAuthTests(TransactionTestCase):
+    """DASH-3 / SEC-4: a native app sends its token as a header, so it stays
+    out of the URL, and is not refused by the browser-only origin check."""
+
+    make_user = staticmethod(SocketHandshakeTests.make_user)
+
+    def guarded(self, headers, url="/ws/notifications/"):
+        """The production validator with a real allow-list. Built here because
+        config.asgi captures its list at import (see the origin tests)."""
+        from channels.routing import URLRouter
+
+        from apps.notifications.routing import websocket_urlpatterns
+        from apps.notifications.ws_origin import BrowserOriginValidator
+
+        app = BrowserOriginValidator(
+            URLRouter(websocket_urlpatterns), ["https://app.getswayp.com"]
+        )
+
+        return WebsocketCommunicator(app, url, headers=headers)
+
+    async def test_a_bearer_header_connects_with_no_origin(self):
+        _, token = await self.make_user()
+        communicator = self.guarded(
+            [(b"authorization", f"Bearer {token}".encode())]
+        )
+
+        connected, _ = await communicator.connect()
+
+        self.assertTrue(connected)
+        await communicator.disconnect()
+
+    async def test_a_bearer_header_connects_with_the_api_host_as_origin(self):
+        """What React Native sends as Origin: the URL it is connecting to."""
+        _, token = await self.make_user()
+        communicator = self.guarded(
+            [
+                (b"origin", b"https://api.getswayp.com"),
+                (b"authorization", f"Bearer {token}".encode()),
+            ]
+        )
+
+        connected, _ = await communicator.connect()
+
+        self.assertTrue(connected)
+        await communicator.disconnect()
+
+    async def test_a_bad_header_token_is_still_refused(self):
+        communicator = self.guarded([(b"authorization", b"Bearer not-a-jwt")])
+
+        connected, code = await communicator.connect()
+
+        self.assertFalse(connected)
+        self.assertEqual(code, 4401)
+
+    async def test_a_non_bearer_header_does_not_fall_back_to_the_query(self):
+        _, token = await self.make_user()
+        communicator = self.guarded(
+            [(b"authorization", b"Basic abc")],
+            url=f"/ws/notifications/?token={token}",
+        )
+
+        connected, code = await communicator.connect()
+
+        self.assertFalse(connected)
+        self.assertEqual(code, 4401)
+
+    async def test_a_query_token_with_no_origin_is_still_refused(self):
+        """The browser path keeps its origin check: no header, no exemption."""
+        _, token = await self.make_user()
+        communicator = self.guarded([], url=f"/ws/notifications/?token={token}")
+
+        connected, _ = await communicator.connect()
+
+        self.assertFalse(connected)

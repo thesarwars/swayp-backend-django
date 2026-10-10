@@ -251,6 +251,7 @@ Contents:
 - **Screen:** none yet. Push is not integrated.
 
 #### DASH-3 · major (before realtime is enabled) · WebSocket
+- **✅ Fixed (code and docs) — server setup still needed**: the socket now accepts `Authorization: Bearer <access JWT>` on the handshake, so the token stays out of the URL (the SEC-4 ask for native clients). Such a handshake skips the browser origin check. That check would otherwise have refused the app in production, because React Native sends no `Origin` header, or the API host as `Origin`. Browsers keep using `?token=` and the origin check. The guide no longer hard-codes `api.getswayp.com`; the socket is `wss://<api host>/ws/notifications/`. **Still needed on dev and staging (server work, not code):** run the `websocket` (daphne) service, add the nginx `/ws/` route from `docs/deployment.md`, and set `REALTIME_ENABLED=true`. Until then the dev host answers 404. See e8 realtime §2.1.
 - **Endpoint:** `wss://…/ws/notifications/?token=`.
 - **Today:** the dev host has no WebSocket route (HTTP 404). The guide's URL uses `api.getswayp.com`. The access JWT travels in the query string; see [SEC-4](#sec-4--major--websocket-sends-the-access-token-in-the-url).
 - **Needed:** the route on dev and staging, and a safer handshake.
@@ -756,6 +757,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **App today:** shows server messages as they are. It never invents its own "no account found" text.
 
 #### SEC-4 · major · WebSocket sends the access token in the URL
+- **🟡 Partly fixed** (with DASH-3): native clients now send `Authorization: Bearer …` on the handshake, so the mobile app's token never appears in a URL. Browsers still use `?token=`, because they cannot set handshake headers; the single-use ticket is still open for them.
 - **Endpoint:** `wss://…/ws/notifications/?token=`.
 - **Today:** the JWT in the query string ends up in proxy and server logs.
 - **Needed:** accept an `Authorization` header on the handshake (React Native can send one), or issue a short-lived single-use ticket.

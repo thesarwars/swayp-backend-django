@@ -1,11 +1,15 @@
 """WebSocket endpoint for live notifications (E8-S5).
 
-    ws(s)://<host>/ws/notifications/?token=<access JWT>
+    ws(s)://<host>/ws/notifications/
+    Authorization: Bearer <access JWT>          native apps (DASH-3)
 
-The token goes in the query string because the browser WebSocket API cannot
-set an Authorization header — there is no supported alternative, which is why
-the standard practice is a short-lived access token here rather than a refresh
-token or a session cookie.
+    ws(s)://<host>/ws/notifications/?token=<access JWT>    browsers
+
+A native client sends the access token as an Authorization header, which
+keeps it out of the URL and so out of proxy and server logs. The browser
+WebSocket API cannot set headers, so a browser still puts the token in the
+query string. That is why it is a short-lived access token here rather than a
+refresh token or a session cookie. When both are sent, the header wins.
 
 Read-only by design. The socket delivers; every action a user can take on a
 notification (mark read, read all) stays on the authenticated REST API, so
@@ -51,6 +55,14 @@ def _user_from_token(raw_token):
 
 
 def _token_from_scope(scope):
+    for name, value in scope.get("headers", []):
+        if name == b"authorization":
+            scheme, _, token = value.decode("latin1").partition(" ")
+
+            # A header that is present but not Bearer is a failed login, not
+            # a reason to fall back to the query string.
+            return token.strip() if scheme.lower() == "bearer" else ""
+
     query = (scope.get("query_string") or b"").decode(errors="ignore")
 
     for part in query.split("&"):

@@ -64,9 +64,8 @@ def websocket_origins():
 
 try:
     from channels.routing import ProtocolTypeRouter, URLRouter
-    from channels.security.websocket import OriginValidator
-
     from apps.notifications.routing import websocket_urlpatterns
+    from apps.notifications.ws_origin import BrowserOriginValidator
 
     application = ProtocolTypeRouter(
         {
@@ -75,7 +74,9 @@ try:
             # fetch() is, so without this any site a signed-in user visits
             # could open a socket to this host. Authentication still happens
             # in the consumer; this closes the door before a token is read.
-            "websocket": OriginValidator(
+            # Handshakes with an Authorization header (native apps) skip it —
+            # see apps/notifications/ws_origin.py.
+            "websocket": BrowserOriginValidator(
                 URLRouter(websocket_urlpatterns),
                 websocket_origins(),
             ),

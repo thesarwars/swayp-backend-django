@@ -109,14 +109,36 @@ has an adapter, `enabled` means the release switch is on.
 
 ### 2.1 Connect
 
+The socket lives on the **same host as the REST API**, with `wss://` in place
+of `https://` and no `/api/v1` prefix. For an API at `https://<api host>/api/v1`:
+
 ```
-wss://api.getswayp.com/ws/notifications/?token=<access JWT>
+wss://<api host>/ws/notifications/
 ```
 
-The token goes in the **query string** because the browser WebSocket API
-cannot set an `Authorization` header. There is no supported alternative — this
-is why the standard practice is a short-lived *access* token here. Never send
-a refresh token.
+**Mobile (React Native): send the token as a header.** It keeps the token out
+of the URL, and so out of proxy and server logs:
+
+```js
+const ws = new WebSocket(WS_URL, null, {
+  headers: { Authorization: `Bearer ${accessToken}` },
+});
+```
+
+A handshake with an `Authorization` header skips the browser origin check,
+which a native app would otherwise fail: React Native sends no `Origin`, or the
+API's own host, and neither is the frontend's origin.
+
+**Browser: the token goes in the query string**, because the browser WebSocket
+API cannot set headers:
+
+```
+wss://<api host>/ws/notifications/?token=<access JWT>
+```
+
+The browser path is checked against the frontend's origin. Either way, use the
+short-lived *access* token. Never send a refresh token. If both are sent, the
+header wins.
 
 On success the server sends:
 

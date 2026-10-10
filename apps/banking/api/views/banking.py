@@ -8,6 +8,7 @@ from apps.banking.api.serializers.banking import (
     BankAccountSerializer,
     BankConnectionSerializer,
     BillDetectionCandidateSerializer,
+    CandidateUpdateSerializer,
     ImportCandidatesSerializer,
     InstitutionSerializer,
     LinkExchangeSerializer,
@@ -291,6 +292,38 @@ class ScanCandidateListAPIView(AccountScopedMixin, BaseAPIView):
         return ApiResponse.success(
             data=BillDetectionCandidateSerializer(candidates, many=True).data,
             message="Candidates fetched successfully.",
+        )
+
+
+@extend_schema(
+    tags=["Banking"],
+    summary="Edit a detected bill before import",
+    description=(
+        "Partial update of amount, category, cadence and due_day — the fields "
+        "import turns into the bill. Refused once the candidate is imported. "
+        "Answers with the updated candidate."
+    ),
+    request=CandidateUpdateSerializer,
+    responses={200: BillDetectionCandidateSerializer},
+)
+class ScanCandidateDetailAPIView(AccountScopedMixin, BaseAPIView):
+
+    service_class = BillImportService
+
+    def patch(self, request, scan_id, candidate_id):
+        serializer = CandidateUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        candidate = self.service.update_candidate(
+            user=self.account(request),
+            scan_id=scan_id,
+            candidate_id=candidate_id,
+            data=serializer.validated_data,
+        )
+
+        return ApiResponse.success(
+            data=BillDetectionCandidateSerializer(candidate).data,
+            message="Candidate updated.",
         )
 
 

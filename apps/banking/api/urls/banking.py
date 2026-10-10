@@ -8,6 +8,7 @@ from apps.banking.api.views.banking import (
     LinkExchangeAPIView,
     LinkTokenAPIView,
     OnboardingSummaryAPIView,
+    ScanCandidateDetailAPIView,
     ScanCandidateListAPIView,
     ScanDetailAPIView,
     ScanImportAPIView,
@@ -51,6 +52,11 @@ urlpatterns = [
         "/scans/<uuid:scan_id>/candidates",
         ScanCandidateListAPIView.as_view(),
         name="banking-scan-candidates",
+    ),
+    path(
+        "/scans/<uuid:scan_id>/candidates/<uuid:candidate_id>",
+        ScanCandidateDetailAPIView.as_view(),
+        name="banking-scan-candidate-detail",
     ),
     path(
         "/scans/<uuid:scan_id>/import",

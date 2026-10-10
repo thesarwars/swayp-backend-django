@@ -116,6 +116,28 @@ Each candidate is a detected recurring payment — vendor name, amount,
 cadence, confidence, and the transactions behind it. This is a review screen:
 the user unticks anything wrong before importing.
 
+### Editing a candidate
+
+```
+PATCH /api/v1/banking/scans/<scan_id>/candidates/<candidate_id>
+{ "amount": "410.50", "category": "<category uuid>", "cadence": "QUARTERLY", "due_day": 20 }
+```
+
+Partial: send only what changed. These are the fields import turns into the
+bill, so **the bill gets what the user corrected**. Answers with the updated
+candidate, in the same shape as the list.
+
+- `cadence` is `MONTHLY`, `QUARTERLY`, `WEEKLY` or `ONE_TIME`.
+- `due_day` is a day of the month (1–31), or for `WEEKLY` an ISO weekday
+  (1 = Monday … 7 = Sunday). It is checked against the cadence the row will
+  have, so switching to `WEEKLY` with a `due_day` above 7 is a 400.
+- `category` is a bill-category id; it fills `category_guess`.
+- `amount` must be at least `0.01`.
+- An already-imported candidate is a 400: the bill exists by then, so edit
+  the bill instead.
+
+The vendor name is not editable here. Rename the vendor after import.
+
 ## 5. Import
 
 ```

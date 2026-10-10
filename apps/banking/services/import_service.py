@@ -56,6 +56,72 @@ class BillImportService:
         )
 
     @transaction.atomic
+    def update_candidate(self, *, user, scan_id, candidate_id, data):
+        """Correct a detected bill before it is imported (BANK-8).
+
+        Locked, so the imported check below cannot race an import of the
+        same row. Refused once imported: the bill exists by then, and
+        changing the candidate would only make the two disagree. Edit the
+        bill instead.
+        """
+        scan = self.get_scan(user=user, scan_id=scan_id)
+
+        candidate = (
+            BillDetectionCandidate.objects.select_for_update()
+            .filter(scan=scan, id=candidate_id)
+            .first()
+        )
+
+        if candidate is None:
+            raise ValidationError({"candidate": "Candidate not found."})
+
+        if candidate.imported_bill_id is not None:
+            raise ValidationError(
+                {
+                    "candidate": (
+                        "Already imported. Edit the bill instead."
+                    )
+                }
+            )
+
+        cadence = data.get("cadence", candidate.cadence)
+        due_day = data.get("due_day", candidate.due_day)
+
+        # Checked against the cadence the row will have, so changing either
+        # one alone cannot leave a weekly bill due on the 15th "weekday".
+        if cadence == BillFrequency.WEEKLY and due_day > 7:
+            raise ValidationError(
+                {
+                    "due_day": (
+                        "For a weekly bill, due_day is the weekday: "
+                        "1 (Monday) to 7 (Sunday)."
+                    )
+                }
+            )
+
+        fields = []
+
+        if "category" in data:
+            category = BillCategory.objects.filter(
+                id=data["category"], is_active=True
+            ).first()
+
+            if category is None:
+                raise ValidationError({"category": "Category not found."})
+
+            candidate.category_guess = category
+            fields.append("category_guess")
+
+        for name in ("amount", "cadence", "due_day"):
+            if name in data:
+                setattr(candidate, name, data[name])
+                fields.append(name)
+
+        candidate.save(update_fields=fields + ["updated_at"])
+
+        return candidate
+
+    @transaction.atomic
     def import_candidates(self, *, user, scan_id, candidate_ids=None,
                           import_all=False, today=None):
         """Create Vendors + Bills for the selected candidates.
@@ -79,7 +145,14 @@ class BillImportService:
                 )
             queryset = queryset.filter(id__in=candidate_ids)
 
-        candidates = list(queryset.select_related("category_guess"))
+        # Locked like update_candidate, so an edit and an import of the same
+        # row run one after the other. of=("self",): category_guess is a
+        # nullable join, which Postgres will not lock.
+        candidates = list(
+            queryset.select_related("category_guess").select_for_update(
+                of=("self",)
+            )
+        )
 
         if not candidates:
             raise ValidationError(

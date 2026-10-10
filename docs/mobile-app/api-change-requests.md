@@ -203,6 +203,7 @@ Contents:
 - **App today:** takes the months from the cached scan, or shows "From your bank history". Uses the imported count when `total_bills` is missing.
 
 #### BANK-8 · minor · Detected bills cannot be edited before import
+- **✅ Fixed**: `PATCH /banking/scans/{id}/candidates/{cid}` takes any of `amount`, `category` (uuid), `cadence` and `due_day`, and answers with the updated candidate. Import builds the bill from these fields, so the edit carries through. `due_day` is checked against the cadence (1–7 for `WEEKLY`). An already-imported candidate is a 400. The vendor name is not editable here. See e5 §4, "Editing a candidate".
 - **Endpoint:** new, for example `PATCH /banking/scans/{id}/candidates/{cid}` (amount, category, cadence, due day).
 - **Today:** the design says "You can edit any detail", but there is no edit call.
 - **Screen:** review bills.

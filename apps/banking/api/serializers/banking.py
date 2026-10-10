@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -7,6 +9,7 @@ from apps.banking.models import (
     BillDetectionCandidate,
     TransactionScan,
 )
+from apps.common.enums import BillFrequency
 
 
 class LinkTokenSerializer(serializers.Serializer):
@@ -206,6 +209,42 @@ class BillDetectionCandidateSerializer(serializers.ModelSerializer):
             "is_imported",
             "imported_bill",
         )
+
+
+class CandidateUpdateSerializer(serializers.Serializer):
+    """Correct a detected bill before importing it (BANK-8).
+
+    Partial: send only what changed. These are the fields import turns into
+    the bill, so an edit here is what the bill gets.
+    """
+
+    amount = serializers.DecimalField(
+        max_digits=18,
+        decimal_places=2,
+        min_value=Decimal("0.01"),
+        required=False,
+    )
+    category = serializers.UUIDField(required=False)
+    cadence = serializers.ChoiceField(
+        choices=BillFrequency.choices, required=False
+    )
+    due_day = serializers.IntegerField(
+        min_value=1,
+        max_value=31,
+        required=False,
+        help_text=(
+            "Day of the month (1-31); for WEEKLY, the ISO weekday "
+            "(1 = Monday … 7 = Sunday)."
+        ),
+    )
+
+    def validate(self, attrs):
+        if not attrs:
+            raise serializers.ValidationError(
+                "Send at least one field to update."
+            )
+
+        return attrs
 
 
 class ImportCandidatesSerializer(serializers.Serializer):

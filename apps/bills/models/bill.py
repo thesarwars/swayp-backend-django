@@ -35,6 +35,11 @@ class Bill(BaseModel):
     amount = models.DecimalField(max_digits=18,decimal_places=2)
     category = models.ForeignKey(BillCategory,on_delete=models.PROTECT,related_name="bills")
     notes = models.TextField(blank=True,default="")
+
+    # The vendor's own reference for this bill (account or invoice number),
+    # usually read from its QR (BILLS-10). It used to be written into notes
+    # as "Ref …", where nothing could read it back reliably.
+    payment_ref = models.CharField(max_length=100, blank=True, default="")
     frequency = models.CharField(max_length=20,choices=BillFrequency.choices)
     anchor_date = models.DateField()
     autopay_mode = models.CharField(max_length=10,choices=AutopayMode.choices,default=AutopayMode.REMIND)

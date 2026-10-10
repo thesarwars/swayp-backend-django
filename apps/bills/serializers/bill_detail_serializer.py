@@ -59,6 +59,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
             "payment_method_id",
             "account_ref",
             "notes",
+            "payment_ref",
 
             "next_due",
             "next_occurrence",

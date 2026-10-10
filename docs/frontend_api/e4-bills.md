@@ -142,9 +142,13 @@ POST /api/v1/bills/create
 { "vendor": "<vendor_id>", "category": "<category_id>",
   "bill_type": "FIXED", "amount": "500.00",
   "frequency": "MONTHLY", "anchor_date": "2026-10-01",
-  "autopay_mode": "REMIND", "notes": "",
+  "autopay_mode": "REMIND", "notes": "", "payment_ref": "WW-88",
   "payment_method": "<method_id>" }
 ```
+
+`payment_ref` is the vendor's own reference for the bill (account or invoice
+number), up to 100 characters. Put a scanned QR's `payment_ref` here, not in
+`notes`. Bill detail returns it, and PATCH can change it.
 
 `frequency`: `MONTHLY` · `QUARTERLY` · `WEEKLY` · `ONE_TIME`. These four
 only; there is no `BIWEEKLY` or `YEARLY`.

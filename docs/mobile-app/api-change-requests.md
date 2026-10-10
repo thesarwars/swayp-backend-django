@@ -427,6 +427,7 @@ Contents:
 - **App today:** the badges are the first four categories by `displayOrder`. Which of the four drawings a badge gets is decided by keywords in the category's name ("electric", "power", "energy", "utilit" → the electricity badge, and so on); any other category gets a plain badge in its own `color`. A renamed category silently changes its artwork.
 
 #### BILLS-10 · minor · No field for a scanned payment reference
+- **✅ Fixed**: bills have a `payment_ref` field (up to 100 characters), accepted by create and update and returned by bill detail. Send the QR's `payment_ref` there instead of `"Ref …"` in `notes`. See e4 §4.
 - **Endpoint:** `POST /bills/create`.
 - **Needed:** a field for the decoded `payment_ref`.
 - **App today:** writes it into `notes` as "Ref …".

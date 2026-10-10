@@ -58,6 +58,7 @@ class BillService:
             autopay_mode=validated_data["autopay_mode"],
             source=validated_data["source"],
             notes=validated_data.get("notes", ""),
+            payment_ref=validated_data.get("payment_ref", ""),
         )
 
         # Consent before anything else observable: if AUTO is requested and the
@@ -220,6 +221,7 @@ class BillService:
             "autopay_mode",
             "source",
             "notes",
+            "payment_ref",
         ):
             if field in validated_data:
                 setattr(

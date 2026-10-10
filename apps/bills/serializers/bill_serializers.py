@@ -61,6 +61,9 @@ class BillCreateSerializer(serializers.Serializer):
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,default=BillSource.MANUAL)
     notes = serializers.CharField(required=False,allow_blank=True,default="")
+    payment_ref = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=""
+    )
     autopay_consent = AutopayConsentSerializer(required=False)
 
     def validate(self, attrs):
@@ -125,6 +128,9 @@ class BillUpdateSerializer(serializers.Serializer):
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,required=False)
     notes = serializers.CharField(required=False,allow_blank=True)
+    payment_ref = serializers.CharField(
+        max_length=100, required=False, allow_blank=True
+    )
     autopay_consent = AutopayConsentSerializer(required=False)
 
     def validate(self, attrs):

@@ -454,3 +454,31 @@ class AuthorizationTextPreviewTests(AutopayConsentTestCase):
         self.assertEqual(
             self.preview(vendor=str(theirs.id)).status_code, 400
         )
+
+
+class PaymentRefTests(AutopayConsentTestCase):
+    """BILLS-10: the scanned reference has its own field, not notes."""
+
+    def test_create_stores_it_and_detail_returns_it(self):
+        bill_id = self.create(payment_ref="WW-88", source="QR").data["data"]["id"]
+
+        detail = self.client.get(f"/api/v1/bills/{bill_id}/details").data["data"]
+
+        self.assertEqual(detail["payment_ref"], "WW-88")
+        self.assertEqual(detail["notes"], "")
+
+    def test_update_changes_it(self):
+        bill_id = self.create().data["data"]["id"]
+
+        self.client.patch(
+            f"/api/v1/bills/{bill_id}/update", {"payment_ref": "ACC-1"},
+            format="json",
+        )
+
+        detail = self.client.get(f"/api/v1/bills/{bill_id}/details").data["data"]
+        self.assertEqual(detail["payment_ref"], "ACC-1")
+
+    def test_it_is_capped(self):
+        response = self.create(payment_ref="x" * 101)
+
+        self.assertEqual(response.status_code, 400)

@@ -9,6 +9,7 @@ from apps.common.enums import PaymentStatus
 from apps.common.responses import ApiResponse
 from apps.payments.api.serializers.payment import (
     ConfirmSerializer,
+    PaymentCreateResponseSerializer,
     PaymentCreateSerializer,
     PaymentDetailSerializer,
     PaymentSerializer,
@@ -88,14 +89,17 @@ class PaymentCreateAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             payments = result["payments"]
 
             return ApiResponse.success(
-                data={
+                # Serialized so total is "3200.00": the raw Decimal sum
+                # rendered as the float 3200.0, while an idempotent replay
+                # of the same answer came back as the string.
+                data=PaymentCreateResponseSerializer({
                     "batch_id": (
                         result["batch"].id if result["batch"] else None
                     ),
-                    "payments": PaymentSerializer(payments, many=True).data,
+                    "payments": payments,
                     "authorization_text": result["authorization_text"],
                     "total": sum(p.total for p in payments),
-                },
+                }).data,
                 message="Payments created. Confirm to authorize.",
                 status_code=status.HTTP_201_CREATED,
             )

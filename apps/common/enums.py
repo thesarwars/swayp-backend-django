@@ -61,7 +61,9 @@ class ProviderStatus(models.TextChoices):
 
 
 class Currency(models.TextChoices):
-    BDT = "BDT", "Bangladeshi Taka"
+    # Every payment is USD today. EUR stays because reports total by
+    # currency and are built for more than one; BDT, from the product's
+    # earlier direction, was never produced and is gone (API-1).
     USD = "USD", "US Dollar"
     EUR = "EUR", "Euro"
 

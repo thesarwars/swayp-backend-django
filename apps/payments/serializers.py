@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
 from apps.common.casing import snake_case_aliases
@@ -7,8 +8,13 @@ from apps.common.serializers import PaginationQuerySerializer
 
 
 
+@extend_schema_serializer(component_name="PaymentHistoryRow")
 @snake_case_aliases
 class PaymentSerializer(serializers.Serializer):
+    """A payment history row. Its own component name: the payment object
+    (apps/payments/api/serializers) is also a PaymentSerializer, and the two
+    shared the name "Payment", so one silently replaced the other in the
+    published schema."""
     id = serializers.UUIDField()
 
     # provider and category are both nullable on Payment (E6-S1), so these

@@ -19,6 +19,7 @@ from .serializers import (
 from .serializers import (
     PaymentHistoryQuerySerializer,
     PaymentHistoryResponseSerializer,
+    PaymentSerializer as PaymentHistorySerializer,
     CreatePaymentResponseSerializer,
     CreatePaymentSerializer,
 )
@@ -32,7 +33,7 @@ payment_history_schema = extend_schema(
         PaymentHistoryQuerySerializer,
     ],
     responses={
-        200: PaymentHistoryResponseSerializer,
+        200: PaymentHistorySerializer(many=True),
         400: BAD_REQUEST_RESPONSE,
         401: UNAUTHORIZED_RESPONSE,
     },

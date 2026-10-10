@@ -236,6 +236,12 @@ REST_FRAMEWORK = {
     },
 
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",
+
+    # Decimals render as their exact string, never a float (API-1).
+    "DEFAULT_RENDERER_CLASSES": (
+        "apps.common.renderers.SwaypJSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ),
 }
 
 PASSWORD_HASHERS = [

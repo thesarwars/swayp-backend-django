@@ -350,3 +350,101 @@ class BillsContractTests(ContractTestCase):
                          "frequency": "MONTHLY",
                          "anchor_date": "2027-01-01"},
                    status=200)
+
+
+class PaymentsContractTests(ContractTestCase):
+
+    def setUp(self):
+        super().setUp()
+        import datetime as dt
+
+        from apps.banking.factories import (
+            BankAccountFactory,
+            BankConnectionFactory,
+        )
+        from apps.bills.factories import BillFactory, BillOccurrenceFactory
+        from apps.vendors.factories import VendorPaymentMethodFactory
+        from integrations.money_movement.mock import MockMoneyMovementProvider
+
+        MockMoneyMovementProvider.reset()
+        BankAccountFactory(
+            connection=BankConnectionFactory(user=self.user),
+            is_default_funding_source=True,
+        )
+        self.bill = BillFactory(user=self.user,
+                                anchor_date=dt.date(2026, 11, 1))
+        self.bill.payment_method = VendorPaymentMethodFactory(
+            vendor=self.bill.vendor)
+        self.bill.save(update_fields=["payment_method"])
+        self.occurrence = lambda amount="3200.00", day=1: (
+            BillOccurrenceFactory(bill=self.bill, amount=amount,
+                                  due_date=dt.date(2026, 11, day))
+        )
+
+    def create(self, *occurrences):
+        return self.check("POST", "/api/v1/payments", body={
+            "occurrence_ids": [str(o.id) for o in occurrences],
+        }, status=201).json()["data"]
+
+    def test_single_payment(self):
+        occurrence = self.occurrence()
+        self.check("POST", "/api/v1/payments/quote", body={
+            "occurrence_ids": [str(occurrence.id)]}, status=200)
+        created = self.create(occurrence)
+        payment = created["payments"][0]
+        pid = payment["id"]
+        P = "/api/v1/payments/{payment_id}"
+
+        self.check("PATCH", f"/api/v1/payments/{pid}", path=P,
+                   body={"scheduled_for": None}, status=200)
+        self.check("GET", f"/api/v1/payments/{pid}", path=P, status=200)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.check("POST", f"/api/v1/payments/{pid}/confirm",
+                       path=P + "/confirm",
+                       body={"authorization_text":
+                             created["authorization_text"]},
+                       status=200)
+        self.check("GET", f"/api/v1/payments/{pid}", path=P, status=200)
+        self.check("GET", f"/api/v1/payments/{pid}/status",
+                   path=P + "/status", status=200)
+        self.check("GET", "/api/v1/payments/history", status=200)
+        self.check("GET", f"/api/v1/bills/{self.bill.id}/payments",
+                   path="/api/v1/bills/{bill_id}/payments", status=200)
+        self.check("POST", f"/api/v1/payments/{pid}/cancel",
+                   path=P + "/cancel", status=None)
+
+    def test_failure_and_resolve(self):
+        occurrence = self.occurrence(amount="3200.01")
+        created = self.create(occurrence)
+        pid = created["payments"][0]["id"]
+        P = "/api/v1/payments/{payment_id}"
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.check("POST", f"/api/v1/payments/{pid}/confirm",
+                       path=P + "/confirm",
+                       body={"authorization_text":
+                             created["authorization_text"]},
+                       status=None)
+        self.check("GET", f"/api/v1/payments/{pid}", path=P, status=200)
+        self.check("GET", f"/api/v1/payments/{pid}/failure",
+                   path=P + "/failure", status=200)
+        self.check("POST", f"/api/v1/payments/{pid}/resolve",
+                   path=P + "/resolve", body={"action": "retry"},
+                   status=201)
+
+    def test_batch(self):
+        created = self.create(self.occurrence(day=1),
+                              self.occurrence(day=15))
+        bid = created["batch_id"]
+        B = "/api/v1/payments/batches/{batch_id}"
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.check("POST", f"/api/v1/payments/batches/{bid}/confirm",
+                       path=B + "/confirm",
+                       body={"authorization_text":
+                             created["authorization_text"]},
+                       status=200)
+        self.check("GET", f"/api/v1/payments/batches/{bid}/status",
+                   path=B + "/status", status=200)
+        self.check("POST", f"/api/v1/payments/batches/{bid}/cancel",
+                   path=B + "/cancel", status=None)

@@ -1,5 +1,5 @@
 from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.generics import (
     ListCreateAPIView,
@@ -27,6 +27,17 @@ from apps.teams.access import AccountScopedMixin
 from apps.vendors.models import Vendor
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary="Create a vendor",
+        description=(
+            "201 with the full vendor (the detail shape), including id and "
+            "payment_methods[].account_ref."
+        ),
+        request=VendorCreateSerializer,
+        responses={201: VendorDetailSerializer},
+    ),
+)
 class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
 
     permission_classes = [IsAuthenticated]

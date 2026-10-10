@@ -586,6 +586,7 @@ These matter once the bill detail screens are built:
   - Raw bank numbers never leave the device.
 
 #### VEND-2 · major · Adding a payment method returns the wrong shape
+- **✅ Fixed**: the add-method `POST` already returned the read shape (`id`, `account_ref`, no token); **OpenAPI was wrong** and now matches. Two real fixes: `PATCH` on a method used to echo **`provider_token`** and now returns the read shape, and **a vendor's first method becomes primary automatically**, so the extra `set-primary` call isn't needed. See e3 §4.
 - **Endpoint:** `POST /vendors/{id}/payment-methods`.
 - **Today:** per the schema, the 201 body has no `id` and no `account_ref`, and it echoes `provider_token`. The new method is not made primary even when the vendor has no primary.
 - **Needed:**
@@ -595,6 +596,7 @@ These matter once the bill detail screens are built:
 - **App today:** refetches the vendor, finds the new method and calls `set-primary`.
 
 #### VEND-3 · major · Vendor create may not return the vendor
+- **✅ Fixed (the schema was wrong)**: `POST /vendors` already answers **201 with the full vendor**, `id` and `payment_methods[0].account_ref` included, as the guide said. OpenAPI now declares that. The "Vendor saved" success screen can use the `id`. See e3 §4.
 - **Endpoint:** `POST /vendors`.
 - **Today:** the schema says the 201 body echoes the request with no `id`. The guide shows the full vendor.
 - **Needed:** the full vendor with `id` and `payment_methods[0].account_ref`. Please fix whichever source is wrong.

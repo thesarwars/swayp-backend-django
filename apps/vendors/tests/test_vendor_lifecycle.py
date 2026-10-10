@@ -331,3 +331,53 @@ class DeleteStopsBillsTests(TestCase):
         response = self.client.post(f"/api/v1/vendors/{self.vendor.id}/restore")
 
         self.assertEqual(response.status_code, 400)
+
+
+class PaymentMethodShapeTests(TestCase):
+    """VEND-2 / VEND-3: method writes answer with the read shape, never the
+    token, and a vendor's first method becomes primary."""
+
+    def setUp(self):
+        from apps.vendors.factories import UserFactory, VendorFactory
+
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.vendor = VendorFactory(user=self.user)
+        self.url = f"/api/v1/vendors/{self.vendor.id}/payment-methods"
+        self.ach = {
+            "method_type": "ACH", "provider": "STRIPE",
+            "provider_token": "pm_stripe_abc", "account_last4": "4821",
+            "account_holder_name": "Acme LLC",
+        }
+
+    def test_the_first_method_becomes_primary(self):
+        response = self.client.post(self.url, self.ach, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.data["is_primary"])
+        self.assertEqual(response.data["account_ref"], "****4821")
+        self.assertIn("id", response.data)
+        self.assertNotIn("provider_token", response.data)
+
+    def test_a_second_method_does_not_steal_primary(self):
+        self.client.post(self.url, self.ach, format="json")
+        second = self.client.post(
+            self.url, {**self.ach, "account_last4": "9999"}, format="json"
+        )
+
+        self.assertFalse(second.data["is_primary"])
+
+    def test_patch_never_echoes_the_token(self):
+        method_id = self.client.post(self.url, self.ach, format="json").data["id"]
+
+        response = self.client.patch(
+            f"{self.url}/{method_id}",
+            {"account_holder_name": "Acme Inc"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("provider_token", response.data)
+        self.assertEqual(response.data["account_holder_name"], "Acme Inc")
+        self.assertEqual(response.data["account_ref"], "****4821")

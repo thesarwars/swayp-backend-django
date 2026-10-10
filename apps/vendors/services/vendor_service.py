@@ -131,6 +131,13 @@ class VendorPaymentMethodService:
     @transaction.atomic
     def create(*, vendor, validated_data):
 
+        # A vendor with no primary method gets this one as primary (VEND-2).
+        # Vendors imported from a bank scan arrive with no method at all, and
+        # without this their first method left them with no rail to pay on
+        # until the client called set-primary as well.
+        if not vendor.payment_methods.filter(is_primary=True).exists():
+            validated_data = {**validated_data, "is_primary": True}
+
         if validated_data.get("is_primary"):
 
             VendorPaymentMethod.objects.filter(

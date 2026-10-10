@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.generics import (
     ListCreateAPIView,
@@ -33,6 +34,17 @@ from apps.vendors.selectors.vendor_selector import (
 from apps.teams.access import AccountScopedMixin
 
 
+@extend_schema_view(
+    post=extend_schema(
+        summary="Add a payment method",
+        description=(
+            "201 with the method in its read shape: id, account_ref, no "
+            "token. A vendor with no primary method gets this one as primary."
+        ),
+        request=VendorPaymentMethodCreateSerializer,
+        responses={201: VendorPaymentMethodSerializer},
+    ),
+)
 class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
@@ -99,6 +111,16 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView
         )
 
 
+@extend_schema_view(
+    put=extend_schema(
+        request=VendorPaymentMethodCreateSerializer,
+        responses={200: VendorPaymentMethodSerializer},
+    ),
+    patch=extend_schema(
+        request=VendorPaymentMethodCreateSerializer,
+        responses={200: VendorPaymentMethodSerializer},
+    ),
+)
 class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
     """
     GET
@@ -121,12 +143,25 @@ class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroy
 
         return VendorPaymentMethodSerializer
 
-    def perform_update(self, serializer):
+    def update(self, request, *args, **kwargs):
+        """Answer with the read shape (VEND-2).
 
-        VendorPaymentMethodService.update(
+        The default answered with the write serializer, which echoed
+        provider_token back to the client.
+        """
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=kwargs.pop("partial", False),
+        )
+        serializer.is_valid(raise_exception=True)
+
+        method = VendorPaymentMethodService.update(
             payment_method=serializer.instance,
             validated_data=serializer.validated_data,
         )
+
+        return Response(VendorPaymentMethodSerializer(method).data)
 
     def perform_destroy(self, instance):
 

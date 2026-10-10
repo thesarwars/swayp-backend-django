@@ -95,9 +95,21 @@ will always be `false`** — don't build a trust badge that never lights up.
 ```
 GET  /api/v1/vendors/<vendor_id>/payment-methods
 POST /api/v1/vendors/<vendor_id>/payment-methods
+PATCH /api/v1/vendors/<vendor_id>/payment-methods/<method_id>
 POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary
-DELETE .../payment-methods/<method_id>/
+DELETE /api/v1/vendors/<vendor_id>/payment-methods/<method_id>
 ```
+
+**What the writes return.**
+- `POST /vendors` answers **201 with the full vendor**: the same shape as
+  `GET /vendors/<id>`, including `id` and `payment_methods[].account_ref`.
+- Adding a method (`POST`) and editing one (`PATCH`) answer with the method's
+  **read shape**: `id`, `is_primary`, `account_ref` (`****4821`). The
+  `provider_token` is **never** sent back.
+- **A vendor's first method becomes primary automatically**, including for
+  vendors imported from a bank scan with no method. There is no need to call
+  `set-primary` after adding it. A later method becomes primary only if you
+  send `is_primary: true`.
 
 Three method types, and the fields differ per type:
 

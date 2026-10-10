@@ -18,7 +18,7 @@ Related: [Payments API](payments-api-documentation.md) · [Banking API](banking-
 
 Stripe is wired. Whether it collects depends on one setting:
 
-| | `POST /subscription/` |
+| | `POST /subscription` |
 |---|---|
 | **mock** (default) | records the entitlement, charges nothing |
 | **stripe** | creates a real customer and subscription, charges the card |
@@ -715,13 +715,13 @@ What the payment processor actually billed, newest first:
 
 ## 10. What to build, in order
 
-1. **Pricing page** — `GET /plans/`. Array order is display order.
-2. **Subscribe** — `POST /subscription/`. Handle the already-subscribed 400.
-3. **Billing screen** — `GET /subscription/` + `GET /allowances/`. Show
+1. **Pricing page** — `GET /plans`. Array order is display order.
+2. **Subscribe** — `POST /subscription`. Handle the already-subscribed 400.
+3. **Billing screen** — `GET /subscription` + `GET /allowances`. Show
    `effective_price`, not `monthly_price`.
 4. **Global 402 handler** — one place, upgrade prompt, `message` verbatim.
-5. **Fee history** — `GET /fees/`. Refunded rows are a feature; show them.
-6. **Invoice** — `GET /invoice/`. Render `total`.
+5. **Fee history** — `GET /fees`. Refunded rows are a feature; show them.
+6. **Invoice** — `GET /invoice`. Render `total`.
 7. **Enterprise add-ons** — gate the section on the plan code.
 
 ---

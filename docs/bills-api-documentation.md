@@ -52,14 +52,14 @@ the moment the date rolls over — you never need to refresh to "catch up".
 
 The API is **not** consistent about this yet. Handle both.
 
-**Shape A — envelope.** Used by everything under `/bills/` and
-`/bill-categories/`:
+**Shape A — envelope.** Used by everything under `/bills` and
+`/bill-categories`:
 
 ```json
 { "success": true, "message": "...", "data": { } }
 ```
 
-**Shape B — bare paginated.** Used by `/vendors/` and
+**Shape B — bare paginated.** Used by `/vendors` and
 `/vendors/<id>/payment-methods`:
 
 ```json
@@ -495,7 +495,7 @@ counts immediately (in the captured run `upcoming_count` went 3 → 2). Paying a
 already-paid occurrence returns an error.
 
 > **Superseded.** Real payment execution now exists — see the
-> Payments API. Use `POST /payments/` with
+> Payments API. Use `POST /payments` with
 > this occurrence id instead; it moves money and keeps the occurrence in
 > step. This endpoint remains only for reconciling a payment made outside
 > Swayp.
@@ -629,7 +629,7 @@ notes otherwise. Dates are `YYYY-MM-DD`. Ids are UUIDs.
 
 ## 6. Errors
 
-Validation failures under `/bills/`:
+Validation failures under `/bills`:
 
 ```json
 { "success": false, "message": "Validation failed.",
@@ -651,7 +651,7 @@ A bill belonging to another user returns **404**, not 403.
 
 | Gap | Impact |
 |---|---|
-| `GET /bills/` returns bill **rules**, unpaginated and unfiltered | Not a bug, but not the list screen. Use §4.3. This endpoint is for "how many bills do I have", not "what's due". |
+| `GET /bills` returns bill **rules**, unpaginated and unfiltered | Not a bug, but not the list screen. Use §4.3. This endpoint is for "how many bills do I have", not "what's due". |
 | Payment figures are zero until payments run | The payment-history endpoint (§4.10) and the vendor spend series are wired and tested, but nothing has actually paid anything yet, so they return empty/zero in practice. |
 | QR payload format is provisional | PRD §10-Q6 is open. The parser reads `k=v` pairs and rejects unreadable input; expect `guessed` provenance for unfamiliar codes. |
 | Two response envelopes (§1.3) | Unwrap defensively. |
@@ -662,12 +662,12 @@ A bill belonging to another user returns **404**, not 403.
 
 | Method | Path | Returns |
 |---|---|---|
-| `GET` | `/bill-categories/` | envelope · category list |
-| `GET` | `/vendors/` | paginated · vendor list |
+| `GET` | `/bill-categories` | envelope · category list |
+| `GET` | `/vendors` | paginated · vendor list |
 | `GET` | `/vendors/<id>/payment-methods?due_date=&amount=` | paginated · methods + `schedule` |
 | `POST` | `/banking/routing/validate` | envelope · ABA check (see note) |
 | `POST` | `/bills/create` | envelope · review summary |
-| `GET` | `/bills/` | envelope · bill rules |
+| `GET` | `/bills` | envelope · bill rules |
 | `GET` | `/bills/occurrences` | envelope + pagination · **the list screen** |
 | `GET` | `/bills/summary` | envelope · tab counts |
 | `GET` | `/bills/next-due` | envelope · one occurrence or `null` |

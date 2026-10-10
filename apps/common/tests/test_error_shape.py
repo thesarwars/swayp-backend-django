@@ -114,3 +114,26 @@ class SomeoneElsesIdIs404Tests(TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("connection", response.json()["errors"])
+
+
+class TrailingSlashTests(TestCase):
+    """API-6: a trailing slash on an API path is accepted, not a 404."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=UserFactory())
+
+    def test_get_with_and_without_the_slash_agree(self):
+        bare = self.client.get("/api/v1/billing/plans")
+        slashed = self.client.get("/api/v1/billing/plans/")
+
+        self.assertEqual(slashed.status_code, 200)
+        self.assertEqual(slashed.json(), bare.json())
+
+    def test_a_post_keeps_its_body(self):
+        response = self.client.post(
+            "/api/v1/billing/subscription/", {"plan": "STANDARD"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)

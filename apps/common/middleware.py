@@ -46,3 +46,28 @@ class JsonApiErrorMiddleware:
             )
 
         return response
+
+
+class StripTrailingSlashMiddleware:
+    """``/api/v1/billing/fees/`` routes like ``/api/v1/billing/fees`` (API-6).
+
+    Routes are declared without a trailing slash, and the docs wrote many
+    with one, so following the docs gave a 404. The path is rewritten in
+    place rather than redirected: a redirect would turn a POST into a GET in
+    some clients and drop its body.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        path = request.path_info
+
+        if path.startswith(API_PREFIX) and len(path) > len(API_PREFIX):
+            stripped = path.rstrip("/")
+
+            if stripped != path:
+                request.path_info = stripped
+                request.path = request.path.rstrip("/")
+
+        return self.get_response(request)

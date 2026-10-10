@@ -10,8 +10,8 @@ Select bills, authorize once, watch the stages, handle what goes wrong.
 
 ### 1.1 Creating a payment does not move money
 
-`POST /payments/` only **reserves** the work and returns text to display.
-Nothing leaves the account until `confirm/`. Two steps, always.
+`POST /payments` only **reserves** the work and returns text to display.
+Nothing leaves the account until `confirm`. Two steps, always.
 
 The reservation marks the bill occurrence `SCHEDULED` at once, so reminders
 stop. **An unconfirmed payment lapses after 30 minutes**: it is cancelled and
@@ -62,7 +62,7 @@ against the same bill, linked by `replaced_payment_id`. The failed one stays
 ## 2. The pay flow
 
 ```
-POST /payments/                        → payments + authorization_text
+POST /payments                        → payments + authorization_text
    ↓  display the text, get acceptance
 POST /payments/batches/<id>/confirm   → authorized, execution starts
    ↓
@@ -269,7 +269,7 @@ GET  /api/v1/payments/<payment_id>/failure
 POST /api/v1/payments/<payment_id>/resolve
 ```
 
-`failure/` is a **400 on a healthy payment** — there is no failure to report.
+`failure` is a **400 on a healthy payment** — there is no failure to report.
 Otherwise:
 
 ```json
@@ -362,7 +362,7 @@ date, and it is what the delivery guarantee is measured against
 
 ## 7. Staff-only routes
 
-`PATCH /payments/<id>/processing|successful|failed/` return **403**. These
+`PATCH /payments/<id>/processing|successful|failed` return **403**. These
 transitions are internal and driven by webhooks. Nothing in the product should
 call them.
 

@@ -38,7 +38,7 @@ The API is not yet consistent. Write one unwrap helper and use it everywhere.
 | Shape | Where |
 |---|---|
 | `{ "success", "message", "data" }` | auth, bills, banking, categories |
-| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods`, `directory-search/` |
+| `{ "items": [...], "pagination": {...} }` | `vendors`, `vendors/<id>/payment-methods`, `directory-search` |
 | a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode` |
 
 Success responses in the second and third shapes have **no `success` field**;
@@ -63,7 +63,7 @@ So on the bills screen, **"Total Bills: 6"** counts bills while
 **"Overdue 14 / Due 9 / Upcoming 14"** counts occurrences. Different endpoints,
 numbers that do not add up to each other. That is correct.
 
-**Build the list screen on `GET /bills/occurrences`, not `GET /bills/`.**
+**Build the list screen on `GET /bills/occurrences`, not `GET /bills`.**
 
 ### 1.3 Status is computed at read time
 
@@ -260,8 +260,8 @@ anything is saved.
 
 | Step | Call |
 |---|---|
-| 1. Vendor | `GET vendors/?search=` |
-| 2. Category | `GET bill-categories/` |
+| 1. Vendor | `GET vendors?search=` |
+| 2. Category | `GET bill-categories` |
 | 3. Amount, frequency, first due date | none |
 | 4. Payment method | `GET vendors/<id>/payment-methods?due_date=&amount=` |
 | 5. Autopay + create | `POST bills/create` |
@@ -376,6 +376,9 @@ code by its status.
 | 422 | QR payload unreadable → "scan again", not a server error |
 | 429 | OTP resend or routing-validation rate limit; honour `Retry-After` |
 
+**Paths take no trailing slash.** A trailing slash is accepted too, so either
+form works.
+
 **The shape is the same everywhere:** every `errors` value is a **list of
 strings** (nested objects keep their nesting, with lists at the leaves).
 Every error under `/api/` is JSON, unknown routes included:
@@ -428,27 +431,27 @@ or the database.
 ## 9. Endpoint index
 
 **Auth** — `register` · `verify-otp` · `login` · `login/google` ·
-`login/phone/request/` · `login/phone/verify/` · `resend-otp/` ·
-`forgot-password/` · `reset-password/` · `refresh/` · `logout/`
+`login/phone/request` · `login/phone/verify` · `resend-otp` ·
+`forgot-password` · `reset-password` · `refresh` · `logout`
 
-**Banking** — `link/token/` · `link/exchange/` · `connections/` ·
-`connections/<id>/` · `accounts/` · `scans/` · `scans/<id>/` ·
-`scans/<id>/candidates/` · `scans/<id>/import/` · `onboarding-summary/` ·
-`routing/validate/`
+**Banking** — `link/token` · `link/exchange` · `connections` ·
+`connections/<id>` · `accounts` · `scans` · `scans/<id>` ·
+`scans/<id>/candidates` · `scans/<id>/import` · `onboarding-summary` ·
+`routing/validate`
 
-**Payments** — `payments/` · `payments/<id>` · `payments/<id>/confirm` ·
+**Payments** — `payments` · `payments/<id>` · `payments/<id>/confirm` ·
 `payments/<id>/status` · `payments/<id>/cancel` · `payments/<id>/failure` ·
 `payments/<id>/resolve` · `payments/history` ·
-`payments/batches/<id>/confirm|status|cancel/` · `webhooks/<processor>`
+`payments/batches/<id>/confirm|status|cancel` · `webhooks/<processor>`
 
-**Bills** — `bills/` · `bills/create` · `bills/occurrences` ·
+**Bills** — `bills` · `bills/create` · `bills/occurrences` ·
 `bills/occurrences/upcoming` · `bills/occurrences/<id>/pay` ·
 `bills/summary` · `bills/next-due` · `bills/qr/decode` ·
 `bills/<id>/details` · `bills/<id>/update` · `bills/<id>/payments` ·
 `bills/<id>/invoice`
 
-**Vendors** — `vendors/` · `vendors/<id>` · `vendors/summary` ·
-`vendors/<id>/payment-methods` · `.../<mid>/` · `.../<mid>/set-primary/` ·
+**Vendors** — `vendors` · `vendors/<id>` · `vendors/summary` ·
+`vendors/<id>/payment-methods` · `.../<mid>` · `.../<mid>/set-primary` ·
 `vendors/directory-search` · `vendors/qr/decode`
 
 **Billing** — `billing/plans` · `billing/subscription` (GET/POST/PATCH/DELETE) ·
@@ -458,7 +461,7 @@ or the database.
 `teams/invite` · `teams/invite/accept` · `teams/entities` ·
 `teams/entities/<id>`
 
-**Categories** — `bill-categories/`
+**Categories** — `bill-categories`
 
 Request and response detail for each is in the per-domain guide at the top of
 this document.

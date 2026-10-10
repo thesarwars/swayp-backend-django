@@ -242,7 +242,7 @@ DELETE /api/v1/vendors/<vendor_id>
 `DELETED` and it drops out of the default list, but the row survives so payment
 history stays intact.
 
-A deleted vendor still appears under `GET /vendors/?status=DELETED`, but
+A deleted vendor still appears under `GET /vendors?status=DELETED`, but
 `GET /vendors/<id>` returns **404**.
 
 ---
@@ -487,8 +487,8 @@ confirm that the id exists.
 
 | Method | Path | Returns |
 |---|---|---|
-| `GET` | `/vendors/` | paginated |
-| `POST` | `/vendors/` | bare vendor · 201 |
+| `GET` | `/vendors` | paginated |
+| `POST` | `/vendors` | bare vendor · 201 |
 | `GET` | `/vendors/<id>` | bare vendor |
 | `PATCH` | `/vendors/<id>` | bare · editable fields only |
 | `DELETE` | `/vendors/<id>` | 204 · soft delete |

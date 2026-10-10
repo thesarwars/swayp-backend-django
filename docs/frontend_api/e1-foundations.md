@@ -86,9 +86,9 @@ GET /api/v1/providers?search=chase&categoryId=…&page=1&pageSize=20
 
 The global catalogue of known billers. **Not the user's vendors** — those are
 [E3](e3-vendors.md). Use this to help someone pick a known biller; use
-`vendors/` for what they have actually saved.
+`vendors` for what they have actually saved.
 
-> `providers/search` was removed — it duplicated `providers/?search=`. For
+> `providers/search` was removed — it duplicated `providers?search=`. For
 > the biller typeahead use
 > [`vendors/directory-search`](e3-vendors.md) instead.
 

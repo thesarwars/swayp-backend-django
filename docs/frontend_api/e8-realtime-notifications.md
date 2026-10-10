@@ -98,11 +98,11 @@ Push respects notification preferences like any other channel, and **defaults
 to off**:
 
 ```http
-PATCH /api/v1/notifications/preferences/
+PATCH /api/v1/notifications/preferences
 { "preferences": [ { "type": "PAYMENT_FAILED", "push": true } ] }
 ```
 
-Read `GET /api/v1/notifications/preferences/` first and check
+Read `GET /api/v1/notifications/preferences` first and check
 `channels.push.supported`. If it is `false`, the deployment has no push
 adapter — hide the toggle rather than showing one that returns `400`.
 
@@ -173,7 +173,7 @@ notifications.
 }
 ```
 
-This is the **same row** `GET /api/v1/notifications/` returns, serialised in
+This is the **same row** `GET /api/v1/notifications` returns, serialised in
 one place — so the socket and the list cannot disagree. Insert it at the top
 of your list and increment the unread badge; no refetch needed.
 

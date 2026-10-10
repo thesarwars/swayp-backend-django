@@ -18,7 +18,7 @@ So on the bills screen, **"Total Bills: 6"** counts bills while
 **"Overdue 14 / Due 9 / Upcoming 14"** counts occurrences. Different
 endpoints, numbers that don't add up to each other. That is correct.
 
-> **Build the list screen on `GET /bills/occurrences`, not `GET /bills/`.**
+> **Build the list screen on `GET /bills/occurrences`, not `GET /bills`.**
 
 ## 2. Status is computed at read time
 
@@ -197,7 +197,7 @@ The same rules apply to `PATCH bills/<id>/update` for the fields it sends.
 
 The payment-method step is served by
 [`GET vendors/<id>/payment-methods`](e3-vendors.md) — **not** by anything
-under `bills/`, and it needs no `bill_id`, because the bill does not exist
+under `bills`, and it needs no `bill_id`, because the bill does not exist
 yet. Pass `?due_date=&amount=` if you want lead-time hints.
 
 ### Step 5 requires consent for autopay

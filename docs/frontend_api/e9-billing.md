@@ -82,7 +82,7 @@ A 403 for a role that lacks the right carries a code too:
 Other errors don't have codes yet.
 
 **402 arrives from the endpoint that performs the action**, never from
-`/billing/`. Handle it globally.
+`/billing`. Handle it globally.
 
 | Action | Endpoint | Ceiling |
 |---|---|---|
@@ -362,7 +362,7 @@ removal, connect or disconnect.**
 | Standard check | `rail: "CHECK"` | free to allotment, then **$2.99** | no |
 | Expedited check | `rail: "CHECK"` + `expedited: true` | **$8.99** always | yes |
 
-All chosen on [`POST /payments/`](e6-payments.md). Fees are charged **at
+All chosen on [`POST /payments`](e6-payments.md). Fees are charged **at
 send**, not at arrival.
 
 ⚠️ **After the 11:59 PM Eastern cutoff, same-day is withdrawn, not sold.** No

@@ -802,6 +802,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **Needed:** pick one.
 
 #### API-6 · minor · Trailing slashes in the docs
+✅ Fixed: both forms are accepted. A trailing slash on any `/api/` path is dropped before routing, rewritten in place rather than redirected, so a POST keeps its method and body. The API docs now write every path without one. The WebSocket path keeps its slash, as declared: `/ws/notifications/`.
 - **Today:** the integration guide's endpoint index (§9) and several domain docs write paths with a trailing slash (`login/phone/request/`, `resend-otp/`, `connections/<id>/`, `scans/<id>/import/`, `GET vendors/?search=`…). The server answers 404 with an HTML page for any trailing slash. Observed on several routes.
 - **Needed:** fix the docs, or accept both forms.
 - **App today:** never sends a trailing slash.

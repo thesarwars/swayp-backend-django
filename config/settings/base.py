@@ -119,6 +119,10 @@ INSTALLED_APPS = (
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
 
+    # Before anything resolves the URL: a trailing slash on /api/ is
+    # dropped rather than 404'd (API-6).
+    "apps.common.middleware.StripTrailingSlashMiddleware",
+
     "django.middleware.security.SecurityMiddleware",
 
     "whitenoise.middleware.WhiteNoiseMiddleware",

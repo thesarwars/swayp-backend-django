@@ -54,11 +54,11 @@ The API is not consistent. Write one unwrap helper and use it everywhere.
 | Shape | Where |
 |---|---|
 | `{ "success", "message", "data" }` | auth, bills, banking, billing, teams, users, categories |
-| `{ "items": [...], "pagination": {...} }` | `vendors/`, `vendors/<id>/payment-methods`, `directory-search/` |
+| `{ "items": [...], "pagination": {...} }` | `vendors`, `vendors/<id>/payment-methods`, `directory-search` |
 | a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode` |
 
 Some list endpoints put `data` **and** `pagination` at the top level
-(`bills/occurrences`, `notifications/`, `payments/history`, `reports/`).
+(`bills/occurrences`, `notifications`, `payments/history`, `reports`).
 
 Success responses in the second and third shapes have **no `success` field**;
 errors always do. **Branch on the HTTP status, never on the body.**

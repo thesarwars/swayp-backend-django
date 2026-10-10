@@ -54,12 +54,12 @@ always produces the same candidates — no model, no randomness.
 ## 2. The onboarding flow
 
 ```
-POST link/token/      →  hand the token to the bank widget
-POST link/exchange/   →  connection created, scan starts automatically
-GET  scans/<id>/      →  poll until status != RUNNING
-GET  scans/<id>/candidates/  →  show the review list
-POST scans/<id>/import/      →  create the bills
-GET  onboarding-summary/     →  the done screen
+POST link/token      →  hand the token to the bank widget
+POST link/exchange   →  connection created, scan starts automatically
+GET  scans/<id>      →  poll until status != RUNNING
+GET  scans/<id>/candidates  →  show the review list
+POST scans/<id>/import      →  create the bills
+GET  onboarding-summary     →  the done screen
 ```
 
 ### Step 1 — Get a link token

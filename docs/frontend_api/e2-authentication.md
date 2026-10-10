@@ -497,7 +497,7 @@ still offer it again later.
 | 1 Business | `PATCH users/profile` | this file |
 | 2 Plan | `GET billing/plans`, `POST billing/subscription` | [E9](e9-billing.md) |
 | 3 Payment | `POST billing/payment-method/setup` | [E9](e9-billing.md) |
-| 4 Bank | `POST banking/link/token`, `link/exchange/` | [E5](e5-banking.md) |
+| 4 Bank | `POST banking/link/token`, `link/exchange` | [E5](e5-banking.md) |
 
 ---
 

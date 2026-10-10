@@ -50,13 +50,13 @@ After accepting, a user's requests operate on the **owner's** account, not a
 private one of their own. `GET /teams/me` returns that `account_id`.
 
 This is not just a label — it is what the data is keyed on. A member calling
-`GET /bills/occurrences`, `/vendors/`, `/banking/accounts`,
+`GET /bills/occurrences`, `/vendors`, `/banking/accounts`,
 `/dashboard/home`, `/payments/history` or `/billing/subscription` sees the
 **account's** rows, and a bill they create belongs to the account rather than
 to them. Otherwise their work would vanish the moment they closed the tab.
 
 **Personal things stay personal.** Notifications are addressed to a human,
-not an account, and so is everything under `auth/`. Those still scope to the
+not an account, and so is everything under `auth`. Those still scope to the
 signed-in user.
 
 ### 1.5 Everyone is solo until they invite someone
@@ -377,7 +377,7 @@ DELETE /api/v1/teams/entities/<entity_id>
 
 Returns **200** with `status: "ARCHIVED"`. Bills and payments reference
 entities, so deleting one would either take financial history with it or orphan
-it. Archived entities drop out of `GET /entities/` and stop counting for
+it. Archived entities drop out of `GET /entities` and stop counting for
 billing.
 
 ### 7.3 Entities beyond three bill $79/mo
@@ -410,7 +410,7 @@ wrong company.
 1. **`GET /teams/me` on login** — store `account_id`, `role`, `capabilities`.
 2. **Gate the UI on `capabilities`**, never on a hardcoded role check.
 3. **Global 402 vs 403 handling** — upgrade prompt vs permission message.
-4. **Team screen** — `GET /members/`, invite, resend, change role, remove.
+4. **Team screen** — `GET /members`, invite, resend, change role, remove.
 5. **Accept page** — a frontend route at `/teams/accept?token=…` that requires
    login and then POSTs the token.
 6. **Seats on the billing screen** — from `GET /billing/allowances`.

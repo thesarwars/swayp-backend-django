@@ -284,3 +284,88 @@ class ReviewEchoTests(AutopayConsentTestCase):
         )
 
         self.assertIn("$4,100.00", response.data["data"]["summary"])
+
+
+class ChangedTermsNeedFreshConsentTests(AutopayConsentTestCase):
+    """BILLS-4: an autopay authorization covers the terms the user agreed
+    to. Changing them is a different debit and needs consent again."""
+
+    enable_autopay = ConsentToggleTests.enable_autopay
+
+    def patch(self, bill_id, body):
+        return self.client.patch(
+            f"/api/v1/bills/{bill_id}/update", body, format="json"
+        )
+
+    def test_changing_the_amount_without_consent_is_rejected(self):
+        bill_id = self.enable_autopay()
+
+        response = self.patch(bill_id, {"amount": "9999.00"})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("autopay_consent", response.data["errors"])
+
+    def test_a_rejected_edit_changes_nothing(self):
+        from apps.bills.models.bill import Bill
+
+        bill_id = self.enable_autopay()
+
+        self.patch(bill_id, {"amount": "9999.00"})
+
+        self.assertEqual(str(Bill.objects.get(id=bill_id).amount), "3200.00")
+        self.assertIsNone(StandingAuthorization.objects.get().revoked_at)
+
+    def test_each_authorized_term_needs_consent(self):
+        bill_id = self.enable_autopay()
+
+        for body in (
+            {"frequency": "QUARTERLY"},
+            {"anchor_date": "2027-02-15"},
+            {"bill_type": "VARIABLE"},
+        ):
+            with self.subTest(body=body):
+                self.assertEqual(self.patch(bill_id, body).status_code, 400)
+
+    def test_consent_with_the_change_replaces_the_authorization(self):
+        bill_id = self.enable_autopay()
+
+        response = self.patch(
+            bill_id,
+            {
+                "amount": "4100.00",
+                "autopay_consent": {
+                    "accepted": True,
+                    "authorization_text": "I authorize $4,100.00 monthly.",
+                },
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StandingAuthorization.objects.count(), 2)
+        live = StandingAuthorization.objects.get(revoked_at__isnull=True)
+        self.assertEqual(
+            live.authorization_text, "I authorize $4,100.00 monthly."
+        )
+
+    def test_the_same_value_is_not_a_change(self):
+        bill_id = self.enable_autopay()
+
+        response = self.patch(bill_id, {"amount": "3200.00"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StandingAuthorization.objects.count(), 1)
+
+    def test_a_remind_bill_changes_terms_freely(self):
+        bill_id = self.create(autopay_mode="REMIND").data["data"]["id"]
+
+        self.assertEqual(self.patch(bill_id, {"amount": "1.00"}).status_code, 200)
+
+    def test_consent_on_a_remind_bill_is_rejected(self):
+        bill_id = self.create(autopay_mode="REMIND").data["data"]["id"]
+
+        response = self.patch(
+            bill_id, {"amount": "1.00", "autopay_consent": self.consent()}
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(StandingAuthorization.objects.count(), 0)

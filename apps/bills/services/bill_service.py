@@ -143,6 +143,22 @@ class BillService:
     #: the schedule has to be rebuilt rather than left disagreeing with it.
     SCHEDULE_FIELDS = ("frequency", "anchor_date")
 
+    @staticmethod
+    def _authorized_terms(bill):
+        """What an autopay authorization agreed to (BILLS-4).
+
+        The user consented to debit this amount, this often, from this
+        anchor, by this method. Changing any of them is a different debit,
+        and NACHA expects a fresh authorization for it.
+        """
+        return (
+            bill.bill_type,
+            bill.amount,
+            bill.frequency,
+            bill.anchor_date,
+            bill.payment_method_id,
+        )
+
     @transaction.atomic
     def update_bill(self, bill_id, user, validated_data, meta=None):
         bill = self.get_bill(
@@ -167,6 +183,8 @@ class BillService:
             "amount" in validated_data
             and validated_data["amount"] != bill.amount
         )
+
+        terms_before = self._authorized_terms(bill)
 
         if "category" in validated_data:
             bill.category = get_object_or_404(
@@ -221,6 +239,43 @@ class BillService:
                 autopay_mode=bill.autopay_mode,
                 consent=consent,
                 meta=meta,
+            )
+
+        elif bill.autopay_mode == AutopayMode.AUTO:
+            terms_changed = self._authorized_terms(bill) != terms_before
+
+            # An edit to an autopay bill's terms needs consent to the new
+            # terms in the same request (BILLS-4). Raising here rolls the
+            # whole edit back, so the bill never sits on new terms under an
+            # old authorization.
+            if terms_changed and not consent:
+                raise ValidationError(
+                    {
+                        "autopay_consent": (
+                            "This bill pays automatically, and this change "
+                            "alters what the user authorized (amount, "
+                            "frequency, date, type or payment method). Send "
+                            "a fresh autopay_consent for the new terms."
+                        )
+                    }
+                )
+
+            # The old authorization is revoked, not edited: the audit trail
+            # keeps what was agreed to before, and when it stopped applying.
+            if consent:
+                self.consent_service.revoke(bill=bill)
+                self.consent_service.capture(
+                    bill=bill, consent=consent, meta=meta
+                )
+
+        elif consent:
+            raise ValidationError(
+                {
+                    "autopay_consent": (
+                        "Authorization is only captured for a bill that "
+                        "pays automatically."
+                    )
+                }
             )
 
         if schedule_changed:

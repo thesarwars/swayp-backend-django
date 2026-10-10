@@ -128,22 +128,21 @@ class BillUpdateSerializer(serializers.Serializer):
     autopay_consent = AutopayConsentSerializer(required=False)
 
     def validate(self, attrs):
-        # Only meaningful when the request actually sets the mode; a PATCH that
-        # leaves autopay_mode alone keeps whatever authorization exists.
+        # When the request sets the mode, consent must match it. Without a
+        # mode, consent is how an autopay bill re-authorizes changed terms
+        # (BILLS-4); the service decides whether the bill needs it, because
+        # only it knows the bill's current mode.
         if "autopay_mode" in attrs:
             validate_autopay_consent(
                 attrs["autopay_mode"],
                 attrs.get("autopay_consent"),
             )
 
-        elif attrs.get("autopay_consent"):
+        elif attrs.get("autopay_consent") and not attrs[
+            "autopay_consent"
+        ].get("accepted"):
             raise serializers.ValidationError(
-                {
-                    "autopay_consent": (
-                        "Authorization can only be captured alongside "
-                        "autopay_mode."
-                    )
-                }
+                {"autopay_consent": "The authorization must be accepted."}
             )
 
         return attrs

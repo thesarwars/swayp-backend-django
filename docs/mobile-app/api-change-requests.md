@@ -360,6 +360,7 @@ Contents:
 - **App today:** composes the sentence on the client. It still needs legal review.
 
 #### BILLS-4 · major · What happens to an autopay authorization after an edit?
+- **✅ Fixed (it was a real gap)**: before, the old authorization silently stayed valid, so a user who agreed to $389 a month could be debited a different amount under the same consent. Now a PATCH to an `AUTO` bill that changes `amount`, `frequency`, `anchor_date`, `bill_type` or `payment_method` must carry a fresh `autopay_consent`. Without it, it is a 400 and nothing is saved. With it, the old authorization is revoked and the new one recorded. `notes`, `category` and `source` need no consent. See e4 §5, "Editing an autopay bill needs fresh consent".
 - **Endpoint:** `PATCH /bills/{id}/update`.
 - **Needed:** document whether a stored authorization stays valid when `amount`, `frequency`, `anchor_date` or `payment_method` of an `AUTO` bill changes, or whether fresh consent is required.
 - **Screen:** edit bill (not built yet).

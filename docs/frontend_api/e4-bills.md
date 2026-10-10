@@ -182,6 +182,25 @@ GET    /api/v1/bills/<bill_id>/invoice      ← the invoice modal
 Deleting is soft: **paid history is preserved**, and changing autopay
 re-captures or revokes the authorization.
 
+### Editing an autopay bill needs fresh consent
+
+An autopay authorization covers the terms the user agreed to. On an `AUTO`
+bill, a PATCH that changes **`amount`, `frequency`, `anchor_date`,
+`bill_type` or `payment_method`** must carry a new `autopay_consent` for the
+new terms. Without it the PATCH is a 400 on `errors.autopay_consent` and
+**nothing is saved**:
+
+```json
+{ "amount": "4100.00",
+  "autopay_consent": { "accepted": true,
+                       "authorization_text": "<the text shown for the new terms>" } }
+```
+
+The old authorization is revoked and the new one recorded, so the audit trail
+keeps both. Sending the same value again is not a change. `notes`,
+`category` and `source` never need consent. Turning autopay off (`REMIND`)
+never needs it either. On a `REMIND` bill, `autopay_consent` is a 400.
+
 ---
 
 ## 6. Marking a bill paid outside Swayp

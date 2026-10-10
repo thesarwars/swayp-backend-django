@@ -409,6 +409,23 @@ client-side.
 ⚠️ **The Figma progress bar says "Step _n_ of 5". It is wrong** — there are
 four steps. Render `total_steps` from this response, never from the design.
 
+### When each step counts as complete
+
+| Step | Complete when |
+|---|---|
+| 1 business | An individual account: always. A business account: `business_name` is set. |
+| 2 plan | The account has a subscription. |
+| 3 payment | There is a subscription **and** one of: it is trialing; the billing provider does not collect money (`collects_money: false`, the mock); or the provider holds a real subscription for it. |
+| 4 bank | An `ACTIVE` bank connection exists. |
+
+Step 3 never requires a card when no money is collected, so `current_step`
+can reach the bank step on the mock. But step 3 can never be complete
+**without a plan**. The steps also need not be done in order, so an app that
+links a bank before any plan exists gets bank complete with
+`current_step: 2`, until the user picks a plan.
+
+`skip-bank` answers with this same body, already updated.
+
 ### Skipping
 
 Step 4 offers "Skip for now". `POST /users/onboarding/skip-bank` records it —

@@ -163,6 +163,7 @@ Contents:
 - **App today:** reads the shapes from the docs' captured bodies and shows each readiness row only when its field is present.
 
 #### BANK-3 · major (please verify) · Onboarding "payment" step when no money is collected
+- **✅ Answered (no change needed)**: when `collects_money` is false, step 3 is **complete**, not just skippable, as soon as a plan exists. It is also complete during a trial. It can never be complete without a plan, though. An app that links the bank first gets the bank step complete and `current_step: 2` (plan) until a plan is chosen, so treating `current_step` as "the bank step" is wrong in that order. Whether mobile sign-ups must go through the plan step is a product decision. The rule for each step is now in e2 §6, "When each step counts as complete".
 - **Endpoint:** `GET /users/onboarding`.
 - **Today:** with the mock billing provider (`collects_money: false`), it is unclear whether step 3 ("payment") reports complete or skippable. If it does not, `current_step` can never reach the bank step.
 - **Needed:** confirm that step 3 is complete or skippable when `collects_money` is false.

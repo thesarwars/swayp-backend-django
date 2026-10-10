@@ -426,7 +426,6 @@ CELERY_BEAT_SCHEDULE = {
 # Per-processor webhook signing secrets (E6-S8). A processor with no
 # secret configured is refused rather than trusted.
 WEBHOOK_SECRETS = {
-    "MOOV": env("MOOV_WEBHOOK_SECRET", default=""),
     "STRIPE": env("STRIPE_WEBHOOK_SECRET", default=""),
     "LOB": env("LOB_WEBHOOK_SECRET", default=""),
     "PLAID": env("PLAID_WEBHOOK_SECRET", default=""),
@@ -446,7 +445,7 @@ FIELD_ENCRYPTION_KEYS = env.list(
 
 
 # Provider selection (E1-S4) — "mock" until each real provider's epic lands.
-# Real: Plaid / Stripe+Moov / Lob-PostGrid / Anthropic (BRD §5).
+# Real: Plaid / Stripe (ACH via Treasury, network) / Lob-PostGrid / Anthropic.
 BANK_DATA_PROVIDER = env("BANK_DATA_PROVIDER", default="mock")
 MONEY_MOVEMENT_PROVIDER = env("MONEY_MOVEMENT_PROVIDER", default="mock")
 

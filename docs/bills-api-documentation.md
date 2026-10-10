@@ -483,7 +483,7 @@ PATCH /api/v1/bills/occurrences/<occurrence_id>/pay
 ```
 
 ```json
-{ "payment_reference": "MOOV-TX-4417" }
+{ "payment_reference": "STRIPE-TX-4417" }
 ```
 
 ```json

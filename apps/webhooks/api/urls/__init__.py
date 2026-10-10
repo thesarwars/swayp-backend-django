@@ -3,13 +3,11 @@ from django.urls import path
 from apps.webhooks.api.views.processors import (
     LobWebhookAPIView,
     MockWebhookAPIView,
-    MoovWebhookAPIView,
     PlaidWebhookAPIView,
     StripeWebhookAPIView,
 )
 
 _PROCESSORS = (
-    ("moov", MoovWebhookAPIView),
     ("stripe", StripeWebhookAPIView),
     ("lob", LobWebhookAPIView),
     ("plaid", PlaidWebhookAPIView),
@@ -40,7 +38,7 @@ def build(name_suffix=""):
 urlpatterns = build()
 
 #: The same views under /api/v1/webhooks/, because that is what is already
-#: registered in the Plaid and Moov dashboards. An alias rather than a move:
+#: registered in the Plaid dashboard. An alias rather than a move:
 #: re-pointing a processor at a new URL means a window where events land
 #: nowhere, and events that land nowhere are payments that never confirm.
 versioned_urlpatterns = build("-v1")

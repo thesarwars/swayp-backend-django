@@ -86,11 +86,12 @@ class PaymentRail(models.TextChoices):
 
 
 class PaymentProcessor(models.TextChoices):
-    # STRIPE = configured-account vendors, MOOV = ACH, LOB = checks (BRD §5).
-    # Dwolla / GoCardless / Stripe-Treasury are excluded on record.
+    # STRIPE = ACH (through Stripe Treasury) and biller-network payments,
+    # LOB = checks. Moov was the ACH processor until the CEO approved moving
+    # ACH to Stripe Treasury on 2026-10-10 (PRD §2, decision D-1).
+    # Dwolla / GoCardless remain excluded.
     MOCK = "MOCK", "Mock"
     STRIPE = "STRIPE", "Stripe"
-    MOOV = "MOOV", "Moov"
     LOB = "LOB", "Lob"
 
 

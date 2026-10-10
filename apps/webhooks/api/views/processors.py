@@ -10,12 +10,6 @@ from apps.payments.services.webhook_service import SignatureError
 from apps.webhooks.base import WebhookAPIView
 
 
-@extend_schema(tags=["Webhooks"], summary="Moov callback")
-class MoovWebhookAPIView(WebhookAPIView):
-    processor = "MOOV"
-    signature_header = "HTTP_X_MOOV_SIGNATURE"
-
-
 @extend_schema(tags=["Webhooks"], summary="Stripe callback")
 class StripeWebhookAPIView(WebhookAPIView):
     processor = "STRIPE"

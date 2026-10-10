@@ -15,7 +15,7 @@ from django.urls import reverse
 
 class VersionedWebhookAliasTests(TestCase):
 
-    PROCESSORS = ("moov", "stripe", "lob", "plaid", "mock")
+    PROCESSORS = ("stripe", "lob", "plaid", "mock")
 
     def test_both_mounts_answer(self):
         for slug in self.PROCESSORS:
@@ -34,21 +34,29 @@ class VersionedWebhookAliasTests(TestCase):
 
     def test_reverse_still_gives_the_versionless_path(self):
         """Or an emailed or stored URL would start moving with the version."""
-        self.assertEqual(reverse("webhook-moov"), "/webhooks/moov")
+        self.assertEqual(reverse("webhook-stripe"), "/webhooks/stripe")
         self.assertEqual(reverse("webhook-plaid"), "/webhooks/plaid")
 
     def test_the_alias_has_its_own_names(self):
         """Two registrations sharing one name would silently win reverse()."""
         self.assertEqual(
-            reverse("webhook-moov-v1"), "/api/v1/webhooks/moov"
+            reverse("webhook-stripe-v1"), "/api/v1/webhooks/stripe"
         )
 
     def test_an_unsigned_call_is_refused_on_the_alias_too(self):
         """The alias must not be a way around the signature check."""
         response = self.client.post(
-            "/api/v1/webhooks/moov",
+            "/api/v1/webhooks/stripe",
             data="{}",
             content_type="application/json",
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class MoovRouteRemovedTests(TestCase):
+    """ACH moved to Stripe Treasury (2026-10-10); the Moov callback is gone
+    rather than left answering for a processor nothing uses."""
+
+    def test_the_moov_route_no_longer_exists(self):
+        self.assertEqual(self.client.post("/webhooks/moov").status_code, 404)

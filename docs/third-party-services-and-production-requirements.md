@@ -8,6 +8,8 @@
 - **Basis:** Figma *Swayp Finance App Redesign* screens (§2) + the BRD, cross-checked against `swyape-backend`.
 - **Companion docs:** [PRD.md](PRD.md) (v2.0), dashboard-plan.md (Part 2 technical plan), [epics/](epics/README.md) (backlog).
 
+> ⚠️ **Superseded in part — 2026-10-10 (CEO decision, [PRD D-1](PRD.md)).** ACH moved from **Moov** to **Stripe Treasury**, reversing this doc's "Stripe Treasury excluded" line. Wherever this doc says Moov executes ACH, read **Stripe Treasury**; the Moov application, webhook and two-leg analysis no longer apply. Funds now rest briefly in the customer's own Treasury financial account, so **the required written legal opinion must cover the Treasury model** before production. Lob/PostGrid for checks, Plaid for bank data and every other conclusion here stand.
+
 > ✅ **BRD reconciliation banner.** The CEO BRD resolved the questions the v1.0 of this doc left open. **Rails are decided: Plaid (bank data) + Stripe (configured-account vendors) + Moov (ACH) + Lob/PostGrid (checks).** **Dwolla, GoCardless, and Stripe Treasury are excluded on record.** **BILL.com and Melio are rejected** (competitor exclusion, BRD §7). The product is **non-custodial** (funds never rest in a Swayp balance) and **USD-only**. Raw bank numbers are **never stored** (tokenized at the provider). **Vendor/payee sanctions + fraud screening is the provider's responsibility, not Swayp's** — Swayp does only lightweight verification of its own paying customers at sign-up. This doc has been updated to reflect all of that; anything that still reads as "open" is genuinely open (§6).
 
 ---

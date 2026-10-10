@@ -113,8 +113,8 @@ determines which fields are required.
 ```json
 { "name": "WeWork", "category": "<category_id>", "source": "MANUAL",
   "notes": "HQ floor 3",
-  "payment_method": { "method_type": "ACH", "provider": "MOOV",
-    "provider_token": "pm_moov_7c11", "account_last4": "8837",
+  "payment_method": { "method_type": "ACH", "provider": "STRIPE",
+    "provider_token": "pm_stripe_7c11", "account_last4": "8837",
     "account_type": "CHECKING", "account_holder_name": "WeWork Inc",
     "aba_bank_name": "Chase Bank" } }
 ```
@@ -141,7 +141,7 @@ determines which fields are required.
   "late_fee_amount": null, "late_fee_grace_days": null,
   "payment_methods": [
     { "id": "4764ebb9-...", "method_type": "ACH", "is_primary": true,
-      "supports_same_day": false, "provider": "MOOV",
+      "supports_same_day": false, "provider": "STRIPE",
       "account_ref": "****8837", "account_holder_name": "WeWork Inc",
       "aba_bank_name": "Chase Bank", "payee_verified": false,
       "check_legal_name": "", "street": "", "line2": "", "city": "",
@@ -261,7 +261,7 @@ GET /api/v1/vendors/<vendor_id>/payment-methods
 {
   "items": [
     { "id": "0c80588a-...", "method_type": "ACH", "is_primary": true,
-      "supports_same_day": false, "provider": "MOOV",
+      "supports_same_day": false, "provider": "STRIPE",
       "account_ref": "****8837", "account_holder_name": "WeWork Inc",
       "aba_bank_name": "Chase Bank", "payee_verified": false,
       "check_legal_name": "", "street": "", "line2": "", "city": "",

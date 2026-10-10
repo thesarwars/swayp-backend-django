@@ -1,7 +1,6 @@
 from .processors import (
     LobWebhookAPIView,
     MockWebhookAPIView,
-    MoovWebhookAPIView,
     PlaidWebhookAPIView,
     StripeWebhookAPIView,
 )
@@ -9,7 +8,6 @@ from .processors import (
 __all__ = [
     "LobWebhookAPIView",
     "MockWebhookAPIView",
-    "MoovWebhookAPIView",
     "PlaidWebhookAPIView",
     "StripeWebhookAPIView",
 ]

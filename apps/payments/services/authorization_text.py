@@ -13,14 +13,13 @@ from apps.common.enums import PaymentProcessor, PaymentRail
 
 #: The licensed party per rail (BRD §5).
 PROCESSOR_BY_RAIL = {
-    PaymentRail.ACH_STANDARD: PaymentProcessor.MOOV,
-    PaymentRail.ACH_SAMEDAY: PaymentProcessor.MOOV,
+    PaymentRail.ACH_STANDARD: PaymentProcessor.STRIPE,
+    PaymentRail.ACH_SAMEDAY: PaymentProcessor.STRIPE,
     PaymentRail.NETWORK: PaymentProcessor.STRIPE,
     PaymentRail.CHECK: PaymentProcessor.LOB,
 }
 
 PROCESSOR_LEGAL_NAME = {
-    PaymentProcessor.MOOV: "Moov Financial, Inc.",
     PaymentProcessor.STRIPE: "Stripe, Inc.",
     PaymentProcessor.LOB: "Lob.com, Inc.",
     PaymentProcessor.MOCK: "the Swayp test processor",
@@ -46,7 +45,7 @@ def _sentence(text):
     """End a sentence without doubling a period.
 
     Provider legal names end in "Inc." and this text is stored verbatim on a
-    consent record, so "Moov Financial, Inc.." would be preserved forever.
+    consent record, so "Stripe, Inc.." would be preserved forever.
     """
     text = text.rstrip()
 

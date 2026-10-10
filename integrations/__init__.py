@@ -2,9 +2,10 @@
 
 Every money feature talks to these interfaces, never to a vendor SDK directly,
 so the whole product runs on deterministic mocks with zero external accounts.
-Concrete providers per BRD §5: bank_data=Plaid, money_movement=Stripe+Moov,
+Concrete providers per BRD §5: bank_data=Plaid, money_movement=Stripe (ACH via Treasury, and the biller network),
 directory=Stripe-configured lookup, check_mail=Lob/PostGrid, llm=Anthropic.
-Dwolla / GoCardless / Stripe-Treasury are excluded on record.
+Dwolla / GoCardless are excluded. Moov was replaced by Stripe Treasury for
+ACH on 2026-10-10 (CEO decision; PRD §2, D-1).
 """
 
 from integrations.factory import (

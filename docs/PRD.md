@@ -3,26 +3,62 @@
 | | |
 |---|---|
 | **Product** | Swayp — US business bill-pay platform (backend/API) |
-| **Version** | 2.0 — reconciled with the CEO Business Requirements Document (BRD v1.1) |
-| **Date** | 2026-07-17 |
+| **Version** | 2.1 — v2.0 (BRD v1.1) plus decision D-1: ACH moves from Moov to Stripe Treasury |
+| **Date** | 2026-07-17 · updated 2026-10-10 |
 | **Status** | BRD resolved the prior blocking questions; remaining clarifications in §10 |
 | **Authority** | **[Swayp BRD Payments.docx.md](Swayp%20BRD%20Payments.docx.md) (CEO, authoritative for business logic) → Figma FDD screens ([figma_node.md](figma_node.md)) → dashboard-plan.md / [Part 1](third-party-services-and-production-requirements.md) (engineering planning; partially superseded — see §0.1).** Where the BRD and a screen disagree, the BRD wins and the screen is flagged as a design bug. |
 | **Backlog** | [epics/](epics/README.md) |
 
 ---
 
-## 0. What changed in v2.0 (BRD reconciliation)
+## 0. What changed
+
+### 0.0 Decision D-1 — ACH moves from Moov to Stripe Treasury (2026-10-10)
+
+**Approved by the CEO (McDon) on 2026-10-10. Supersedes BRD §5's ACH rail
+(Moov) and the BRD §4.1 exclusion of Stripe Treasury.** The BRD text is left
+unchanged as the original record; where it and this PRD disagree on ACH, this
+decision wins.
+
+| Before | After |
+|---|---|
+| ACH executed by **Moov**: one transfer, customer bank → vendor bank | ACH executed by **Stripe Treasury**: customer bank → the customer's Treasury financial account → vendor bank |
+| Stripe for configured-account vendors only | **Stripe** for ACH (standard and same-day) *and* configured-account vendors; one processor |
+| Stripe Treasury excluded (it holds funds) | Stripe Treasury **used** |
+| Lob / PostGrid for checks | Unchanged |
+
+**What this changes:**
+- **Custody.** Funds now rest briefly in the customer's own Treasury
+  financial account between the pull and the payout. That is a balance
+  between debit and credit, which BRD §4 / FR-5.8 / NFR-3 ruled out. **The
+  written legal opinion required before production must now cover the
+  Treasury model explicitly**; until it does, payments stay on the mock
+  processor. Swayp still holds no balance of its own and offers no wallet
+  (the wallet is obsolete).
+- **Onboarding.** Each paying customer needs a Stripe Connect account with
+  Stripe's identity checks, which onboarding does not collect today.
+- **Bank hand-off.** Plaid passes the linked account to Stripe with a Stripe
+  processor token (already in `integrations/bank_data/plaid.py`), pending
+  Plaid enabling processor tokens on the account.
+- **Code.** Moov is removed: ACH rails map to Stripe, consent text names
+  Stripe, Inc., the `/webhooks/moov` route and `MOOV_WEBHOOK_SECRET` are gone,
+  and vendor ACH tokens are Stripe's (`provider: "STRIPE"`).
+
+Lines below that still read "Moov" have been updated to match; the decision
+above is the reason.
+
+## 0b. What changed in v2.0 (BRD reconciliation)
 
 The CEO BRD is now the source of truth for the payments architecture. It **resolves** all four prior blockers and **overrides** several earlier engineering assumptions.
 
 ### 0.1 Superseded assumptions (do not build against these)
 | Earlier doc said | BRD says (authoritative) |
 |---|---|
-| ACH processor undecided (Dwolla / GoCardless / Stripe Treasury) | **Two-tier: Stripe** (configured-account vendors) + **Moov** (bank routing/account vendors). Dwolla, GoCardless, Stripe Treasury are **not** used. |
+| ACH processor undecided (Dwolla / GoCardless / Stripe Treasury) | BRD: **Stripe** (configured-account vendors) + **Moov** (ACH). **Now (D-1, 2026-10-10): Stripe for both**, ACH through **Stripe Treasury**. Dwolla and GoCardless remain excluded. |
 | Consider Melio / BILL.com for a vendor directory | **Rejected on record** (§7) — any AP/AR/bill-pay competitor is excluded. |
 | Store routing/account numbers **encrypted at rest** in Swayp | **Never store raw bank data at all** (not even encrypted) — tokenize at the provider; keep only masked value + provider reference (§3.4). |
 | Swayp performs payee OFAC/SDN + fraud screening | **Provider's responsibility, not Swayp's** (§4). Swayp does only lightweight verification of its own paying customers at sign-up. |
-| Custody question open | **Non-custodial is a hard requirement**; Moov (licensed) moves the money; written legal opinion required before production (§4). |
+| Custody question open | **Non-custodial is a hard requirement** (§4); a licensed provider moves the money; written legal opinion required before production. Since D-1 the provider is **Stripe Treasury**, and the opinion must cover its brief balance. |
 
 ### 0.2 New scope the BRD introduces
 - **Billing & Subscriptions subsystem** (plans, per-plan allowances, overages, same-day/expedited fees, **auto-refunds on missed delivery guarantees**, Enterprise add-on line items) — new **[E9]**.
@@ -36,7 +72,7 @@ The CEO BRD is now the source of truth for the payments architecture. It **resol
 Swayp lets a US business (or individual) **see and pay all of its bills from one place — without Swayp ever holding, storing, or transmitting customer funds.** A user connects their business bank account once (read-only, via **Plaid**); Swayp reads balance and up to 24 months of history to detect recurring bills; and the user pays vendors by one of three rails:
 
 - **Stripe** — vendors that already have a configured payment account with our processor (fast "confirm, send, done").
-- **Moov** — vendors identified only by a bank **routing + account number** (ACH); standard 1–3 business days (free) or same-day (+$4.99, pre-cutoff only).
+- **Stripe Treasury (ACH)** — vendors identified only by a bank **routing + account number**; standard 1–3 business days (free) or same-day (+$4.99, pre-cutoff only). *(Was Moov until D-1.)*
 - **Lob / PostGrid** — printed & mailed **physical checks**; standard 5–7 business days (per-plan free allowance) or expedited 1–2 business days (+$8.99).
 
 Payments are recurring-aware (auto-pay with standing authorization, or remind-me), failure-recoverable (incl. late ACH reversals), and fronted by **Flo**, an AI cash-context advisor that projects balances before every payment. The product is **USD-only** and **non-custodial** by legal design.
@@ -53,9 +89,9 @@ Small businesses juggle bills across utility portals, emailed invoices, and pape
 1. Register (Business/Individual), verify via OTP (email), and log in (two-step OTP).
 2. Connect a bank **once** (Plaid, read-only); that single connection also serves as **proof of ownership** when money later moves from that account — the customer is never asked to re-verify their own bank (BRD §3.1).
 3. Auto-detect recurring bills from up to 24 months of history and import them.
-4. Add a vendor either as a **Stripe configured-account** vendor or a **Moov bank-number** vendor (one-time vendor-account verification), or as a **check** vendor (mailing address). Raw bank numbers are **never stored** — masked value + provider reference only.
+4. Add a vendor either as a **Stripe configured-account** vendor or a **bank-number** vendor (ACH via Stripe Treasury) (one-time vendor-account verification), or as a **check** vendor (mailing address). Raw bank numbers are **never stored** — masked value + provider reference only.
 5. Create bills (fixed/variable; monthly/quarterly/weekly/one-time) with auto-pay (standing authorization) or remind-me.
-6. Pay one or many bills: Stripe one-click; Moov standard (free) or same-day (+$4.99, pre-cutoff); check standard (allowance) or expedited (+$8.99). Single authorization per batch; live stages; cancel window; failure/reversal recovery.
+6. Pay one or many bills: Stripe one-click; ACH standard (free) or same-day (+$4.99, pre-cutoff); check standard (allowance) or expedited (+$8.99). Single authorization per batch; live stages; cancel window; failure/reversal recovery.
 7. Accurate send/arrival dates (Fed business-day + cutoff aware). Flo cash context (consent-gated; whether explicit opt-in is legally required is pending legal review — §10.11).
 8. **Billing**: track per-plan allowances, bill overages correctly, auto-refund same-day/expedited fees on missed delivery guarantees, and itemize Enterprise add-ons.
 9. Reports (incl. 1099 reporting on Standard+).
@@ -67,7 +103,7 @@ Small businesses juggle bills across utility portals, emailed invoices, and pape
 - **Holding funds** in a Swayp-controlled balance, even briefly (BRD §4.1).
 - **Any non-USD currency** (BRD §3.5).
 - Card payments, payroll, customer-facing invoicing, international payments.
-- Choosing rails: **already chosen** (Stripe + Moov + Lob/PostGrid). v1 still builds against **mock providers** behind interfaces so work isn't gated on provider approvals.
+- Choosing rails: **already chosen** (Stripe incl. Treasury for ACH + Lob/PostGrid; D-1). v1 still builds against **mock providers** behind interfaces so work isn't gated on provider approvals.
 
 ## 4. Users / personas
 
@@ -93,16 +129,16 @@ IDs map to epics (`E#`) in [epics/](epics/README.md); screen ids are Figma nodes
 - FR-2.1 Connect a business bank read-only during sign-up; Swayp never sees/stores banking credentials (836:9157–8936, BRD §3.1).
 - FR-2.2 Read **real-time balance** (powers Flo cash context) (BRD §3.1).
 - FR-2.3 Scan **up to 24 months** of transaction history to auto-detect recurring bills. *(Decided 2026-08-25, overriding BRD §3.1's 12 — see §10 q2.)* Recurring detection is a Plaid capability (BRD §5), with deterministic clustering as the implementation baseline.
-- FR-2.4 ⟳ **One connection, two purposes**: the sign-up bank link is also instant proof of ownership when Swayp later moves money from that account — never re-verify the customer's own bank (BRD §3.1). (Plaid → Moov processor handoff.)
+- FR-2.4 ⟳ **One connection, two purposes**: the sign-up bank link is also instant proof of ownership when Swayp later moves money from that account — never re-verify the customer's own bank (BRD §3.1). (Plaid → Stripe processor token handoff.)
 - FR-2.5 Onboarding: candidate review + bulk import + summary (836:8666, 836:8856).
 - FR-2.6 Real-time ABA routing validation with bank-name resolution (793:1326) — validate, then hand to provider; do not store raw.
 
 ### FR-3 Vendor management (E3) — two-tier
 - FR-3.1 Vendor list + free-text search + per-rail stats (792:13725, 829:4710, 829:15081).
 - FR-3.2 ⟳ Add a **Stripe configured-account vendor**: vendor already set up with our processor; no bank details collected; payment is one-click later (BRD §3.2; 792:16918, 826:2536, 840:15184).
-- FR-3.3 ⟳ Add a **Moov bank-number vendor**: collect vendor routing + account **once**; **verify the vendor's account is real & correct before the first payment** (typo protection, BRD §3.3); thereafter pay like any vendor (793:1326, 826:2899).
+- FR-3.3 ⟳ Add a **bank-number vendor** (ACH via Stripe Treasury): collect vendor routing + account **once**; **verify the vendor's account is real & correct before the first payment** (typo protection, BRD §3.3); thereafter pay like any vendor (793:1326, 826:2899).
 - FR-3.4 Add a **check vendor**: mailing address only (793:1707, 826:3211).
-- FR-3.5 ⟳ **Data handling (BRD §3.4, hard):** raw routing/account numbers are ever received only on the **Moov** path (the Stripe configured-account path collects no bank details, FR-3.2). Any raw number entered is transmitted to Moov for tokenization and stored **on Moov's systems**, **never** in Swayp's DB, logs, or backups — not even encrypted. Swayp retains only a **masked display value** (e.g. ••••4821) and a **provider reference id**.
+- FR-3.5 ⟳ **Data handling (BRD §3.4, hard):** raw routing/account numbers are ever received only on the **ACH** path (the Stripe configured-account path collects no bank details, FR-3.2). Any raw number entered is transmitted to Stripe for tokenization and stored **on Stripe's systems**, **never** in Swayp's DB, logs, or backups — not even encrypted. Swayp retains only a **masked display value** (e.g. ••••4821) and a **provider reference id**.
 - FR-3.6 Vendor detail (12-mo spend, total paid, next bill, bills) (829:3866); edit/delete; manage payment method (829:4347).
 - FR-3.7 Vendor late-fee policy fields drive "no late fee yet — N days left" (840:13131).
 
@@ -115,13 +151,13 @@ IDs map to epics (`E#`) in [epics/](epics/README.md); screen ids are Figma nodes
 
 ### FR-5 Payments & money movement (E6) — non-custodial
 - FR-5.1 ⟳ **Stripe path** (configured-account vendor): one confirmed action → success/failure known automatically via webhook; no sensitive data stored by Swayp (BRD §3.2).
-- FR-5.2 ⟳ **Moov path** (bank-number vendor): after one-time vendor-account verification, pay via the standard experience. **Standard delivery 1–3 business days, free.** **Same-day delivery +$4.99 flat**, only if requested **before that day's bank cutoff**; after cutoff, same-day is **not offered and not charged** (BRD §3.3).
+- FR-5.2 ⟳ **ACH path** (bank-number vendor, Stripe Treasury since D-1): after one-time vendor-account verification, pay via the standard experience. **Standard delivery 1–3 business days, free.** **Same-day delivery +$4.99 flat**, only if requested **before that day's bank cutoff**; after cutoff, same-day is **not offered and not charged** (BRD §3.3).
 - FR-5.3 ⟳ **Check path** (Lob/PostGrid): standard 5–7 business days (per-plan free allowance, then $2.99); expedited 1–2 business days (+$8.99) (BRD §3.3 checks, §6.2).
 - FR-5.4 Batch pay: one authorization covers all selected occurrences (840:27360, 840:28151). Consent recorded immutably (text + timestamp + IP + UA).
 - FR-5.5 Live processing stages + reference `SWP-YYYYMMDD-NNNN` (840:28543). **Payment-day cancel deadline** = 11:59 PM America/New_York (840:28151) — this is the user-facing cancel window and is **distinct from** the earlier same-day-ACH bank submission cutoff that governs same-day *eligibility and billing* (FR-5.2, NFR-6, §10.9). Do not gate same-day offer/charge on 11:59 PM.
 - FR-5.6 ⟳ **Reversal handling:** a transfer that completes, fails, or is **reversed by the receiving bank days later** must automatically update bill status and **notify the customer** (BRD §3.3).
 - FR-5.7 Failure flow: reason (e.g. NSF + available balance), late-fee countdown, resolutions retry / change-method / reschedule (840:13131, 841:29250, 841:29742).
-- FR-5.8 ⟳ **Non-custodial guarantee:** money never rests in a Swayp-controlled balance between debit and credit; every payment is executed by and traceable to a **named licensed provider** (Stripe/Moov) (BRD §4).
+- FR-5.8 ⟳ **Non-custodial guarantee:** money never rests in a Swayp-controlled balance between debit and credit; every payment is executed by and traceable to a **named licensed provider** (Stripe/Lob) (BRD §4). Since D-1, ACH funds rest briefly in the customer's Treasury financial account; the required legal opinion must confirm this meets the guarantee.
 - FR-5.9 State transitions are webhook/task-driven (dedup + out-of-order tolerant); idempotent money-creating endpoints.
 - FR-5.10 ⟳ Send/arrival dates and same-day/expedited eligibility computed via **Fed business-day + bank-cutoff calendar** (governs same-day ACH *and* expedited check promises) (BRD §6.2).
 
@@ -152,12 +188,12 @@ IDs map to epics (`E#`) in [epics/](epics/README.md); screen ids are Figma nodes
 |---|---|
 | NFR-1 | **No raw bank data (BRD §3.4, hard):** full routing/account numbers are never persisted in Swayp DB, logs, or backups — tokenized at the provider; only masked value + reference id retained. Enforced by schema (no plaintext/encrypted account columns) and a log-scrub gate. |
 | NFR-2 | **Masking:** bank identifiers never serialized beyond last-4; masked values rejected as input. |
-| NFR-3 | **Non-custodial (BRD §4):** no code path lets funds rest in a Swayp-controlled balance; every movement is attributable to a named licensed provider. Architectural invariant, tested. |
+| NFR-3 | **Non-custodial (BRD §4):** no code path lets funds rest in a Swayp-controlled balance; every movement is attributable to a named licensed provider. Architectural invariant, tested. Since D-1, ACH passes through the customer's own Stripe Treasury financial account; the legal opinion must confirm that is not a Swayp-controlled balance. |
 | NFR-4 | **USD only (BRD §3.5):** enforced at the data layer, not just UI; no other currency accepted. |
 | NFR-5 | **Consent/audit:** OTPs, ACH authorizations (standing + per-payment/batch) stored immutably with timestamp/IP/UA. |
 | NFR-6 | **Correct money math:** Decimal only; Fed business-day + bank-cutoff calendar (America/New_York, DST-safe) governs same-day ACH and expedited check eligibility and delivery promises. |
 | NFR-7 | **Idempotency & exactly-once movement:** idempotency keys; processor call keyed before send; reconciliation sweep; webhook dedupe (handles late reversals). |
-| NFR-8 | **Provider traceability:** each payment records the executing provider (Stripe/Moov/Lob-PostGrid) and its reference — a regulator question always resolves to a named licensed provider. |
+| NFR-8 | **Provider traceability:** each payment records the executing provider (Stripe/Lob-PostGrid) and its reference — a regulator question always resolves to a named licensed provider. |
 | NFR-9 | **Providers pluggable:** all third parties behind interfaces with mock implementations; no processor name leaks to clients except the legal authorization text. |
 | NFR-10 | **API contract:** drf-spectacular docs; `api/v1/`; webhooks versionless. |
 | NFR-11 | **Layering & file convention:** views → services → selectors → repositories; per-feature packages ([file-architecture.md](file-architecture.md)). |
@@ -171,12 +207,11 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 | Provider | Role |
 |---|---|
 | **Plaid** | Bank connection, balance, 12-mo history, recurring detection |
-| **Stripe** | Payment execution for configured-account vendors |
-| **Moov** | Payment execution for bank routing/account vendors (ACH, same-day) |
+| **Stripe** | Payment execution for configured-account vendors, and ACH (standard, same-day) through **Stripe Treasury** (D-1; was Moov) |
 | **Lob or PostGrid** | Physical check print + USPS mail |
 | Anthropic (Flo) · email (Postmark/SES) | Advisor phrasing · transactional email |
 
-**Excluded on record:** Dwolla, GoCardless, Stripe Treasury (superseded); **BILL.com, Melio, and any AP/AR/bill-pay competitor** (BRD §7). *(Market-research-only conversations with an excluded competitor are permitted per BRD §7, provided no data-sharing agreement, pilot, or integration results — this is a business boundary, not a build item.)*
+**Excluded on record:** Dwolla, GoCardless; Moov (replaced by Stripe Treasury, D-1); **BILL.com, Melio, and any AP/AR/bill-pay competitor** (BRD §7). *(Market-research-only conversations with an excluded competitor are permitted per BRD §7, provided no data-sharing agreement, pilot, or integration results — this is a business boundary, not a build item.)*
 
 ## 8. Release phasing
 
@@ -184,8 +219,8 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 |---|---|---|
 | **R1 — Core CRUD** | E1 foundations, E2 auth, E3 vendors, E4 bills, E8.1 dashboard | none (mocks) |
 | **R2 — Onboarding & billing** | E5 banking + detection (mock Plaid), E9 billing/plans/allowances, E10.1 team seats, E8 notifications (email) | none (mocks) |
-| **R3 — Money movement (mock)** | E6 payments end-to-end (Stripe + Moov + check mocks), E7 Flo (template) | none |
-| **R4 — Production rails** | Swap mocks for Plaid/Stripe/Moov/Lob; webhooks live; Flo LLM on | ⟳ **Moov platform application (2–4 wks)** + ⟳ **written legal opinion on the Moov transfer model (Texas + operating states, 1–2 wks)** — hard prerequisites (BRD §4, §6.1); Flo consent legal review (BRD §6) |
+| **R3 — Money movement (mock)** | E6 payments end-to-end (Stripe + check mocks), E7 Flo (template) | none |
+| **R4 — Production rails** | Swap mocks for Plaid/Stripe/Lob; webhooks live; Flo LLM on | ⟳ **Stripe Treasury + Connect enablement** + ⟳ **written legal opinion on the Stripe Treasury transfer model (Texas + operating states)** — hard prerequisites (BRD §4, §6.1); Flo consent legal review (BRD §6) |
 
 ## 9. Success metrics
 - Onboarding: bank connect → bills imported ≥ 60%.
@@ -197,7 +232,7 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 
 ## 10. Open questions (BRD resolved the former blockers; these remain)
 
-**Resolved by BRD:** ACH processor (Stripe+Moov), custody (non-custodial + legal opinion), directory competitor (BILL.com/Melio rejected), currency (USD), payee/vendor account verification (required, provider-run), fraud/OFAC (provider's job).
+**Resolved by BRD:** ACH processor (Stripe+Moov; now Stripe Treasury per D-1), custody (non-custodial + legal opinion), directory competitor (BILL.com/Melio rejected), currency (USD), payee/vendor account verification (required, provider-run), fraud/OFAC (provider's job).
 
 **Still open:**
 1. **Stripe configured-account discovery** — how does Swayp find/search vendors that "have a configured payment account with Stripe" (the 80%-pre-enrolled "Bill Pay Network" UX), now that BILL.com/Melio are rejected and Stripe has no public biller directory? (impl of E3-S7 directory search)
@@ -215,6 +250,6 @@ No other provider enters the payments/bank-connectivity flow without a new CEO d
 
 ## 11. Design bugs to return to the design team
 From dashboard-plan.md §9 plus BRD conflicts:
-- ⟳ Payment/authorization copy names **GoCardless** (840:28151) and screens imply **Dwolla/Stripe Treasury** — all superseded; the model is **Stripe + Moov**. Update copy.
+- ⟳ Payment/authorization copy names **GoCardless** (840:28151) and screens imply **Dwolla** — superseded; the model is **Stripe (incl. Treasury for ACH) + Lob**. Update copy.
 - ~~Bank-connect screens say **"24 months"**~~ — not a design bug after all. The screens were adopted and the backend now reads 24 (§10 q2, 2026-08-25).
 - "Discord" → "Discard" (829:4347); State-field placeholder "Suite, unit, etc." (793:1707 etc.); "Save ACH Vendor" on the check drawer (840:16667); receipt vendor mismatch (840:28867); sign-up footer "Create Account" (1464:15936); "$33,7771" (836:8856); Reset-Password screen has no identifier input (1472:18735).

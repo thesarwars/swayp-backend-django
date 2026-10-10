@@ -257,7 +257,8 @@ this is only needed by a client drawing its own list.
 ### 4.4 Dwolla — resolved
 
 Nodes `1620-12846`, `1620-12370` and `1620-12687` all name **Dwolla** as the ACH
-executor. The backend implements **Moov and Stripe**, and `file-architecture.md`
+executor. The backend implemented **Moov and Stripe** (since 2026-10-10, Stripe
+alone: ACH moved to Stripe Treasury, PRD D-1), and `file-architecture.md`
 says explicitly: *"No `dwolla.py`/`gocardless.py`"*.
 
 **Decided: the backend is right and the design copy is wrong.** Confirmed
@@ -292,11 +293,11 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
 1. ~~§3.1–3.5 — provider, settings, registration, error mapping, tests.~~ Done.
 2. ~~The `HISTORICAL_UPDATE` webhook (§2.1).~~ Done.
 3. ~~§4.1 — the history window.~~ Done: 24, overriding the BRD.
-4. **Deploy configuration.** Four values the code cannot supply itself, all
-   on the server and needing a restart: `PLAID_CLIENT_ID`, `PLAID_SECRET`,
-   `PLAID_WEBHOOK_URL` (items linked without it never report readiness), and
-   `MOOV_WEBHOOK_SECRET` — `/webhooks/moov` still answers *"No webhook secret
-   configured for MOOV."*
+4. **Deploy configuration.** Values the code cannot supply itself, all on
+   the server and needing a restart: `PLAID_CLIENT_ID`, `PLAID_SECRET` and
+   `PLAID_WEBHOOK_URL` (recommended; items linked without it fall back to
+   retries). The Moov webhook and `MOOV_WEBHOOK_SECRET` are gone since ACH
+   moved to Stripe Treasury (PRD D-1).
 
    Both mounts now answer, so a dashboard configured against
    `/api/v1/webhooks/<processor>` works as well as the canonical versionless
@@ -305,10 +306,9 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
 6. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
    Written to the documented shapes, stub-tested, sandbox test skipped. This
    is the only remaining code-level blocker, and it is not ours to unblock.
-7. **Moov's signature scheme**, unverified. The shared HMAC that Plaid turned
-   out not to use is the same one `MoovWebhookAPIView` assumes. Worth checking
-   against Moov's docs before counting that integration as wired — the
-   override points now exist either way.
+   Since PRD D-1 only the **Stripe** branch matters: it is how a linked bank
+   account reaches Stripe Treasury.
+7. ~~Moov's signature scheme~~ — no longer applies; Moov was removed (PRD D-1).
 
 ### The webhook is no longer mandatory
 

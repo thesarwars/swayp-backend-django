@@ -270,7 +270,7 @@ class WebhookEventTests(TestCase):
             )
 
     def test_the_same_id_from_a_different_processor_is_distinct(self):
-        event = WebhookEventFactory(processor="MOOV")
+        event = WebhookEventFactory(processor="LOB")
         WebhookEventFactory(processor="STRIPE", event_id=event.event_id)
 
         self.assertEqual(WebhookEvent.objects.count(), 2)

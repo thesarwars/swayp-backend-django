@@ -25,7 +25,7 @@ backend/
 │       └── urls.py                  # THE v1 manifest — one include() per app prefix
 ├── integrations/                    # ← PLANNED: provider interfaces (plain package, not a Django app)
 │   ├── bank_data/    base.py · mock.py · plaid.py
-│   ├── money_movement/ base.py · mock.py · stripe.py · moov.py    # Stripe=configured-account, Moov=ACH (BRD §5)
+│   ├── money_movement/ base.py · mock.py · stripe.py    # Stripe: configured-account + ACH via Treasury (PRD D-1)
 │   ├── directory/    base.py · mock.py
 │   ├── check_mail/   base.py · mock.py · lob.py
 │   └── llm/          base.py · template.py · anthropic.py
@@ -113,9 +113,9 @@ apps/<app>/
 | `reports` | `reports.py` | — (query-time) |
 | `billing` (E9) | `plans.py`, `subscription.py`, `allowances.py`, `fees.py`, `addons.py` | `plan.py`, `subscription.py`, `allowance_counter.py`, `fee_charge.py`, `enterprise_addon.py` |
 | `teams` (E10) | `members.py`, `invitations.py`, `entities.py` | `team_member.py`, `entity.py` |
-| `webhooks` | `plaid.py`, `moov.py`, `stripe.py`, `lob.py` (urls mounted at `/webhooks`, versionless) | — (uses `payments.WebhookEvent`) |
+| `webhooks` | `plaid.py`, `stripe.py`, `lob.py` (urls mounted at `/webhooks`, versionless) | — (uses `payments.WebhookEvent`) |
 
-`api/v1/urls.py` gains: `/banking`, `/vendors`, `/bills`, `/ai`, `/reports`, `/billing`, `/teams`. `config/urls.py` gains: `webhooks`. Provider `integrations/money_movement/` = `stripe.py` + `moov.py` (BRD §5); `check_mail/` = `lob.py`/`postgrid.py`. **No `dwolla.py`/`gocardless.py`.**
+`api/v1/urls.py` gains: `/banking`, `/vendors`, `/bills`, `/ai`, `/reports`, `/billing`, `/teams`. `config/urls.py` gains: `webhooks`. Provider `integrations/money_movement/` = `stripe.py` (ACH via Treasury since PRD D-1); `check_mail/` = `lob.py`/`postgrid.py`. **No `dwolla.py`/`gocardless.py`/`moov.py`.**
 
 ## 5. Worked example (authentication — as shipped)
 

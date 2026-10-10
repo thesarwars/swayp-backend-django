@@ -41,7 +41,7 @@ class VendorTestCase(TestCase):
         )
 
     ACH = {
-        "method_type": "ACH", "provider": "MOOV",
+        "method_type": "ACH", "provider": "STRIPE",
         "provider_token": "tok", "account_last4": "8837",
         "account_holder_name": "WeWork Inc",
     }
@@ -79,7 +79,7 @@ class CreateBranchTests(VendorTestCase):
 
     def test_missing_branch_fields_are_rejected(self):
         response = self.create_vendor(
-            "Broken", {"method_type": "ACH", "provider": "MOOV"}
+            "Broken", {"method_type": "ACH", "provider": "STRIPE"}
         )
 
         self.assertEqual(response.status_code, 400)

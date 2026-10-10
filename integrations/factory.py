@@ -1,6 +1,6 @@
 """Provider factory — resolves each domain to a concrete provider by setting.
 
-Only mock providers are registered today; real providers (Plaid/Stripe/Moov/
+Only mock providers are registered today; real providers (Plaid/Stripe/
 Lob/Anthropic) register here as their epics land. Selecting an unregistered
 provider raises a clear error rather than silently falling back.
 """

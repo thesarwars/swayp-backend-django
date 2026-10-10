@@ -272,14 +272,14 @@ class InvoiceTests(BillFixtureMixin, TestCase):
 
     def test_an_existing_payment_reference_wins(self):
         occurrence = self.occurrence(self.bill, D(2026, 2, 15))
-        occurrence.payment_reference = "MOOV-TX-4417"
+        occurrence.payment_reference = "STRIPE-TX-4417"
         occurrence.save(update_fields=["payment_reference"])
 
         data = self.client.get(
             f"/api/v1/bills/{self.bill.id}/invoice"
         ).data["data"]
 
-        self.assertEqual(data["payment_reference"], "MOOV-TX-4417")
+        self.assertEqual(data["payment_reference"], "STRIPE-TX-4417")
 
     def test_the_invoice_qr_round_trips_through_the_shared_parser(self):
         occurrence = self.occurrence(self.bill, D(2026, 2, 15))
@@ -364,7 +364,7 @@ class BillDetailIdsTests(BillFixtureMixin, TestCase):
         method = VendorPaymentMethod.objects.create(
             vendor=self.vendor,
             method_type="ACH",
-            provider="MOOV",
+            provider="STRIPE",
             provider_token="pm_x",
             account_last4="4821",
             account_holder_name="WeWork LLC",

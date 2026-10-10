@@ -367,7 +367,7 @@ or the database.
 
 | Gap | Impact |
 |---|---|
-| Real rails are not wired | Payments execute end to end against the **mock** processor. Moov, Stripe and Lob are a config swap gated on the provider application, so the flow and every response shape are final. |
+| Real rails are not wired | Payments execute end to end against the **mock** processor. Stripe (ACH through Stripe Treasury, PRD D-1) and Lob are a config swap gated on provider enablement and the legal opinion, so the flow and every response shape are final. |
 | Spend figures fill in as payments run | `total_paid` and `monthly_spend` read real payments now; they are zero only until payments exist. |
 | `payee_verified` always `false` | Set by provider-run verification, which isn't wired. The trust badge will never light up yet. |
 | SMS OTP | Rejected explicitly. Don't offer the channel. |

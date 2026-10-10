@@ -30,7 +30,7 @@ class BankAccount(BaseModel):
 
     is_default_funding_source = models.BooleanField(default=False)
 
-    # Provider-keyed handles, e.g. {"moov_funding_source_id": "..."}.
+    # Provider-keyed handles, e.g. {"stripe_bank_account_token": "..."}.
     processor_refs = models.JSONField(default=dict, blank=True)
 
     available_balance = models.DecimalField(

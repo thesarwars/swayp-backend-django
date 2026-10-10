@@ -227,7 +227,7 @@ POST /api/v1/bills/autopay-authorization/preview
 ```json
 { "success": true, "message": "Authorization text generated.",
   "data": {
-    "authorization_text": "I authorize Swayp to debit Chase Business Checking ****4821 for $3,200.00 every month, starting November 1, 2026, to pay WeWork. Each payment will be executed by Moov Financial, Inc. over the ACH network. …",
+    "authorization_text": "I authorize Swayp to debit Chase Business Checking ****4821 for $3,200.00 every month, starting November 1, 2026, to pay WeWork. Each payment will be executed by Stripe, Inc. over the ACH network. …",
     "funding_account": "Chase Business Checking ****4821" } }
 ```
 

@@ -572,6 +572,7 @@ These matter once the bill detail screens are built:
 ## Vendors
 
 #### VEND-1 · blocker · No way to obtain an ACH payee token
+- **🟡 Partly answered (processor decided)**: ACH now runs on **Stripe** (Stripe Treasury), not Moov or Dwolla. That was a CEO decision on 2026-10-10; see PRD D-1. So the valid ACH `provider` value is **`STRIPE`**, and the dev mock uses `STRIPE` too (the factory token looks like `pm_stripe_<n>`). The tokenization flow itself, how a client gets a Stripe token for a vendor's bank account, is still open: it comes with the Stripe Treasury integration.
 - **Endpoint:** `POST /vendors` and `POST /vendors/{id}/payment-methods`, ACH branch.
 - **Today:**
   - Both require `provider` + `provider_token` and refuse raw account numbers, but nothing documents how a client gets a token.

@@ -162,7 +162,7 @@ class CreateTests(PayFlowTestCase):
 
         # NACHA requires the debiting party to be named; this is the one
         # place a processor name is allowed to surface.
-        self.assertIn("Moov", result["authorization_text"])
+        self.assertIn("Stripe", result["authorization_text"])
         self.assertIn("$3,200.00", result["authorization_text"])
 
     def test_batch_authorization_text_covers_every_payment(self):

@@ -1,5 +1,5 @@
 """Money-movement provider interface (Stripe for configured-account vendors,
-Moov for ACH). Plain-data DTOs only — no Django models cross this boundary."""
+Stripe Treasury for ACH). Plain-data DTOs only — no Django models cross this boundary."""
 
 from __future__ import annotations
 

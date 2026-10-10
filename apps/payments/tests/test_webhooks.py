@@ -307,5 +307,5 @@ class WebhookEndpointTests(TestCase):
     def test_the_mount_is_versionless(self):
         from django.urls import reverse
 
-        self.assertEqual(reverse("webhook-moov"), "/webhooks/moov")
-        self.assertNotIn("/api/v1", reverse("webhook-stripe"))
+        self.assertEqual(reverse("webhook-stripe"), "/webhooks/stripe")
+        self.assertNotIn("/api/v1", reverse("webhook-lob"))

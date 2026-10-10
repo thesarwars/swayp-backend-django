@@ -38,9 +38,15 @@ individually returns 400 telling you so.
 
 ### 1.3 Swayp never holds the money ⚠️
 
-A hard product invariant, not an implementation detail. Funds move directly
-from the user's bank to the vendor via a licensed provider. There is no Swayp
+A hard product invariant, not an implementation detail. Funds are moved by a
+licensed provider: **Stripe** for ACH (through Stripe Treasury) and for
+configured-account vendors, and **Lob** for checks. There is no Swayp
 balance, no top-up, no wallet — that subsystem was deleted and its routes 404.
+
+Since 2026-10-10 ACH runs on Stripe Treasury instead of Moov (PRD D-1). An
+ACH payment passes briefly through the customer's own Treasury account
+between the debit and the payout. That is not a balance the user sees or
+manages, so nothing about these screens changes.
 
 **Never build a "balance" UI**, and never show a processor name anywhere
 except inside the authorization text, where NACHA requires it.

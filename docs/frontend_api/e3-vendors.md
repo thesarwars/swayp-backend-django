@@ -66,7 +66,7 @@ Returns the vendor, **all** its payment methods, and the spend panel:
   "late_fee_amount": null, "late_fee_grace_days": null,
   "payment_methods": [
     { "id": "d4507e72-…", "method_type": "ACH", "is_primary": true,
-      "supports_same_day": false, "provider": "MOOV",
+      "supports_same_day": false, "provider": "STRIPE",
       "account_ref": "****8837", "account_holder_name": "WeWork Inc",
       "aba_bank_name": "Chase Bank", "payee_verified": false,
       "check_legal_name": "", "street": "", "city": "", "state": "",

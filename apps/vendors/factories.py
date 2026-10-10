@@ -88,8 +88,8 @@ class VendorPaymentMethodFactory(factory.django.DjangoModelFactory):
     is_primary = True
 
     # Tokenized values only — a raw account number never reaches a model.
-    provider = "MOOV"
-    provider_token = factory.Sequence(lambda n: f"pm_moov_{n}")
+    provider = "STRIPE"
+    provider_token = factory.Sequence(lambda n: f"pm_stripe_{n}")
     account_last4 = "8837"
     account_type = BankAccountType.CHECKING
     account_holder_name = "WeWork Inc"

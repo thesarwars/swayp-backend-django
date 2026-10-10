@@ -236,12 +236,19 @@ class BillImportService:
         if existing:
             return existing
 
-        return Vendor.objects.create(
+        vendor = Vendor.objects.create(
             user=user,
             name=candidate.vendor_name,
             category=category,
             source=VendorSource.IMPORT,
         )
+
+        # No actor: the import created it, not a person (VEND-5).
+        from apps.vendors.models import VendorActivityAction, record_vendor_activity
+
+        record_vendor_activity(vendor=vendor, action=VendorActivityAction.CREATED)
+
+        return vendor
 
     def next_anchor_date(self, cadence, due_day, today):
         """The next date matching the detected cadence and due day.

@@ -24,7 +24,11 @@ from apps.vendors.services.vendor_service import (
     VendorService,
 )
 from apps.teams.access import AccountScopedMixin
-from apps.vendors.models import Vendor
+from apps.vendors.models import (
+    Vendor,
+    VendorActivityAction,
+    record_vendor_activity,
+)
 
 
 @extend_schema_view(
@@ -61,6 +65,9 @@ class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         vendor = VendorService.create_vendor(user=self.account(request),validated_data=serializer.validated_data,)
+        record_vendor_activity(
+            vendor=vendor, action=VendorActivityAction.CREATED, actor=request.user
+        )
 
         response = VendorDetailSerializer(vendor)
 
@@ -112,11 +119,19 @@ class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
             vendor=serializer.instance,
             validated_data=serializer.validated_data,
         )
+        record_vendor_activity(
+            vendor=vendor, action=VendorActivityAction.UPDATED, actor=request.user
+        )
 
         return Response(VendorDetailSerializer(vendor).data)
 
     def perform_destroy(self, instance):
         VendorService.soft_delete(instance)
+        record_vendor_activity(
+            vendor=instance,
+            action=VendorActivityAction.DELETED,
+            actor=self.request.user,
+        )
 
 class VendorSummaryAPIView(AccountScopedMixin, APIView):
 
@@ -155,5 +170,8 @@ class VendorRestoreAPIView(AccountScopedMixin, APIView):
         )
 
         VendorService.restore(vendor)
+        record_vendor_activity(
+            vendor=vendor, action=VendorActivityAction.RESTORED, actor=request.user
+        )
 
         return Response(VendorDetailSerializer(vendor).data)

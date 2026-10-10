@@ -612,6 +612,7 @@ These matter once the bill detail screens are built:
 - **App today:** three of the six fields show "Not available".
 
 #### VEND-5 · major · No vendor activity feed
+- **✅ Fixed**: new `GET /vendors/activity?page=&pageSize=`, newest first, with `{ items, pagination }`. Each row: `action`, a display `label`, `vendor_id`, `vendor_name` (as it was at the time), `actor_name` (`null` for bank imports) and `created_at`. It records vendor added, updated, removed and restored, and payment method added, changed, removed and primary changed. List rows already gained `created_at` and `updated_at` (VEND-8). Recording starts now, so there is no backfill. See e3 §7b.
 - **Endpoint:** new, for example `GET /vendors/activity?page=`.
 - **Today:** there is no feed of vendor events (linked, updated, removed, with timestamp and vendor name), and list rows have no `created_at` or `updated_at`.
 - **Screen:** recent activities.

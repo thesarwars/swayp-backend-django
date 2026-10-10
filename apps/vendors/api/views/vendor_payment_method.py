@@ -11,7 +11,11 @@ from rest_framework.permissions import (
     IsAuthenticated,
 )
 
-from apps.vendors.models import Vendor
+from apps.vendors.models import (
+    Vendor,
+    VendorActivityAction,
+    record_vendor_activity,
+)
 from apps.common.enums import VendorSource, VendorStatus
 from apps.vendors.api.serializers.vendor_payment_method import (
     PaymentMethodScheduleQuerySerializer,
@@ -102,6 +106,11 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView
             vendor=vendor,
             validated_data=serializer.validated_data,
         )
+        record_vendor_activity(
+            vendor=vendor,
+            action=VendorActivityAction.METHOD_ADDED,
+            actor=request.user,
+        )
 
         response = VendorPaymentMethodSerializer(payment_method)
 
@@ -160,12 +169,23 @@ class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroy
             payment_method=serializer.instance,
             validated_data=serializer.validated_data,
         )
+        record_vendor_activity(
+            vendor=method.vendor,
+            action=VendorActivityAction.METHOD_UPDATED,
+            actor=request.user,
+        )
 
         return Response(VendorPaymentMethodSerializer(method).data)
 
     def perform_destroy(self, instance):
 
+        vendor = instance.vendor
         VendorPaymentMethodService.delete(instance)
+        record_vendor_activity(
+            vendor=vendor,
+            action=VendorActivityAction.METHOD_REMOVED,
+            actor=self.request.user,
+        )
 
 
 class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
@@ -188,6 +208,11 @@ class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
 
         VendorPaymentMethodService.set_primary(
             payment_method
+        )
+        record_vendor_activity(
+            vendor=payment_method.vendor,
+            action=VendorActivityAction.PRIMARY_CHANGED,
+            actor=request.user,
         )
 
         return Response(

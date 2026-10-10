@@ -552,3 +552,59 @@ class DirectoryContractTests(TestCase):
             response.data["payment_methods"][0]["network_payee_ref"],
             hit["external_id"],
         )
+
+
+class VendorActivityFeedTests(TestCase):
+    """VEND-5: the recent-activities screen has a real feed."""
+
+    def setUp(self):
+        from apps.vendors.factories import UserFactory
+
+        self.user = UserFactory(first_name="Ada", last_name="Reed")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.category = BillCategory.objects.create(
+            name="Rent", icon="https://e.com/r.png", color="#111"
+        )
+
+    def feed(self):
+        return self.client.get("/api/v1/vendors/activity").json()["items"]
+
+    def test_add_edit_delete_restore_are_recorded_newest_first(self):
+        vendor_id = self.client.post(
+            "/api/v1/vendors",
+            {
+                "name": "WeWork", "category": str(self.category.id),
+                "source": "MANUAL",
+                "payment_method": {
+                    "method_type": "CHECK", "check_legal_name": "WeWork Inc",
+                    "street": "1 Main", "city": "Austin", "state": "TX",
+                    "zip_code": "78701",
+                },
+            },
+            format="json",
+        ).data["id"]
+        self.client.patch(
+            f"/api/v1/vendors/{vendor_id}", {"notes": "x"}, format="json"
+        )
+        self.client.delete(f"/api/v1/vendors/{vendor_id}")
+        self.client.post(f"/api/v1/vendors/{vendor_id}/restore")
+
+        rows = self.feed()
+
+        self.assertEqual(
+            [r["action"] for r in rows],
+            ["RESTORED", "DELETED", "UPDATED", "CREATED"],
+        )
+        self.assertEqual(rows[-1]["vendor_name"], "WeWork")
+        self.assertEqual(rows[-1]["actor_name"], "Ada Reed")
+        self.assertEqual(rows[-1]["label"], "Vendor added")
+
+    def test_another_accounts_activity_is_not_shown(self):
+        from apps.vendors.factories import UserFactory, VendorFactory
+        from apps.vendors.models import VendorActivityAction, record_vendor_activity
+
+        theirs = VendorFactory(user=UserFactory())
+        record_vendor_activity(vendor=theirs, action=VendorActivityAction.CREATED)
+
+        self.assertEqual(self.feed(), [])

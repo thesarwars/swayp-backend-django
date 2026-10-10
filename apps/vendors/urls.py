@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.vendors.api.views.activity import VendorActivityListAPIView
 from apps.vendors.api.views.qr_views import QRDecodeAPIView
 from apps.vendors.api.views.vendor_view import (
     VendorListCreateAPIView,
@@ -20,6 +21,7 @@ urlpatterns = [
     # Vendor
     path("",VendorListCreateAPIView.as_view(),name="vendor-list-create",),
     path("/summary",VendorSummaryAPIView.as_view(),name="vendor-summary",),
+    path("/activity",VendorActivityListAPIView.as_view(),name="vendor-activity"),
     path("/<uuid:vendor_id>",VendorDetailAPIView.as_view(),name="vendor-detail",),
     path("/<uuid:vendor_id>/restore",VendorRestoreAPIView.as_view(),name="vendor-restore"),
     # Vendor Payment Methods

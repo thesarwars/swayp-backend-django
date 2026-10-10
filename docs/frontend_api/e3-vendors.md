@@ -281,6 +281,31 @@ vendor with none and `payment_rail: null`.
 
 ---
 
+## 7b. Recent activity
+
+```
+GET /api/v1/vendors/activity?page=1&pageSize=20
+```
+
+```json
+{ "items": [
+    { "id": "…", "action": "METHOD_ADDED", "label": "Payment method added",
+      "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork",
+      "actor_name": "Ada Reed", "created_at": "2026-10-10T09:12:00Z" } ],
+  "pagination": { "page": 1, "pageSize": 20, "…": "…" } }
+```
+
+Newest first, for the whole account. `action` is one of `CREATED`,
+`UPDATED`, `DELETED`, `RESTORED`, `METHOD_ADDED`, `METHOD_UPDATED`,
+`METHOD_REMOVED` or `PRIMARY_CHANGED`. Show `label` as it is.
+- `vendor_name` is the name **at the time**, so the feed reads correctly
+  after a rename or delete.
+- `vendor_id` is `null` if the vendor no longer exists.
+- `actor_name` is who did it (the owner or a team member), or `null` for
+  vendors created by a bank-scan import.
+
+Recording started on 2026-10-10. Earlier changes are not in the feed.
+
 ## 8. Order to build
 
 1. **List + summary** — the vendors screen.

@@ -572,7 +572,7 @@ These matter once the bill detail screens are built:
 ## Vendors
 
 #### VEND-1 · blocker · No way to obtain an ACH payee token
-- **🟡 Partly answered (processor decided)**: ACH now runs on **Stripe** (Stripe Treasury), not Moov or Dwolla. That was a CEO decision on 2026-10-10; see PRD D-1. So the valid ACH `provider` value is **`STRIPE`**, and the dev mock uses `STRIPE` too (the factory token looks like `pm_stripe_<n>`). The tokenization flow itself, how a client gets a Stripe token for a vendor's bank account, is still open: it comes with the Stripe Treasury integration.
+- **⏸ Blocked on Stripe Treasury access; dev convention documented.** ACH is Stripe (PRD D-1). The tokenization flow is part of the Treasury integration, which is on hold until Stripe grants access (`docs/stripe-treasury-integration-plan.md`). It will be **server-side**: the app sends the numbers to Swayp once, and Swayp exchanges them with Stripe and keeps only the token and last 4. **Dev answer:** yes, the dev API accepts `pm_mock_<uuid>`. Send `provider: "STRIPE"` (not `MOOV`) with any unmasked token; payments run on the mock processor and never use it. Release builds should stay on check and directory vendors until then. See e3 §4.
 - **Endpoint:** `POST /vendors` and `POST /vendors/{id}/payment-methods`, ACH branch.
 - **Today:**
   - Both require `provider` + `provider_token` and refuse raw account numbers, but nothing documents how a client gets a token.

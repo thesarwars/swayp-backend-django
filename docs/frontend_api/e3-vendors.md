@@ -165,6 +165,19 @@ even by mistake.
 `account_ref` in responses is the masked form (`"****8837"`) — that is all
 that is ever stored, and all you can ever display.
 
+**Getting a token: not available yet.** ACH runs on Stripe (Stripe Treasury,
+PRD D-1), and the flow that turns a vendor's routing and account number into
+a Stripe token is part of the Treasury integration. That is **on hold** until
+Stripe grants access (see `docs/stripe-treasury-integration-plan.md`). It
+will be server-side: the app will send the numbers to a Swayp endpoint once,
+Swayp passes them to Stripe, and only the token and last 4 are stored. Until
+then, ship check-by-mail and directory (NETWORK) vendors in release builds.
+
+**Dev and staging:** send `provider: "STRIPE"` and any token that isn't
+masked, for example `pm_mock_<uuid>`. It's stored as given, and payments run
+on the mock processor, which never uses it. Any `provider` text is accepted
+today, but send `STRIPE`. `MOOV` is gone.
+
 ### Validating a routing number first
 
 ```

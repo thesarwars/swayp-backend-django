@@ -47,18 +47,26 @@ states.
 
 ## Read this before anything else
 
-### There are three response envelopes, not one ⚠️
+### Response shapes: the envelope, and vendors ⚠️
 
-The API is not consistent. Write one unwrap helper and use it everywhere.
+Vendors are the exception; everything else is enveloped. Write one unwrap helper and use it everywhere.
 
 | Shape | Where |
 |---|---|
-| `{ "success", "message", "data" }` | auth, bills, banking, billing, teams, users, categories |
-| `{ "items": [...], "pagination": {...} }` | `vendors`, `vendors/<id>/payment-methods`, `directory-search` |
-| a bare object, no wrapper | vendor create/detail/update, `vendors/qr/decode` |
+| `{ "success", "message", "data" }` | **everything except vendors**: auth, users, bills, banking, billing, payments, dashboard, notifications, teams, AI, reports, providers, categories |
+| `{ "success", "message", "data", "pagination" }` | the paged lists among them: `bills/occurrences`, `bills/<id>/payments`, `notifications`, `payments/history`, `billing/fees`, `providers`, `reports` |
+| `{ "items": [...], "pagination": {...} }` | `vendors`, `vendors/<id>/payment-methods`, `vendors/activity`, `vendors/directory-search` |
+| a bare object, no wrapper | vendor create/detail/update/restore, `vendors/summary`, `vendors/qr/decode`, set-primary |
 
-Some list endpoints put `data` **and** `pagination` at the top level
-(`bills/occurrences`, `notifications`, `payments/history`, `reports`).
+`data` is `null`, not missing, on the few answers with nothing to return
+(e.g. `DELETE bills/<id>/details`, `GET bills/next-due` with no bills,
+`GET billing/subscription` with no plan). Errors are always
+`{ success: false, message, code, errors? }`.
+
+**The OpenAPI schema at `/api/docs` describes exactly these shapes**, envelope
+included, and a contract test holds it to what the server sends
+(`apps/common/tests/test_openapi_contract.py`). A client generated from it is
+accurate.
 
 Success responses in the second and third shapes have **no `success` field**;
 errors always do. **Branch on the HTTP status, never on the body.**

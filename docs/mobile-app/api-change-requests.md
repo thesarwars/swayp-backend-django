@@ -751,6 +751,17 @@ These matter once the bill detail screens are built:
 ## Cross-cutting / OpenAPI
 
 #### API-1 · major · OpenAPI response schemas do not match the server
+✅ Fixed: the schema now describes what the server sends, and a contract test (`apps/common/tests/test_openapi_contract.py`) calls the endpoints of every area and validates each body strictly against its published schema, so drift fails CI.
+- **Envelope:** a schema class wraps each documented body in `{success, message, data}`, adds `pagination` on paged lists, leaves the bare vendor bodies bare, and declares `{success, message, code, errors?}` for 400/401/402/403/404/503 where they occur. Paged DRF lists publish `{items, pagination}`. `PaginationResponse` has `hasNext`/`hasPrevious`.
+- **Auth/users:** every auth body is declared. Profile `phone_number` is nullable. The register examples are the current payload. `/auth/refresh` and `/auth/logout` were **500 on every call**; fixed.
+- **Banking:** `link/exchange` declares `scan`, `progress` is the object, `category_guess_name` is nullable, `POST accounts` declares its body and single answer, and GET connection has its own summary.
+- **Dashboard:** `status`, `autopay_mode`, `active_tab` and `rail` are enums.
+- **Bills:** every view publishes its body. Delete is 200 with `data: null` (now sent). QR 422 is declared.
+- **Payments:** `POST /payments` is 201, `receipt`/`failure`/`progress` are objects, and history publishes its own row and `pagination` (it shared a component name with the payment object). `CurrencyEnum` lost BDT.
+- **Vendors:** filters declared, summary/QR/set-primary bodies declared, computed fields typed and nullable.
+- **Billing:** see the billing commit (request bodies, 201, nullable subscription, allowances, 503).
+- **Money:** several endpoints sent raw Decimals as floats (`3200.0`); every Decimal now renders as its exact string.
+- Fields always sent are marked required; shared enums have stable names; the schema generates with no errors.
 The schema is reliable for paths, request bodies and enums, but often wrong for response envelopes and computed fields. The app reads every envelope it has seen, so nothing breaks today. But a generated client is impossible, and every new field is a guess.
 
 | Area | What to fix |

@@ -244,6 +244,7 @@ Contents:
 - **App today:** filters on the client and loads up to 4 pages of 50 to fill a chip. An empty chip cannot be told apart from "the rows are on a later page".
 
 #### DASH-2 · major (blocks push, which is deferred) · Device routes are mounted at the wrong path
+- **✅ Fixed**: the routes are now `POST /notifications/devices/register` and `POST /notifications/devices/unregister`, with no trailing slash. The broken `/notificationsdevices/…/` paths are gone. The realtime guide (e8) now uses these paths too.
 - **Endpoint:** `POST /notificationsdevices/register/`, `/notificationsdevices/unregister/`.
 - **Today:** the routes have no `/` after `notifications` and end with a trailing slash. The documented `/notifications/devices/register/` is a 404. Observed (401 on the broken path, 404 on the documented one).
 - **Needed:** `/notifications/devices/register` and `/notifications/devices/unregister`, without a trailing slash, like every other route.

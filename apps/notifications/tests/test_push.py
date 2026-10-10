@@ -18,8 +18,8 @@ from apps.notifications.services import notify
 from apps.notifications.services.device_service import DeviceService
 from apps.vendors.factories import UserFactory
 
-REGISTER = "/api/v1/notifications/devices/register/"
-UNREGISTER = "/api/v1/notifications/devices/unregister/"
+REGISTER = "/api/v1/notifications/devices/register"
+UNREGISTER = "/api/v1/notifications/devices/unregister"
 
 
 def auth(user):
@@ -333,7 +333,7 @@ class PreferenceEndpointTests(TestCase):
 
     def test_push_can_now_be_switched_on(self):
         response = self.client.patch(
-            "/api/v1/notifications/preferences/",
+            "/api/v1/notifications/preferences",
             {"preferences": [{"type": "PAYMENT_FAILED", "push": True}]},
             format="json",
         )
@@ -344,7 +344,7 @@ class PreferenceEndpointTests(TestCase):
         """The guard reads the registry, so enabling push must not have
         enabled a channel that still has no adapter."""
         response = self.client.patch(
-            "/api/v1/notifications/preferences/",
+            "/api/v1/notifications/preferences",
             {"preferences": [{"type": "PAYMENT_FAILED", "sms": True}]},
             format="json",
         )

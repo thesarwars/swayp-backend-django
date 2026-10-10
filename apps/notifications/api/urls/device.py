@@ -7,12 +7,12 @@ from apps.notifications.api.views.device import (
 
 urlpatterns = [
     path(
-        "devices/register/",
+        "/devices/register",
         DeviceRegisterAPIView.as_view(),
         name="notification-device-register",
     ),
     path(
-        "devices/unregister/",
+        "/devices/unregister",
         DeviceUnregisterAPIView.as_view(),
         name="notification-device-unregister",
     ),

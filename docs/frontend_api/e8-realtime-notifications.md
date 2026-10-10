@@ -26,7 +26,7 @@ Call this **on every app launch**, not only after sign-in. FCM rotates tokens,
 and a client that registers once will go quiet with no error to notice.
 
 ```http
-POST /api/v1/notifications/devices/register/
+POST /api/v1/notifications/devices/register
 Authorization: Bearer <access>
 
 {
@@ -57,7 +57,7 @@ reminders from arriving on it.
 ### 1.2 Unregister on sign-out
 
 ```http
-POST /api/v1/notifications/devices/unregister/
+POST /api/v1/notifications/devices/unregister
 { "token": "<the same token>" }
 ```
 

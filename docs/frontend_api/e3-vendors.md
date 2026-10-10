@@ -62,6 +62,8 @@ Returns the vendor, **all** its payment methods, and the spend panel:
 ```json
 {
   "id": "0ec2bf6c-…", "name": "WeWork", "category": "653f035b-…",
+  "contact_name": "Dana Lee", "contact_phone": "+14155550101",
+  "contact_email": "ap@wework.example",
   "source": "MANUAL", "directory_verified": false,
   "late_fee_amount": null, "late_fee_grace_days": null,
   "payment_methods": [
@@ -93,9 +95,11 @@ filling gaps yourself.
 All money here (`total_paid`, `monthly_spend[].total`, `next_bill.amount`,
 `bills[].amount`) is a **2-decimal string**, `"0.00"` when zero.
 
-`PATCH /api/v1/vendors/<id>` takes `name`, `category`, `notes` (and the
-contact fields) and answers with **this full vendor**, so there is no need to
-refetch.
+`PATCH /api/v1/vendors/<id>` takes `name`, `category`, `notes`,
+`contact_name`, `contact_phone` and `contact_email`, and answers with **this
+full vendor**, so there is no need to refetch. The contact fields are also
+accepted on `POST /vendors`. They are for the user's own records: Swayp
+never contacts them. Each is `""` when unset. A malformed email is a 400.
 
 `payee_verified` is set by provider-run verification, which isn't wired. **It
 will always be `false`** — don't build a trust badge that never lights up.

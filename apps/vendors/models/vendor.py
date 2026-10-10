@@ -76,6 +76,12 @@ class Vendor(BaseModel):
         blank=True
     )
 
+    # Who to talk to at the vendor (VEND-4). For the user's own records;
+    # nothing is sent to these.
+    contact_name = models.CharField(max_length=150, blank=True, default="")
+    contact_phone = models.CharField(max_length=32, blank=True, default="")
+    contact_email = models.EmailField(blank=True, default="")
+
     # When the vendor was deleted (VEND-11). Its bills are soft-deleted with
     # this same timestamp, which is how restore tells them apart from bills
     # the user had deleted on their own before.

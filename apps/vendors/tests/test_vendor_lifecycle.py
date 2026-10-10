@@ -424,3 +424,42 @@ class VendorBodiesTests(TestCase):
         self.assertIn("account_type", method)
         self.assertIn("network_payee_ref", method)
         self.assertNotIn("provider_token", method)
+
+
+class ContactFieldsTests(TestCase):
+    """VEND-4: contact person, phone and email are stored and returned."""
+
+    def test_patch_and_read_the_contact(self):
+        from apps.vendors.factories import UserFactory, VendorFactory
+
+        user = UserFactory()
+        client = APIClient()
+        client.force_authenticate(user=user)
+        vendor = VendorFactory(user=user)
+
+        response = client.patch(
+            f"/api/v1/vendors/{vendor.id}",
+            {"contact_name": "Dana Lee", "contact_phone": "+14155550101",
+             "contact_email": "ap@wework.example"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["contact_name"], "Dana Lee")
+        detail = client.get(f"/api/v1/vendors/{vendor.id}").data
+        self.assertEqual(detail["contact_email"], "ap@wework.example")
+
+    def test_a_bad_email_is_refused(self):
+        from apps.vendors.factories import UserFactory, VendorFactory
+
+        user = UserFactory()
+        client = APIClient()
+        client.force_authenticate(user=user)
+        vendor = VendorFactory(user=user)
+
+        response = client.patch(
+            f"/api/v1/vendors/{vendor.id}", {"contact_email": "nope"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

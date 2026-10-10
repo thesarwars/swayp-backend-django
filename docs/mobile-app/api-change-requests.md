@@ -604,6 +604,7 @@ These matter once the bill detail screens are built:
 - **App today:** without an `id` there is no success screen: the app shows a "Vendor saved" toast and closes the wizard.
 
 #### VEND-4 · major · Vendors have no contact fields
+- **✅ Fixed**: vendors now have `contact_name`, `contact_phone` and `contact_email`. They are returned on detail, writable by `PATCH /vendors/{id}` and accepted on create, and `""` when unset. They are records only; Swayp sends nothing to them. See e3 §3.
 - **Endpoint:** `GET /vendors/{id}`, `PATCH /vendors/{id}`.
 - **Today:** the detail design has Contact Person, Phone Number and Email Address, but the API has no such fields.
 - **Needed:** `contact_name`, `contact_phone` and `contact_email` (read + PATCH), or confirmation that the design drops them.

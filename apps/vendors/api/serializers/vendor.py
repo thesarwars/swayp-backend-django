@@ -171,6 +171,9 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "logo",
             "business_type",
             "notes",
+            "contact_name",
+            "contact_phone",
+            "contact_email",
             "source",
             "directory_verified",
             "late_fee_amount",
@@ -237,6 +240,9 @@ class VendorUpdateSerializer(serializers.ModelSerializer):
             "name",
             "category",
             "notes",
+            "contact_name",
+            "contact_phone",
+            "contact_email",
         )
 
 
@@ -257,6 +263,13 @@ class VendorCreateSerializer(serializers.Serializer):
     )
     source = serializers.ChoiceField(choices=VendorSource.choices)
     notes = serializers.CharField(required=False, allow_blank=True)
+    contact_name = serializers.CharField(
+        max_length=150, required=False, allow_blank=True
+    )
+    contact_phone = serializers.CharField(
+        max_length=32, required=False, allow_blank=True
+    )
+    contact_email = serializers.EmailField(required=False, allow_blank=True)
 
     payment_method = VendorPaymentMethodCreateSerializer()
 

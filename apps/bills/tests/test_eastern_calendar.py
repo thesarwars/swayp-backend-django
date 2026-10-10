@@ -159,6 +159,7 @@ class EasternEveningTests(TestCase):
                 "overdue_count": bills["overdue_count"],
                 "due_count": bills["due_count"],
                 "upcoming_count": bills["upcoming_count"],
+                "total_bills": bills["total_bills"],
             },
         )
         self.assertEqual(onboarding["bills"]["due_count"], 1)

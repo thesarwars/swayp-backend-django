@@ -11,6 +11,7 @@ from apps.authentication.api.serializers.password_reset import (
     ForgotPasswordSerializer,
     ResetPasswordSerializer,
 )
+from apps.authentication.api.serializers.user_registration import MaskedEmailSerializer
 from apps.authentication.services.forgot_password_service import (
     ForgotPasswordService,
 )
@@ -25,7 +26,7 @@ from apps.authentication.services.reset_password_service import (
     description="Send password reset OTP.",
     request=ForgotPasswordSerializer,
     responses={
-        200: OpenApiResponse(description="OTP sent."),
+        200: MaskedEmailSerializer,
     },
     examples=[
         OpenApiExample(
@@ -71,7 +72,7 @@ class ForgotPasswordView(PublicAPIView):
     ),
     request=ResetPasswordSerializer,
     responses={
-        200: OpenApiResponse(description="Password reset successful."),
+        200: None,
     },
     examples=[
         OpenApiExample(
@@ -87,6 +88,8 @@ class ForgotPasswordView(PublicAPIView):
     ],
 )
 class ResetPasswordView(PublicAPIView):
+
+    nullable_data = ("POST",)
 
     def post(self, request):
         serializer = ResetPasswordSerializer(
@@ -106,5 +109,6 @@ class ResetPasswordView(PublicAPIView):
             {
                 "success": True,
                 "message": "Password reset successful.",
+                "data": None,
             }
         )

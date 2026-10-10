@@ -163,3 +163,17 @@ class VerifyOTPSerializer(serializers.Serializer):
             "No verification code is pending for this account. It may have "
             "been used already — request a new one."
         )
+
+
+class VerifyOTPResponseSerializer(serializers.Serializer):
+    """A session for REGISTRATION, a reset token for RESET_PASSWORD."""
+
+    purpose = serializers.ChoiceField(choices=OTPPurpose.choices)
+    access = serializers.CharField(required=False)
+    refresh = serializers.CharField(required=False)
+    reset_token = serializers.CharField(
+        required=False, help_text="RESET_PASSWORD only; send to reset-password."
+    )
+    expires_in = serializers.IntegerField(
+        required=False, help_text="Seconds the reset_token stays valid."
+    )

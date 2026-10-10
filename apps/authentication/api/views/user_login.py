@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
 
+from apps.authentication.api.serializers.token import TokenPairSerializer
 from apps.authentication.api.serializers.user_login import LoginSerializer
 from apps.authentication.services.login_service import LoginService
 
@@ -20,7 +21,7 @@ from apps.authentication.services.login_service import LoginService
     ),
     request=LoginSerializer,
     responses={
-        200: OpenApiResponse(description="Login successful."),
+        200: TokenPairSerializer,
         400: OpenApiResponse(description="Invalid credentials."),
     },
     examples=[

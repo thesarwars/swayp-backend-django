@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.common.casing import SnakeCaseInputMixin, snake_case_aliases
 from apps.common.enums import NotificationType
 from apps.notifications.channels import BY_FIELD
 
@@ -11,6 +12,7 @@ class NotificationChannelSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
 
 
+@snake_case_aliases
 class NotificationPreferenceSerializer(serializers.Serializer):
     type = serializers.CharField()
     label = serializers.CharField()
@@ -32,7 +34,9 @@ class NotificationPreferencesResponseSerializer(serializers.Serializer):
     data = NotificationPreferencesDataSerializer()
 
 
-class NotificationPreferenceUpdateItemSerializer(serializers.Serializer):
+class NotificationPreferenceUpdateItemSerializer(
+    SnakeCaseInputMixin, serializers.Serializer
+):
     type = serializers.ChoiceField(choices=NotificationType.choices)
     inApp = serializers.BooleanField(source="in_app", required=False)
     email = serializers.BooleanField(required=False)

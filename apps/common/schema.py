@@ -66,7 +66,19 @@ class SwaypAutoSchema(AutoSchema):
         media = content.get("application/json")
 
         if not media or "schema" not in media:
-            return
+            if self.method not in getattr(self.view, "nullable_data", ()):
+                return
+
+            # Declared with no body (responses={200: None}) but enveloped
+            # with data null.
+            media = response.setdefault("content", {}).setdefault(
+                "application/json", {}
+            )
+            media["schema"] = {
+                "type": "object",
+                "description": "Always null.",
+                "properties": {},
+            }
 
         schema = media["schema"]
 
@@ -133,12 +145,23 @@ class SwaypAutoSchema(AutoSchema):
         if getattr(self.view, "may_be_unavailable", False):
             codes.append("503")
 
+        # Also every 4xx/5xx a view declared with a description only.
+        codes += [
+            str(c) for c in responses
+            if str(c)[0] in "45" and str(c) not in codes
+        ]
+
         for code in codes:
-            if code in responses:
+            existing = responses.get(code) or {}
+
+            if existing.get("content"):
                 continue
 
             responses[code] = {
-                "description": ERROR_DESCRIPTIONS[code],
+                "description": (
+                    existing.get("description")
+                    or ERROR_DESCRIPTIONS.get(code, "Error.")
+                ),
                 "content": {
                     "application/json": {
                         "schema": self._ref(ErrorResponseSerializer)

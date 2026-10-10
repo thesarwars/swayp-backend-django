@@ -10,8 +10,10 @@ from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.otp import (
     ResendOTPSerializer,
+    VerifyOTPResponseSerializer,
     VerifyOTPSerializer,
 )
+from apps.authentication.api.serializers.user_registration import MaskedEmailSerializer
 from apps.authentication.models import OTPPurpose
 from apps.authentication.services.resend_otp_service import (
     ResendOTPService,
@@ -35,7 +37,7 @@ from apps.authentication.services.verify_otp_service import (
     ),
     request=VerifyOTPSerializer,
     responses={
-        200: OpenApiResponse(description="Verified."),
+        200: VerifyOTPResponseSerializer,
         400: OpenApiResponse(description="Invalid OTP."),
     },
     examples=[
@@ -83,7 +85,11 @@ class VerifyOTPView(PublicAPIView):
     description="Generate and resend OTP.",
     request=ResendOTPSerializer,
     responses={
-        200: OpenApiResponse(description="OTP sent."),
+        200: MaskedEmailSerializer,
+        429: OpenApiResponse(
+            description="Too soon or too many: wait Retry-After seconds "
+            "(code otp_throttled)."
+        ),
     },
     examples=[
         OpenApiExample(

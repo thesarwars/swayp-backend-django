@@ -8,6 +8,7 @@ from apps.common.base_views import PublicAPIView
 from apps.common.crypto import mask_email
 
 from apps.authentication.api.serializers.user_registration import (
+    MaskedEmailSerializer,
     RegisterSerializer,
 )
 from apps.authentication.services.registration_service import (
@@ -18,24 +19,43 @@ from apps.authentication.services.registration_service import (
 @extend_schema(
     tags=["Authentication"],
     request=RegisterSerializer,
-    responses={201: None},
-    description="Register a new user.",
+    responses={201: MaskedEmailSerializer},
+    summary="Register",
+    description=(
+        "Creates the account and emails a REGISTRATION code; finish with "
+        "verify-otp. data.email is masked for the 'check your inbox' screen."
+    ),
     examples=[
+        # What the Create Account screen sends. The phone number is added
+        # later from Settings; full_name is derived from first and last.
         OpenApiExample(
             "Business",
             value={
-                "account_type": "BUSINESS",
-                "full_name": "John Doe",
-                "address": "Dhaka",
-                "email": "john@gmail.com",
-                "phone_number": "+8801712345678",
-                "password": "Password@123",
-                # "confirm_password": "Password@123",
-                "business_name": "ABC Ltd",
-                "poc_name": "John Doe",
-                "billing_address": "Dhaka",
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "email": "jane@acme.com",
+                "business_name": "Acme Corporation, LLC",
+                "industry": "Construction",
+                "business_size": "11-50",
+                "password": "Str0ng!Passphrase1",
+                "terms_accepted": True,
+                "signatory_confirmed": True,
+                "marketing_opt_in": False,
             },
-        )
+            request_only=True,
+        ),
+        OpenApiExample(
+            "Individual",
+            value={
+                "account_type": "INDIVIDUAL",
+                "first_name": "Jane",
+                "last_name": "Smith",
+                "email": "jane@example.com",
+                "password": "Str0ng!Passphrase1",
+                "terms_accepted": True,
+            },
+            request_only=True,
+        ),
     ],
 )
 

@@ -60,6 +60,7 @@ class DeviceRegisterAPIView(BaseAPIView):
 class DeviceUnregisterAPIView(BaseAPIView):
 
     service_class = DeviceService
+    nullable_data = ("POST",)
 
     @extend_schema(
         summary="Stop push notifications to this device",

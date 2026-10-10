@@ -8,3 +8,10 @@ class RefreshSerializer(TokenRefreshSerializer):
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+
+
+class TokenPairSerializer(serializers.Serializer):
+    access = serializers.CharField(help_text="Bearer token for every call.")
+    refresh = serializers.CharField(
+        help_text="Rotates: store the new one each time."
+    )

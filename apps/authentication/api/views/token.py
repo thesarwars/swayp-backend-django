@@ -12,6 +12,7 @@ from apps.common.base_views import PublicAPIView
 from apps.authentication.api.serializers.token import (
     LogoutSerializer,
     RefreshSerializer,
+    TokenPairSerializer,
 )
 from apps.authentication.services.logout_service import (
     LogoutService,
@@ -40,7 +41,7 @@ class RefreshTokenInvalid(APIException):
     description="Generate a new access token using a refresh token.",
     request=RefreshSerializer,
     responses={
-        200: OpenApiResponse(description="Token refreshed."),
+        200: TokenPairSerializer,
     },
     examples=[
         OpenApiExample(
@@ -73,6 +74,7 @@ class RefreshView(PublicAPIView):
         return Response(
             {
                 "success": True,
+                "message": "Token refreshed.",
                 "data": tokens,
             }
         )

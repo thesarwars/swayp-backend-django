@@ -199,3 +199,10 @@ class RegisterSerializer(serializers.Serializer):
 # VerifyOTPSerializer moved to serializers/otp.py. It no longer belongs
 # here: it searches the login code as well, so one endpoint can finish
 # either flow.
+
+
+class MaskedEmailSerializer(serializers.Serializer):
+    email = serializers.CharField(
+        help_text="Masked, e.g. j***e@acme.com, for the 'check your inbox' "
+        "screen."
+    )

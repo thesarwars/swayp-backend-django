@@ -126,7 +126,8 @@ class AuthContractTests(ContractTestCase):
 
         self.register()
         self.check("POST", "/api/v1/auth/resend-otp",
-                   body={"email": self.EMAIL}, status=200)
+                   body={"email": self.EMAIL, "purpose": "REGISTRATION"},
+                   status=429)  # registration has just sent one
         self.code(OTPPurpose.REGISTRATION)
         self.check("POST", "/api/v1/auth/verify-otp",
                    body={"email": self.EMAIL, "otp": "123456"}, status=200)
@@ -139,12 +140,23 @@ class AuthContractTests(ContractTestCase):
                    body={"refresh": tokens["refresh"]}, status=200)
         self.check("POST", "/api/v1/auth/forgot-password",
                    body={"email": self.EMAIL}, status=200)
+        self.code(OTPPurpose.RESET_PASSWORD)
+        self.check("POST", "/api/v1/auth/verify-otp", body={
+            "email": self.EMAIL, "otp": "123456",
+            "purpose": "RESET_PASSWORD"}, status=200)
+        self.code(OTPPurpose.RESET_PASSWORD)
+        self.check("POST", "/api/v1/auth/reset-password", body={
+            "email": self.EMAIL, "otp": "123456",
+            "password": "An0ther!Passphrase2"}, status=200)
         self.check("POST", "/api/v1/auth/login/phone/request",
                    body={"phone_number": "+14155552671"}, status=200)
 
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
-        self.check("POST", "/api/v1/auth/logout",
-                   body={"refresh": tokens["refresh"]}, status=200)
+        refreshed = self.check(
+            "POST", "/api/v1/auth/logout",
+            body={"refresh": tokens["refresh"]}, status=400,
+        )  # spent above by refresh, which rotates it
+        self.assertEqual(refreshed.json()["code"], "validation_failed")
 
     def test_bad_login(self):
         self.check("POST", "/api/v1/auth/login",
@@ -158,7 +170,7 @@ class UserContractTests(ContractTestCase):
         from apps.users.models import Profile
 
         Profile.objects.get_or_create(user=self.user, defaults={
-            "full_name": "Jane Smith"})
+            "full_name": "Jane Smith", "account_type": "BUSINESS"})
 
     def test_profile_and_onboarding(self):
         self.check("GET", "/api/v1/users/profile", status=200)
@@ -196,7 +208,9 @@ class NotificationContractTests(ContractTestCase):
     def test_preferences_and_devices(self):
         self.check("GET", "/api/v1/notifications/preferences", status=200)
         self.check("PATCH", "/api/v1/notifications/preferences",
-                   body={"preferences": []}, status=200)
+                   body={"preferences": [
+                       {"type": "BILL_DUE", "in_app": False}]},
+                   status=200)
         self.check("POST", "/api/v1/notifications/devices/register",
                    body={"token": "fcm-token-1", "platform": "ios"},
                    status=None)

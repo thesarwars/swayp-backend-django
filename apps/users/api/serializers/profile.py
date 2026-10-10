@@ -20,7 +20,7 @@ class ProfileSerializer(serializers.Serializer):
         choices=AccountType.choices, read_only=True
     )
     email = serializers.EmailField(read_only=True)
-    phone_number = serializers.CharField(read_only=True)
+    phone_number = serializers.CharField(read_only=True, allow_null=True)
     is_verified = serializers.BooleanField(read_only=True)
 
     full_name = serializers.CharField()

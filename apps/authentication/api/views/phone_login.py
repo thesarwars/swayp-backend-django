@@ -8,6 +8,7 @@ from apps.authentication.api.serializers.phone_login import (
     PhoneLoginRequestSerializer,
     PhoneLoginVerifySerializer,
 )
+from apps.authentication.api.serializers.token import TokenPairSerializer
 from apps.authentication.models import OTPPurpose
 from apps.authentication.services.login_verify_service import (
     LoginVerifyService,
@@ -36,9 +37,11 @@ REQUEST_MESSAGE = "If that number is registered, a code has been sent."
         "The response is identical whether or not the number is registered."
     ),
     request=PhoneLoginRequestSerializer,
-    responses={200: OpenApiResponse(description=REQUEST_MESSAGE)},
+    responses={200: None},
 )
 class PhoneLoginRequestView(PublicAPIView):
+
+    nullable_data = ("POST",)
 
 
     def post(self, request):
@@ -73,7 +76,7 @@ class PhoneLoginRequestView(PublicAPIView):
     summary="Verify a phone-login OTP",
     description="Exchanges a phone number and code for access/refresh tokens.",
     request=PhoneLoginVerifySerializer,
-    responses={200: OpenApiResponse(description="Tokens issued.")},
+    responses={200: TokenPairSerializer},
 )
 class PhoneLoginVerifyView(PublicAPIView):
 

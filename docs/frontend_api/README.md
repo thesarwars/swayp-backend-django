@@ -68,7 +68,7 @@ included, and a contract test holds it to what the server sends
 (`apps/common/tests/test_openapi_contract.py`). A client generated from it is
 accurate.
 
-Success responses in the second and third shapes have **no `success` field**;
+The vendor shapes (the last two rows) have **no `success` field** on success;
 errors always do. **Branch on the HTTP status, never on the body.**
 
 ```js

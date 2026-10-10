@@ -69,8 +69,33 @@ class HomeVendorPreviewSerializer(serializers.Serializer):
     monthly_amount = serializers.DecimalField(
         max_digits=18,
         decimal_places=2,
+        help_text=(
+            "Sum of this vendor's bills due in the current calendar month "
+            "(US Eastern), paid or not. 0.00 when its next bill falls in a "
+            "later month."
+        ),
     )
     rail = serializers.CharField(allow_null=True)
+    # From the vendor list's next-bill subqueries, which preview() inherits
+    # by building on VendorSelector.list, so they cost no extra query
+    # (DASH-8). The same values and meaning as on GET /vendors.
+    next_due = serializers.DateField(
+        source="next_due_date",
+        allow_null=True,
+        help_text="Due date of the next unsettled bill; null if none.",
+    )
+    recurring_amount = serializers.DecimalField(
+        source="next_amount",
+        max_digits=18,
+        decimal_places=2,
+        allow_null=True,
+        help_text="Amount of that next bill, per cycle; null if none.",
+    )
+    amount_period = serializers.CharField(
+        source="next_frequency",
+        allow_null=True,
+        help_text="That bill's cadence (MONTHLY, QUARTERLY, ...); null if none.",
+    )
 
 
 class HomeSerializer(serializers.Serializer):

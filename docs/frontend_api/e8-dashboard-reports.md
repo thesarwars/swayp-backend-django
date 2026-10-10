@@ -21,7 +21,9 @@ GET /api/v1/dashboard/home?tab=upcoming
   "recent_bills": [],
   "vendors_preview": [
     { "id": "0ec2bf6c-…", "name": "WeWork", "logo": "", "category": "Rent",
-      "monthly_amount": "0.00", "rail": "ACH" }
+      "monthly_amount": "0.00", "rail": "ACH",
+      "next_due": "2026-11-01", "recurring_amount": "3200.00",
+      "amount_period": "MONTHLY" }
   ],
   "pay_panel": {
     "active_tab": "upcoming",
@@ -53,6 +55,23 @@ clicks.
 
 `pay_panel.items` rows are the same shape as
 [`bills/occurrences`](e4-bills.md) — one row component, two screens.
+
+### Vendor cards
+
+`vendors_preview` is **at most 3** active vendors, highest `monthly_amount`
+first, then by name.
+
+- `monthly_amount` is the total of that vendor's bills **due in the current
+  calendar month** (US Eastern), paid or not. A vendor billed $3,200 on the
+  1st reads `0.00` once this month's bill is behind it and the next falls in
+  next month. It is "this month", not "per month".
+- `next_due`, `recurring_amount` and `amount_period` describe the vendor's
+  **next unsettled bill**: its due date, its amount and its cadence. All
+  three are `null` when nothing is outstanding. They are the same values and
+  meaning as on `GET /vendors`.
+
+For a "Next: Nov 1, $3,200 / month" line, use the `next_*` fields. For "this
+month", use `monthly_amount`.
 
 `unread_notification_count` is the bell badge: the **signed-in person's**
 unread notifications (a team member sees their own count, not the owner's).

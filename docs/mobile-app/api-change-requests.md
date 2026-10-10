@@ -292,6 +292,7 @@ Contents:
 - **App today:** removes duplicates by id.
 
 #### DASH-8 · minor · `vendors_preview` is missing the next due date, and `monthly_amount` is unclear
+- **✅ Fixed**: each `vendors_preview` row now has `next_due` (date or `null`), `recurring_amount` and `amount_period`: the vendor's next unsettled bill, as on `GET /vendors`. `monthly_amount` is documented: bills due in the **current calendar month** (US Eastern), paid or not. That is why WeWork showed `0.00`: its next bill fell next month. The list is at most 3 vendors, highest `monthly_amount` first, then by name. See e8 §1, "Vendor cards".
 - **Endpoint:** `GET /dashboard/home` → `vendors_preview[]`.
 - **Today:** no next due date. A captured body shows `monthly_amount: "0.00"` for a vendor billed $3,200 a month.
 - **Needed:** `next_due` (date or null). Document what `monthly_amount` measures, and the order and limit of the list.

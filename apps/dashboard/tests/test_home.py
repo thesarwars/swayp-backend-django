@@ -843,8 +843,47 @@ class HomePayloadShapeTests(HomeTestCase):
 
         self.assertEqual(
             set(row),
-            {"id", "name", "logo", "category", "monthly_amount", "rail"},
+            {
+                "id",
+                "name",
+                "logo",
+                "category",
+                "monthly_amount",
+                "rail",
+                # DASH-8: the card's due line, from the vendor list's
+                # next-bill subqueries.
+                "next_due",
+                "recurring_amount",
+                "amount_period",
+            },
         )
+
+    def test_a_vendor_due_next_month_shows_its_next_bill(self):
+        """DASH-8: the case the mobile team saw. monthly_amount is 0.00 for a
+        vendor whose bill falls next month, but next_due and
+        recurring_amount still say what is coming."""
+        vendor = self._vendor(name="WeWork")
+        self._occurrence(
+            self._next_month(),
+            bill=self._bill(vendor=vendor),
+            amount="3200.00",
+        )
+
+        row = self._home()["vendors_preview"][0]
+
+        self.assertEqual(row["monthly_amount"], "0.00")
+        self.assertEqual(row["next_due"], self._next_month().isoformat())
+        self.assertEqual(row["recurring_amount"], "3200.00")
+        self.assertEqual(row["amount_period"], "MONTHLY")
+
+    def test_a_vendor_with_no_open_bill_has_null_next_fields(self):
+        self._vendor(name="Idle")
+
+        row = self._home()["vendors_preview"][0]
+
+        self.assertIsNone(row["next_due"])
+        self.assertIsNone(row["recurring_amount"])
+        self.assertIsNone(row["amount_period"])
 
     def test_greeting_is_the_first_name_the_screen_renders(self):
         """The header reads "Welcome Back, {name}", so name is "Jhon"."""

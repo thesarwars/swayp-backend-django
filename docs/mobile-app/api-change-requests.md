@@ -369,6 +369,7 @@ Contents:
 - **Screen:** edit bill (not built yet).
 
 #### BILLS-5 · major · Bill detail is missing ids and uses numbers for money
+- **✅ Fixed**: `GET /bills/{id}/details` now has `vendor_id`, `category_id`, `payment_method_id` and the masked `account_ref`. It also has `next_occurrence: { id, due_date, amount, status } | null` (the occurrence `next_due` describes) and `last_paid_at`. `overdue_amount` and `total_paid` are now decimal strings (`"0.00"` when zero), not numbers. See e4 §5.
 - **Endpoint:** `GET /bills/{id}/details`.
 - **Today:** no `vendor_id`, `category_id` or `payment_method_id`. Some money fields are numbers.
 - **Needed:**

@@ -349,3 +349,67 @@ class BillQRIdTests(TestCase):
                 self.assertIs(body["success"], False)
                 self.assertIn("message", body)
                 self.assertNotIn("detail", body)
+
+
+class BillDetailIdsTests(BillFixtureMixin, TestCase):
+    """BILLS-5: the detail carries the ids an edit screen needs, the next
+    occurrence to act on, and money as strings."""
+
+    def detail(self):
+        return self.client.get(f"/api/v1/bills/{self.bill.id}/details").json()[
+            "data"
+        ]
+
+    def test_the_ids_are_there(self):
+        method = VendorPaymentMethod.objects.create(
+            vendor=self.vendor,
+            method_type="ACH",
+            provider="MOOV",
+            provider_token="pm_x",
+            account_last4="4821",
+            account_holder_name="WeWork LLC",
+            is_primary=True,
+        )
+        self.bill.payment_method = method
+        self.bill.save(update_fields=["payment_method"])
+
+        data = self.detail()
+
+        self.assertEqual(data["vendor_id"], str(self.vendor.id))
+        self.assertEqual(data["category_id"], str(self.category.id))
+        self.assertEqual(data["payment_method_id"], str(method.id))
+        self.assertEqual(data["account_ref"], "****4821")
+
+    def test_next_occurrence_is_the_one_next_due_describes(self):
+        self.occurrence(self.bill, D(2030, 1, 1), status=BillOccurrenceStatus.PAID)
+        upcoming = self.occurrence(self.bill, D(2030, 2, 1))
+
+        data = self.detail()
+
+        self.assertEqual(data["next_occurrence"]["id"], str(upcoming.id))
+        self.assertEqual(data["next_occurrence"]["status"], "UPCOMING")
+        self.assertEqual(data["next_due"], "2030-02-01")
+
+    def test_money_is_a_two_decimal_string_even_when_zero(self):
+        data = self.detail()
+
+        self.assertEqual(data["overdue_amount"], "0.00")
+        self.assertEqual(data["total_paid"], "0.00")
+        self.assertIsNone(data["last_paid_at"])
+        self.assertIsNone(data["next_occurrence"])
+        self.assertIsNone(data["payment_method_id"])
+        self.assertIsNone(data["account_ref"])
+
+    def test_last_paid_at_is_the_latest_payment(self):
+        from django.utils import timezone
+
+        paid = self.occurrence(
+            self.bill, D(2026, 1, 15), status=BillOccurrenceStatus.PAID
+        )
+        paid.paid_at = timezone.now()
+        paid.save(update_fields=["paid_at"])
+
+        data = self.detail()
+
+        self.assertIsNotNone(data["last_paid_at"])
+        self.assertEqual(data["total_paid"], "3200.00")

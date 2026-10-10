@@ -198,15 +198,31 @@ GET /api/v1/bills/<bill_id>/details
 ```
 
 ```json
-{ "id": "d788620d-…", "vendor_name": "WeWork", "vendor_logo": "",
-  "bill_type": "FIXED", "amount": "3200.00", "category_name": "Rent",
+{ "id": "d788620d-…",
+  "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork", "vendor_logo": "",
+  "category_id": "7a1d…", "category_name": "Rent",
+  "bill_type": "FIXED", "amount": "3200.00",
   "frequency": "MONTHLY", "anchor_date": "2026-09-01",
-  "autopay_mode": "REMIND", "payment_method": "ACH", "notes": "",
-  "next_due": "2026-09-01", "…": "…" }
+  "autopay_mode": "REMIND",
+  "payment_method": "ACH", "payment_method_id": "5c2e…", "account_ref": "****4821",
+  "notes": "",
+  "next_due": "2026-11-01",
+  "next_occurrence": { "id": "219b2fdf-…", "due_date": "2026-11-01",
+                       "amount": "3200.00", "status": "UPCOMING" },
+  "last_paid_at": "2026-10-01T14:02:11Z",
+  "overdue_amount": "0.00", "days_overdue": 0, "total_paid": "6400.00" }
 ```
 
-⚠️ **`overdue_amount`, `days_overdue` and `total_paid` are numbers here**, not
-decimal strings, unlike everywhere else. Coerce.
+- The `*_id` fields are for the edit screen; the names are for display.
+  `payment_method_id` and `account_ref` are `null` when the bill has no
+  method.
+- `next_occurrence` is the unsettled occurrence `next_due` describes: pay
+  or schedule it by its `id`, with no second lookup. `null` when nothing is
+  outstanding. `status` is `DUE` (today) or `UPCOMING`.
+- `last_paid_at` is the latest time an occurrence was paid, or `null`.
+- `overdue_amount` and `total_paid` are **decimal strings**, `"0.00"` when
+  zero, like money everywhere else. They used to be numbers. `days_overdue`
+  is an integer.
 
 "11 days overdue" is computed server-side on the business-day calendar — take
 `days_overdue` as given.

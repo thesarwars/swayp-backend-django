@@ -14,6 +14,9 @@ class PaymentRepository:
                 "user",
                 "provider",
                 "category",
+                # PAY-3: the history row's vendor and bill, in the same query.
+                "vendor",
+                "bill_occurrence",
             )
         )
 

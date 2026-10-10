@@ -80,3 +80,36 @@ class PaymentHistorySerializationTests(TestCase):
         }
         self.assertIn(good.transaction_reference, references)
         self.assertIn(bare.transaction_reference, references)
+
+
+class HistoryRowVendorTests(TestCase):
+    """PAY-3: a history row says who was paid, and links to the bill."""
+
+    def test_rows_carry_the_vendor_and_bill(self):
+        from apps.bills.factories import BillOccurrenceFactory
+        from apps.payments.factories import PaymentFactory
+        from rest_framework.test import APIClient
+
+        occurrence = BillOccurrenceFactory()
+        user = occurrence.bill.user
+        original = PaymentFactory(user=user, vendor=occurrence.bill.vendor)
+        payment = PaymentFactory(
+            user=user,
+            vendor=occurrence.bill.vendor,
+            bill_occurrence=occurrence,
+            retry_of=original,
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        rows = client.get("/api/v1/payments/history").json()["data"]
+        row = next(r for r in rows if r["id"] == str(payment.id))
+
+        self.assertEqual(row["vendorId"], str(occurrence.bill.vendor_id))
+        self.assertEqual(row["vendorName"], occurrence.bill.vendor.name)
+        self.assertEqual(row["billId"], str(occurrence.bill_id))
+        self.assertEqual(row["occurrenceId"], str(occurrence.id))
+        self.assertEqual(row["replacedPaymentId"], str(original.id))
+        self.assertIn("rail", row)
+        self.assertIn("estimatedArrival", row)
+        self.assertIn("scheduledFor", row)

@@ -23,6 +23,42 @@ class PaymentSerializer(serializers.Serializer):
         default=None,
     )
 
+    # PAY-3. providerName is the biller-directory provider, which a payment
+    # to one of the user's own vendors does not have; these say who was
+    # actually paid. camelCase like the rest of this body.
+    vendorId = serializers.UUIDField(
+        source="vendor_id", allow_null=True, required=False, default=None
+    )
+    vendorName = serializers.CharField(
+        source="vendor.name", allow_null=True, required=False, default=None
+    )
+    billId = serializers.UUIDField(
+        source="bill_occurrence.bill_id",
+        allow_null=True,
+        required=False,
+        default=None,
+    )
+    occurrenceId = serializers.UUIDField(
+        source="bill_occurrence_id",
+        allow_null=True,
+        required=False,
+        default=None,
+    )
+    rail = serializers.CharField()
+    estimatedArrival = serializers.DateField(
+        source="estimated_arrival", allow_null=True
+    )
+    scheduledFor = serializers.DateField(
+        source="scheduled_for", allow_null=True
+    )
+    replacedPaymentId = serializers.UUIDField(
+        source="retry_of_id",
+        allow_null=True,
+        required=False,
+        default=None,
+        help_text="The failed payment this one retried, if any.",
+    )
+
     categoryId = serializers.UUIDField(
         source="category.id", allow_null=True, required=False, default=None
     )

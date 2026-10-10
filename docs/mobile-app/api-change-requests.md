@@ -498,6 +498,7 @@ These matter once the bill detail screens are built:
   - Polls `GET /payments/{id}`, not `/status`.
 
 #### PAY-3 · major · Payment history rows lack the vendor
+- **✅ Fixed**: history rows now have `vendorId`, `vendorName`, `billId`, `occurrenceId`, `rail`, `estimatedArrival`, `scheduledFor` and `replacedPaymentId` (the failed payment this one retried). **`providerName` does not carry the vendor.** It is the biller-directory provider, usually `null` for bill payments, so show `vendorName` as "Recipient". Rows stay camelCase; switching them to snake_case would break current clients, so that is left for API-5. See e6 §5.
 - **Endpoint:** `GET /payments/history`.
 - **Today:** rows have `providerName` (documented as nullable) and no vendor fields. Rows are camelCase while every other payment body is snake_case.
 - **Needed:**

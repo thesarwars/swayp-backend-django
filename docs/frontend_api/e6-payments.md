@@ -260,6 +260,22 @@ GET /api/v1/payments/history?status=&providerId=&categoryId=&page=1
 `categoryId` and `categoryName` can each be **`null`** — render a dash, not
 an empty string.
 
+**Show `vendorName` as the recipient, not `providerName`.** `providerName` is
+the biller-directory provider, which a payment to one of the user's own
+vendors does not have, so it is usually `null` for bill payments. Each row
+also carries:
+
+| Field | Meaning |
+|---|---|
+| `vendorId`, `vendorName` | Who was paid |
+| `billId`, `occurrenceId` | The bill and due date it paid; `null` if none |
+| `rail` | `ACH_STANDARD`, `ACH_SAMEDAY`, `CHECK` or `NETWORK` |
+| `estimatedArrival`, `scheduledFor` | Dates, or `null` |
+| `replacedPaymentId` | The failed payment this one retried, or `null` |
+
+History rows stay **camelCase**, unlike the other payment bodies. Changing it
+would break current clients.
+
 ---
 
 ## 6. Webhooks and the states you'll see

@@ -87,3 +87,118 @@ class BillingContractTests(ContractTestCase):
                    body={"kind": "ERP_SYNC", "quantity": 1}, status=200)
         self.check("POST", "/api/v1/billing/addons",
                    body={"kind": "ERP_SYNC", "quantity": 0}, status=200)
+
+
+class AuthContractTests(ContractTestCase):
+
+    EMAIL = "contract@acme.com"
+    PASSWORD = "Str0ng!Passphrase1"
+
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(user=None)
+
+    def register(self):
+        return self.check("POST", "/api/v1/auth/register", body={
+            "first_name": "Jane", "last_name": "Smith", "email": self.EMAIL,
+            "business_name": "Acme", "password": self.PASSWORD,
+            "terms_accepted": True, "signatory_confirmed": True,
+        }, status=201)
+
+    def code(self, purpose):
+        from datetime import timedelta
+
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+
+        from apps.authentication.models import OTP
+        from apps.authentication.utils.otp import OTPService
+
+        user = get_user_model().objects.get(email=self.EMAIL)
+        OTP.objects.filter(user=user).delete()
+        OTP.objects.create(
+            user=user, code_hash=OTPService.hash_otp("123456"),
+            purpose=purpose, expires_at=timezone.now() + timedelta(minutes=5),
+        )
+
+    def test_the_whole_flow(self):
+        from apps.authentication.models import OTPPurpose
+
+        self.register()
+        self.check("POST", "/api/v1/auth/resend-otp",
+                   body={"email": self.EMAIL}, status=200)
+        self.code(OTPPurpose.REGISTRATION)
+        self.check("POST", "/api/v1/auth/verify-otp",
+                   body={"email": self.EMAIL, "otp": "123456"}, status=200)
+
+        tokens = self.check("POST", "/api/v1/auth/login", body={
+            "email": self.EMAIL, "password": self.PASSWORD,
+        }, status=200).json()["data"]
+
+        self.check("POST", "/api/v1/auth/refresh",
+                   body={"refresh": tokens["refresh"]}, status=200)
+        self.check("POST", "/api/v1/auth/forgot-password",
+                   body={"email": self.EMAIL}, status=200)
+        self.check("POST", "/api/v1/auth/login/phone/request",
+                   body={"phone_number": "+14155552671"}, status=200)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+        self.check("POST", "/api/v1/auth/logout",
+                   body={"refresh": tokens["refresh"]}, status=200)
+
+    def test_bad_login(self):
+        self.check("POST", "/api/v1/auth/login",
+                   body={"email": "x@y.com", "password": "nope"}, status=400)
+
+
+class UserContractTests(ContractTestCase):
+
+    def setUp(self):
+        super().setUp()
+        from apps.users.models import Profile
+
+        Profile.objects.get_or_create(user=self.user, defaults={
+            "full_name": "Jane Smith"})
+
+    def test_profile_and_onboarding(self):
+        self.check("GET", "/api/v1/users/profile", status=200)
+        self.check("PATCH", "/api/v1/users/profile",
+                   body={"full_name": "Jane Q Smith"}, status=200)
+        self.check("GET", "/api/v1/users/onboarding", status=200)
+        self.check("POST", "/api/v1/users/onboarding/skip-bank", status=200)
+
+
+class DashboardContractTests(ContractTestCase):
+
+    def test_home_and_summary(self):
+        from apps.notifications.factories import NotificationFactory
+
+        NotificationFactory(user=self.user)
+        self.check("GET", "/api/v1/dashboard/home", status=200)
+        self.check("GET", "/api/v1/dashboard/profile-summary", status=200)
+
+
+class NotificationContractTests(ContractTestCase):
+
+    def test_list_and_read(self):
+        from apps.notifications.factories import NotificationFactory
+
+        rows = NotificationFactory.create_batch(3, user=self.user)
+
+        self.check("GET", "/api/v1/notifications?pageSize=2",
+                   path="/api/v1/notifications", status=200)
+        self.check(
+            "PATCH", f"/api/v1/notifications/{rows[0].id}/read",
+            path="/api/v1/notifications/{notification_id}/read", status=200,
+        )
+        self.check("PATCH", "/api/v1/notifications/read-all", status=200)
+
+    def test_preferences_and_devices(self):
+        self.check("GET", "/api/v1/notifications/preferences", status=200)
+        self.check("PATCH", "/api/v1/notifications/preferences",
+                   body={"preferences": []}, status=200)
+        self.check("POST", "/api/v1/notifications/devices/register",
+                   body={"token": "fcm-token-1", "platform": "ios"},
+                   status=None)
+        self.check("POST", "/api/v1/notifications/devices/unregister",
+                   body={"token": "fcm-token-1"}, status=None)

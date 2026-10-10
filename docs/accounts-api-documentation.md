@@ -318,10 +318,14 @@ Generate a new access token using a refresh token.
   "success": true,
   "data": {
     "access": "<new_access_token>",
-    "refresh": "<refresh_token>"
+    "refresh": "<new_refresh_token>"
   }
 }
 ```
+
+**Store the new `refresh`.** Refresh tokens rotate: the one you sent is now
+spent, and sending it again is a **401** `code: "token_not_valid"`. Treat a
+401 from refresh as "signed out": go to sign-in.
 
 ---
 
@@ -342,6 +346,9 @@ Logout the current session by invalidating the refresh token.
 
 ### Success response
 - Status: `204 No Content`
+
+Signs out every session of the account and spends this refresh token. An
+invalid or already-spent token is a **400** on `refresh`.
 
 ---
 

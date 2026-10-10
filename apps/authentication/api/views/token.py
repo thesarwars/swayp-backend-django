@@ -5,6 +5,8 @@ from drf_spectacular.utils import (
 )
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.exceptions import APIException
+from rest_framework_simplejwt.exceptions import TokenError
 from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.token import (
@@ -18,6 +20,19 @@ from apps.authentication.services.refresh_token_service import (
     RefreshTokenService,
 )
 
+
+
+class RefreshTokenInvalid(APIException):
+    """401 with code token_not_valid: sign in again.
+
+    Not simplejwt's InvalidToken: that is an AuthenticationFailed, which DRF
+    turns into a 403 on a view with no authentication scheme, and this one
+    is public by necessity.
+    """
+
+    status_code = 401
+    default_detail = "Token is invalid or expired."
+    default_code = "token_not_valid"
 
 @extend_schema(
     tags=["Authentication"],
@@ -44,10 +59,15 @@ class RefreshView(PublicAPIView):
             data=request.data
         )
 
-        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as error:
+            # What simplejwt's own view does: an expired, malformed or
+            # already-rotated token is a 401 (token_not_valid), not a 500.
+            raise RefreshTokenInvalid(error.args[0]) from error
 
         tokens = RefreshTokenService.refresh(
-            serializer.validated_data["refresh"]
+            serializer.validated_data, request=request
         )
 
         return Response(

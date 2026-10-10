@@ -154,7 +154,7 @@ class PlaidBankDataProvider(BankDataProvider):
 
     # --- linking ------------------------------------------------------------
 
-    def create_link_token(self, *, user_ref: str) -> LinkToken:
+    def create_link_token(self, *, user_ref: str, platform=None) -> LinkToken:
         from plaid.model.country_code import CountryCode
         from plaid.model.link_token_create_request import (
             LinkTokenCreateRequest,
@@ -180,12 +180,22 @@ class PlaidBankDataProvider(BankDataProvider):
             ],
         }
 
-        # Only sent when configured: Plaid rejects an empty redirect_uri, and
-        # it is required only for OAuth institutions.
-        redirect_uri = getattr(settings, "PLAID_REDIRECT_URI", "")
+        # How an OAuth bank hands the user back (BANK-5). Plaid takes one or
+        # the other, never both: Android returns to the app by package name,
+        # iOS and web by redirect URI. Each is sent only when configured,
+        # because Plaid rejects an empty value, and both must be registered in
+        # the Plaid dashboard. Taken from settings rather than the request:
+        # Plaid only accepts the registered values anyway.
+        if (platform or "").lower() == "android":
+            package_name = getattr(settings, "PLAID_ANDROID_PACKAGE_NAME", "")
 
-        if redirect_uri:
-            payload["redirect_uri"] = redirect_uri
+            if package_name:
+                payload["android_package_name"] = package_name
+        else:
+            redirect_uri = getattr(settings, "PLAID_REDIRECT_URI", "")
+
+            if redirect_uri:
+                payload["redirect_uri"] = redirect_uri
 
         # Where HISTORICAL_UPDATE will be delivered. Registered per item, at
         # link time — there is no dashboard setting for it, so an item linked

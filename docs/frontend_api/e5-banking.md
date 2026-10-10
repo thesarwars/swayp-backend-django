@@ -31,8 +31,17 @@ GET  banking/onboarding-summary      → the "here's what we set up" screen
 ## 2. Link and exchange
 
 ```
-POST /api/v1/banking/link/token     { }
+POST /api/v1/banking/link/token     { "platform": "ios" }
 ```
+
+Send `platform`: `ios`, `android` or `web` (omitted means `web`). It decides
+how a bank that signs the user in on its own website or app (an "OAuth"
+bank, such as Chase) hands them back to Swayp. Android returns by package
+name, iOS and web by redirect URI. The server holds both values, because Plaid
+only accepts the ones registered in its dashboard. The app sends neither.
+
+`expiration` is the token's expiry from Plaid (ISO 8601). It is `null` on the
+mock provider. Request a new token rather than reusing one after it expires.
 
 Returns a `link_token` for the bank widget, plus `months_history: 24`, the
 window the scan will read. Use it for the pre-link copy ("Returns 24 months of

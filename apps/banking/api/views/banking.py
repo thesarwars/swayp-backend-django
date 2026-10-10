@@ -12,6 +12,7 @@ from apps.banking.api.serializers.banking import (
     ImportCandidatesSerializer,
     InstitutionSerializer,
     LinkExchangeSerializer,
+    LinkTokenRequestSerializer,
     LinkTokenSerializer,
     SetFundingSourceSerializer,
     StartScanSerializer,
@@ -80,7 +81,14 @@ class InstitutionSearchAPIView(AccountScopedMixin, BaseAPIView):
 @extend_schema(
     tags=["Banking"],
     summary="Create a bank link token",
-    description="Short-lived token the client hands to the bank link widget.",
+    description=(
+        "Short-lived token the client hands to the bank link widget. Send "
+        "`platform` (ios, android, web) so OAuth banks can return the user to "
+        "the app: android gets the configured package name, ios and web the "
+        "redirect URI. `expiration` is null on the mock provider. "
+        "`months_history` is the window the scan will read."
+    ),
+    request=LinkTokenRequestSerializer,
     responses={200: LinkTokenSerializer},
 )
 class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
@@ -88,7 +96,13 @@ class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
     service_class = BankLinkService
 
     def post(self, request):
-        data = self.service.create_link_token(user=self.account(request))
+        serializer = LinkTokenRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = self.service.create_link_token(
+            user=self.account(request),
+            platform=serializer.validated_data.get("platform"),
+        )
 
         return ApiResponse.success(
             data=LinkTokenSerializer(data).data,

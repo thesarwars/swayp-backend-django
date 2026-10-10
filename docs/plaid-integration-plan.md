@@ -155,7 +155,9 @@ that `base.py` already specifies rather than reshaping anything.
 
 - `plaid-python` in `requirements.txt`.
 - `base.py`: `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` (sandbox /
-  production), `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_REDIRECT_URI`.
+  production), `PLAID_PRODUCTS`, `PLAID_COUNTRY_CODES`, `PLAID_REDIRECT_URI`,
+  and `PLAID_ANDROID_PACKAGE_NAME` (sent instead of the redirect URI when
+  `link/token` is asked for `platform: android`).
 - `.env` carries the real sandbox values; `.env.example` gets placeholders and
   a comment. Keys never enter a tracked file.
 - `production.py` refuses to boot when `BANK_DATA_PROVIDER=plaid` and the keys

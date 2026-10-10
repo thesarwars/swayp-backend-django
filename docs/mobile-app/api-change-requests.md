@@ -182,6 +182,7 @@ Contents:
 - **App today:** before the link, the copy says 24 (the design, as the product owner asked). After the link, every screen shows the scan's `months_history`, which is 12. So a user reads "24 months" on one screen and "12 months" two screens later.
 
 #### BANK-5 · major (before production) · Link token for real Plaid
+- **✅ Fixed (server side)**: `POST /banking/link/token` takes an optional `platform` (`ios`, `android`, `web`). For Android it sends Plaid the package name from `PLAID_ANDROID_PACKAGE_NAME`; for iOS and web, the redirect URI from `PLAID_REDIRECT_URI`. Plaid only accepts values registered in its dashboard, so the app sends `platform`, not the values themselves. `expiration` was already returned from real Plaid; it is `null` only on the mock. **Still needed before OAuth banks work on a phone:** both values set on the server and registered in the Plaid dashboard. See e5 §2.
 - **Endpoint:** `POST /banking/link/token`.
 - **Today:** the endpoint takes no body and returns no `expiration` that the app can use for real Plaid.
 - **Needed:** accept `android_package_name` and `redirect_uri` (the iOS OAuth redirect), and return `expiration`.

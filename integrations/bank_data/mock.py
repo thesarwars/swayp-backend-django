@@ -78,7 +78,7 @@ class MockBankDataProvider(BankDataProvider):
 
     name = "mock"
 
-    def create_link_token(self, *, user_ref: str) -> LinkToken:
+    def create_link_token(self, *, user_ref: str, platform=None) -> LinkToken:
         return LinkToken(token=f"link-mock-{user_ref}", expiration=None)
 
     def exchange_public_token(self, *, public_token: str) -> ExchangeResult:

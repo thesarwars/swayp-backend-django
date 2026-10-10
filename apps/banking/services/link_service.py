@@ -37,8 +37,10 @@ class BankLinkService:
         """Straight through to the provider — nothing to add or store."""
         return self.provider.search_institutions(query=query)
 
-    def create_link_token(self, *, user):
-        token = self.provider.create_link_token(user_ref=str(user.id))
+    def create_link_token(self, *, user, platform=None):
+        token = self.provider.create_link_token(
+            user_ref=str(user.id), platform=platform
+        )
 
         return {
             "link_token": token.token,

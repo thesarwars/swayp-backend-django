@@ -445,3 +445,56 @@ class SandboxTests(SimpleTestCase):
             )
         finally:
             provider.remove_item(access_token=result.access_token)
+
+
+@override_settings(
+    PLAID_REDIRECT_URI="https://app.swayp.test/plaid/oauth",
+    PLAID_ANDROID_PACKAGE_NAME="com.swayp.app",
+    PLAID_WEBHOOK_URL="https://api.swayp.test/webhooks/plaid",
+)
+class LinkTokenPlatformTests(SimpleTestCase):
+    """BANK-5: an OAuth bank hands the user back by package on Android and by
+    redirect URI elsewhere. Plaid takes one or the other, never both."""
+
+    def sent(self, platform):
+        provider = build_provider(
+            link_token_create=mock.Mock(
+                return_value={
+                    "link_token": "link-sandbox-1",
+                    "expiration": "2026-10-10T12:00:00Z",
+                }
+            )
+        )
+
+        token = provider.create_link_token(user_ref="u1", platform=platform)
+        request = provider._client.link_token_create.call_args[0][0]
+
+        return token, request.to_dict()
+
+    def test_android_sends_the_package_and_no_redirect(self):
+        _, body = self.sent("android")
+
+        self.assertEqual(body["android_package_name"], "com.swayp.app")
+        self.assertNotIn("redirect_uri", body)
+
+    def test_ios_web_and_unset_send_the_redirect_and_no_package(self):
+        for platform in ("ios", "web", None):
+            with self.subTest(platform=platform):
+                _, body = self.sent(platform)
+
+                self.assertEqual(
+                    body["redirect_uri"], "https://app.swayp.test/plaid/oauth"
+                )
+                self.assertNotIn("android_package_name", body)
+
+    @override_settings(PLAID_ANDROID_PACKAGE_NAME="")
+    def test_an_unset_package_is_omitted_not_sent_empty(self):
+        _, body = self.sent("android")
+
+        self.assertNotIn("android_package_name", body)
+        self.assertNotIn("redirect_uri", body)
+
+    def test_expiration_is_passed_through(self):
+        token, _ = self.sent("ios")
+
+        self.assertEqual(token.expiration, "2026-10-10T12:00:00Z")

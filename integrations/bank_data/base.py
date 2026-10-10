@@ -93,7 +93,11 @@ class BankDataProvider(ABC):
     name = "base"
 
     @abstractmethod
-    def create_link_token(self, *, user_ref: str) -> LinkToken:
+    def create_link_token(
+        self, *, user_ref: str, platform: Optional[str] = None
+    ) -> LinkToken:
+        """``platform`` is ``ios``, ``android``, ``web`` or None (treated as
+        web). It decides how an OAuth bank hands the user back to the app."""
         ...
 
     @abstractmethod

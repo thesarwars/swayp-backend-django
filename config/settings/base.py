@@ -451,6 +451,11 @@ PLAID_COUNTRY_CODES = env.list("PLAID_COUNTRY_CODES", default=["US"])
 # Required by OAuth institutions only, and Plaid rejects an empty string, so
 # the provider omits it entirely when this is unset.
 PLAID_REDIRECT_URI = env("PLAID_REDIRECT_URI", default="")
+# The Android app's package name (e.g. com.swayp.app), sent instead of
+# PLAID_REDIRECT_URI when link/token is asked for platform=android: Plaid's
+# Android SDK returns from OAuth banks to the app by package, not by URL. It
+# must also be registered in the Plaid dashboard (BANK-5).
+PLAID_ANDROID_PACKAGE_NAME = env("PLAID_ANDROID_PACKAGE_NAME", default="")
 # Where Plaid delivers TRANSACTIONS/HISTORICAL_UPDATE. Registered on each item
 # at link time rather than configured in Plaid's dashboard, so an item linked
 # while this is empty never reports that its history is ready — and the scan

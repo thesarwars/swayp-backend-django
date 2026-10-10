@@ -12,6 +12,15 @@ from apps.banking.models import (
 from apps.common.enums import BillFrequency
 
 
+class LinkTokenRequestSerializer(serializers.Serializer):
+    """Optional. Which client is opening Plaid Link, so an OAuth bank can hand
+    the user back to it (BANK-5). Omitted means web."""
+
+    platform = serializers.ChoiceField(
+        choices=["ios", "android", "web"], required=False
+    )
+
+
 class LinkTokenSerializer(serializers.Serializer):
     link_token = serializers.CharField()
     expiration = serializers.CharField(allow_null=True)

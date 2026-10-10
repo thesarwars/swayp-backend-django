@@ -38,3 +38,44 @@ class LinkTokenWindowTests(TestCase):
         self.assertEqual(
             exchange["scan"]["months_history"], promised["months_history"]
         )
+
+
+@override_settings(BANK_DATA_PROVIDER="mock")
+class LinkTokenPlatformParamTests(TestCase):
+    """BANK-5: the platform reaches the provider, and a bad one is a 400."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.client.force_authenticate(user=UserFactory())
+
+    def test_platform_is_passed_to_the_provider(self):
+        from unittest.mock import patch
+
+        from integrations.bank_data.mock import MockBankDataProvider
+
+        with patch.object(
+            MockBankDataProvider,
+            "create_link_token",
+            autospec=True,
+            side_effect=MockBankDataProvider.create_link_token,
+        ) as spy:
+            response = self.client.post(
+                "/api/v1/banking/link/token", {"platform": "android"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(spy.call_args.kwargs["platform"], "android")
+
+    def test_no_body_still_works(self):
+        self.assertEqual(
+            self.client.post("/api/v1/banking/link/token").status_code, 200
+        )
+
+    def test_an_unknown_platform_is_a_400(self):
+        response = self.client.post(
+            "/api/v1/banking/link/token", {"platform": "windows"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

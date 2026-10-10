@@ -65,7 +65,7 @@ GET  onboarding-summary/     →  the done screen
 ### Step 1 — Get a link token
 
 ```
-POST /api/v1/banking/link/token
+POST /api/v1/banking/link/token     { "platform": "ios" }   ← optional: ios, android, web
 ```
 
 ```json

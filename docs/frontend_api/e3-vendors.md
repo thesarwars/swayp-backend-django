@@ -67,23 +67,35 @@ Returns the vendor, **all** its payment methods, and the spend panel:
   "payment_methods": [
     { "id": "d4507e72-…", "method_type": "ACH", "is_primary": true,
       "supports_same_day": false, "provider": "STRIPE",
-      "account_ref": "****8837", "account_holder_name": "WeWork Inc",
+      "account_ref": "****8837", "account_type": "CHECKING",
+      "account_holder_name": "WeWork Inc", "network_payee_ref": "",
       "aba_bank_name": "Chase Bank", "payee_verified": false,
       "check_legal_name": "", "street": "", "city": "", "state": "",
       "zip_code": "", "check_memo": "", "schedule": null }
   ],
   "total_paid": "0.00",
   "monthly_spend": [ { "month": "2025-08", "total": "0.00" } ],
-  "next_bill": null,
-  "bills": []
-} 
+  "next_bill": { "occurrence_id": "…", "bill_id": "…",
+                 "due_date": "2026-11-01", "amount": "3200.00" },
+  "bills": [
+    { "occurrence_id": "…", "bill_id": "…", "category": "Rent",
+      "amount": "3200.00", "due_date": "2026-11-01", "status": "UPCOMING" } ]
+}
 ```
+
+`bills` is the vendor's recent bill occurrences, each with a status chip
+computed now (`UPCOMING`, `DUE`, `OVERDUE`, `SCHEDULED`, `PAID`). `next_bill`
+is the nearest unsettled one, or `null`.
 
 `monthly_spend` is a fixed 12-month series — render it as a chart without
 filling gaps yourself.
 
-> `total_paid` comes back as a **number** in some responses and a string in
-> others. Coerce it.
+All money here (`total_paid`, `monthly_spend[].total`, `next_bill.amount`,
+`bills[].amount`) is a **2-decimal string**, `"0.00"` when zero.
+
+`PATCH /api/v1/vendors/<id>` takes `name`, `category`, `notes` (and the
+contact fields) and answers with **this full vendor**, so there is no need to
+refetch.
 
 `payee_verified` is set by provider-run verification, which isn't wired. **It
 will always be `false`** — don't build a trust badge that never lights up.

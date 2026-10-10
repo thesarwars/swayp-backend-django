@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.bill_categories.models import BillCategory
@@ -112,6 +113,39 @@ class VendorListSerializer(serializers.ModelSerializer):
 from .vendor_payment_method import VendorPaymentMethodCreateSerializer, VendorPaymentMethodSerializer
 
 
+def _money(value):
+    """2dp string, like money everywhere else in the API (VEND-9)."""
+    if value is None:
+        return None
+
+    return str(Decimal(value).quantize(Decimal("0.01")))
+
+
+class MonthlySpendSerializer(serializers.Serializer):
+    month = serializers.CharField(help_text="YYYY-MM")
+    total = serializers.DecimalField(max_digits=18, decimal_places=2)
+
+
+class NextBillSerializer(serializers.Serializer):
+    occurrence_id = serializers.UUIDField()
+    bill_id = serializers.UUIDField()
+    due_date = serializers.DateField()
+    amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+
+
+class VendorBillRowSerializer(serializers.Serializer):
+    """One of the vendor's recent bills (VEND-9: was undocumented)."""
+
+    occurrence_id = serializers.UUIDField()
+    bill_id = serializers.UUIDField()
+    category = serializers.CharField(allow_null=True)
+    amount = serializers.DecimalField(max_digits=18, decimal_places=2)
+    due_date = serializers.DateField()
+    status = serializers.CharField(
+        help_text="UPCOMING, DUE, OVERDUE, SCHEDULED or PAID, computed now."
+    )
+
+
 class VendorDetailSerializer(serializers.ModelSerializer):
 
     payment_methods = VendorPaymentMethodSerializer(
@@ -148,12 +182,20 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "bills",
         )
 
+    # Money is a 2dp string in all four (VEND-9). They were Decimals out of
+    # SerializerMethodFields, which the JSON renderer writes as numbers.
+    @extend_schema_field(serializers.DecimalField(max_digits=18, decimal_places=2))
     def get_total_paid(self, obj):
-        return VendorSelector.total_paid(obj)
+        return _money(VendorSelector.total_paid(obj))
 
+    @extend_schema_field(MonthlySpendSerializer(many=True))
     def get_monthly_spend(self, obj):
-        return VendorSelector.monthly_spend(obj)
+        return [
+            {"month": bucket["month"], "total": _money(bucket["total"])}
+            for bucket in VendorSelector.monthly_spend(obj)
+        ]
 
+    @extend_schema_field(NextBillSerializer(allow_null=True))
     def get_next_bill(self, obj):
         occurrence = VendorSelector.next_bill(obj)
 
@@ -164,9 +206,10 @@ class VendorDetailSerializer(serializers.ModelSerializer):
             "occurrence_id": occurrence.id,
             "bill_id": occurrence.bill_id,
             "due_date": occurrence.due_date,
-            "amount": occurrence.amount,
+            "amount": _money(occurrence.amount),
         }
 
+    @extend_schema_field(VendorBillRowSerializer(many=True))
     def get_bills(self, obj):
         """Capped list of the vendor's bills with read-time status chips."""
         return [
@@ -176,7 +219,7 @@ class VendorDetailSerializer(serializers.ModelSerializer):
                 "category": (
                     occ.bill.category.name if occ.bill.category_id else None
                 ),
-                "amount": occ.amount,
+                "amount": _money(occ.amount),
                 "due_date": occ.due_date,
                 "status": occ.computed_status,
             }

@@ -638,6 +638,7 @@ These matter once the bill detail screens are built:
 - **App today:** the card shows the payment method instead, and an "Active" pill.
 
 #### VEND-9 · minor · Vendor update and detail bodies
+- **✅ Fixed**: `PATCH /vendors/{id}` now answers with the **full vendor** (the detail shape). `total_paid`, `monthly_spend[].total`, `next_bill.amount` and `bills[].amount` are always 2-decimal strings. `bills[]` is documented and typed in OpenAPI: `occurrence_id, bill_id, category, amount, due_date, status`. Methods now carry `account_type` and `network_payee_ref`. See e3 §3.
 - **Endpoint:** `PATCH /vendors/{id}`, `GET /vendors/{id}`.
 - **Today:**
   - PATCH returns three fields (`name, category, notes`), not the vendor.

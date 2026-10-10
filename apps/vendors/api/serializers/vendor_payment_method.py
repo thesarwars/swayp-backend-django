@@ -44,7 +44,10 @@ class VendorPaymentMethodSerializer(serializers.ModelSerializer):
             "supports_same_day",
             "provider",
             "account_ref",
+            # VEND-9: checking or savings, and the biller-network reference.
+            "account_type",
             "account_holder_name",
+            "network_payee_ref",
             "aba_bank_name",
             "payee_verified",
             "check_legal_name",

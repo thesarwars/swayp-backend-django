@@ -381,3 +381,46 @@ class PaymentMethodShapeTests(TestCase):
         self.assertNotIn("provider_token", response.data)
         self.assertEqual(response.data["account_holder_name"], "Acme Inc")
         self.assertEqual(response.data["account_ref"], "****4821")
+
+
+class VendorBodiesTests(TestCase):
+    """VEND-9: PATCH returns the vendor; money is a 2dp string."""
+
+    def setUp(self):
+        from apps.vendors.factories import (
+            UserFactory,
+            VendorFactory,
+            VendorPaymentMethodFactory,
+        )
+
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.vendor = VendorFactory(user=self.user)
+        VendorPaymentMethodFactory(vendor=self.vendor)
+
+    def test_patch_returns_the_full_vendor(self):
+        response = self.client.patch(
+            f"/api/v1/vendors/{self.vendor.id}", {"notes": "net 30"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["notes"], "net 30")
+        for key in ("id", "payment_methods", "total_paid", "bills"):
+            self.assertIn(key, response.data)
+
+    def test_money_is_a_string_even_when_zero(self):
+        data = self.client.get(f"/api/v1/vendors/{self.vendor.id}").json()
+
+        self.assertEqual(data["total_paid"], "0.00")
+        self.assertEqual(data["monthly_spend"][0]["total"], "0.00")
+
+    def test_methods_carry_account_type_and_network_ref(self):
+        method = self.client.get(f"/api/v1/vendors/{self.vendor.id}").json()[
+            "payment_methods"
+        ][0]
+
+        self.assertIn("account_type", method)
+        self.assertIn("network_payee_ref", method)
+        self.assertNotIn("provider_token", method)

@@ -84,11 +84,36 @@ class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
             return VendorUpdateSerializer
         return VendorDetailSerializer
 
-    def perform_update(self, serializer):
-        VendorService.update_vendor(
+    @extend_schema(
+        request=VendorUpdateSerializer,
+        responses={200: VendorDetailSerializer},
+    )
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)
+
+    @extend_schema(
+        request=VendorUpdateSerializer,
+        responses={200: VendorDetailSerializer},
+    )
+    def put(self, request, *args, **kwargs):
+        return super().put(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        """Answer with the full vendor (VEND-9); it used to be the three
+        fields that were writable."""
+        serializer = self.get_serializer(
+            self.get_object(),
+            data=request.data,
+            partial=kwargs.pop("partial", False),
+        )
+        serializer.is_valid(raise_exception=True)
+
+        vendor = VendorService.update_vendor(
             vendor=serializer.instance,
             validated_data=serializer.validated_data,
         )
+
+        return Response(VendorDetailSerializer(vendor).data)
 
     def perform_destroy(self, instance):
         VendorService.soft_delete(instance)

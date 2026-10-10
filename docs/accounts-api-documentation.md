@@ -250,7 +250,8 @@ error for unknown number, wrong code and expired code alike.
 ### Purpose
 Sign in, or sign up, with a Google ID token obtained on the device. The
 server verifies the token against Google's public keys and against every
-client ID in `GOOGLE_OAUTH_CLIENT_IDS` (web, iOS, Android). No redirect URI.
+client ID in `GOOGLE_OAUTH_CLIENT_IDS` (web, iOS, Android) and
+`GOOGLE_CLIENT_ID` (the web client alone). No redirect URI.
 
 ### Request body
 ```json
@@ -292,7 +293,7 @@ created the account.
 |---|---|
 | 400 `errors.id_token` | Signature, audience, issuer or expiry fails; email not verified by Google; email already linked to another Google account |
 | 400 `message` "Account is inactive." | Deactivated account |
-| 503 | `GOOGLE_OAUTH_CLIENT_IDS` empty, or Google's keys unreachable |
+| 503 | No client ID configured, or Google's keys unreachable |
 
 ---
 

@@ -476,6 +476,12 @@ PLAID_WEBHOOK_URL = env("PLAID_WEBHOOK_URL", default="")
 # client, the iOS client and the Android client each sign with their own as
 # the audience. Empty turns POST /auth/login/google off (503).
 GOOGLE_OAUTH_CLIENT_IDS = env.list("GOOGLE_OAUTH_CLIENT_IDS", default=[])
+# The single-client name, for a deployment with only the web client. Merged
+# in rather than either/or, so adding the mobile IDs later is additive.
+# GOOGLE_CLIENT_SECRET is never read: verifying an ID token needs no secret.
+_google_web_client_id = env("GOOGLE_CLIENT_ID", default="")
+if _google_web_client_id and _google_web_client_id not in GOOGLE_OAUTH_CLIENT_IDS:
+    GOOGLE_OAUTH_CLIENT_IDS = [*GOOGLE_OAUTH_CLIENT_IDS, _google_web_client_id]
 DIRECTORY_PROVIDER = env("DIRECTORY_PROVIDER", default="mock")
 CHECK_MAIL_PROVIDER = env("CHECK_MAIL_PROVIDER", default="mock")
 

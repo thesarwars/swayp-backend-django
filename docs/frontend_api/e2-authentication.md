@@ -306,6 +306,7 @@ Both answer in the standard envelope, `{ "success", "message", "data" }`.
 
 ```json
 {
+  "id": "5b1e…",
   "account_type": "BUSINESS",
   "email": "jane@acme.com",
   "phone_number": null,
@@ -339,6 +340,10 @@ directly; there is no need to refetch `GET users/profile` after a save.
 The first changes what the account *is*; `email` and `phone_number` are login
 identifiers, so changing one is a verified flow, not a profile edit. Sending
 them to `PATCH` is ignored, not rejected.
+
+`id` is the account the profile describes. For a team member that is the
+business they work for, not themselves: their own id is `id` in
+`dashboard/profile-summary`.
 
 `business_name`, `poc_name` and the rest are **`null` on an individual
 account** rather than absent, so one form renders both types without branching

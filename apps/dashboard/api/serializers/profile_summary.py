@@ -20,7 +20,19 @@ class ProfileSummarySerializer(serializers.Serializer):
         allow_null=True,
     )
 
-    greeting = serializers.CharField()
+    greeting = serializers.ChoiceField(
+        choices=[
+            "Good Morning",
+            "Good Afternoon",
+            "Good Evening",
+            "Good Night",
+        ],
+        help_text=(
+            "Picked by the hour in US Eastern time: Morning 05-12, "
+            "Afternoon 12-17, Evening 17-21, Night otherwise. A user in "
+            "another timezone should be greeted by the device clock instead."
+        ),
+    )
 
     unreadNotificationCount = serializers.IntegerField(
         source="unread_notification_count"

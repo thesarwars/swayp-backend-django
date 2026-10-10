@@ -84,6 +84,7 @@ class ProfileService:
         branch = self.branch(profile)
 
         data = {
+            "id": user.id,
             "account_type": profile.account_type,
             "email": user.email,
             "phone_number": user.phone_number,

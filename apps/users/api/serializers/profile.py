@@ -12,6 +12,10 @@ class ProfileSerializer(serializers.Serializer):
     profile edit.
     """
 
+    # The account this profile describes (DASH-11). For a team member that
+    # is the business they work for, not themselves; their own id is in
+    # dashboard/profile-summary.
+    id = serializers.UUIDField(read_only=True)
     account_type = serializers.ChoiceField(
         choices=AccountType.choices, read_only=True
     )

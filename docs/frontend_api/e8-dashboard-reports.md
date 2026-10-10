@@ -111,7 +111,12 @@ GET /api/v1/dashboard/profile-summary
 ```
 
 Read-only, for the account chip in the header. To **edit** anything, use
-[`users/profile`](e2-authentication.md).
+[`users/profile`](e2-authentication.md). `id` here is the signed-in person.
+
+`greeting` is one of `Good Morning` (05:00–11:59), `Good Afternoon`
+(12:00–16:59), `Good Evening` (17:00–20:59) or `Good Night`, picked by the
+hour in **US Eastern** time. For a user in another timezone that is wrong, so
+greet by the device clock if the user's timezone matters to you.
 
 ---
 

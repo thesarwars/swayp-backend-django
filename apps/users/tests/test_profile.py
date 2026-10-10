@@ -279,3 +279,27 @@ class ProfilePatchResponseTests(TestCase):
         self.assertTrue(body["success"])
         self.assertEqual(body["data"]["address"], "1 Main St")
         self.assertEqual(body["data"], self.client.get(URL).json()["data"])
+
+
+
+class ProfileIdTests(TestCase):
+    """DASH-11: the profile carries the id of the account it describes."""
+
+    def test_the_owner_sees_their_own_id(self):
+        user = UserFactory()
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        data = client.get(URL).json()["data"]
+
+        self.assertEqual(data["id"], str(user.id))
+
+    def test_a_team_member_sees_the_accounts_id(self):
+        member = ActiveMemberFactory(role=TeamRole.ADMIN)
+        client = APIClient()
+        client.force_authenticate(user=member.user)
+
+        data = client.get(URL).json()["data"]
+
+        self.assertEqual(data["id"], str(member.account_id))
+        self.assertNotEqual(data["id"], str(member.user_id))

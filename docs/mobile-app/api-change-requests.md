@@ -313,6 +313,7 @@ Contents:
 - **App today:** `pay_panel.items` holds only the server's active tab, so Payment Centre shows that tab's rows (up to 5, earliest due first).
 
 #### DASH-11 · minor · Profile and greeting
+- **✅ Fixed**: `GET /users/profile` (and the `PATCH` answer) now has `id`, the account the profile describes. For a team member that is the business, and their own id is in `profile-summary`. `greeting` is kept and documented: one of four fixed strings, picked by the hour in US Eastern time (Morning 05–12, Afternoon 12–17, Evening 17–21, Night otherwise). Computing it from the device clock, as the app does, is right for users outside Eastern. The profile still has no avatar; that is AUTH-13. See e2 §5 and e8 §1.
 - **Endpoint:** `GET /users/profile`, `GET /dashboard/profile-summary`.
 - **Today:**
   - The profile has no `id` and no avatar.

@@ -488,6 +488,7 @@ These matter once the bill detail screens are built:
   - The marker holds one id, so a rare sequence can still leave a payment reserved. Only this change fixes it properly.
 
 #### PAY-2 · major · Publish the payments reference
+- **✅ Fixed**: `docs/payments-api-documentation.md` now exists: statuses, stages, rails, and every endpoint's body, idempotency and test amounts. The guides that linked to "Payments API" now point to it. OpenAPI declares a response body for every payments endpoint, including status, batch status, confirm, cancel, failure and resolve. `receipt`, `failure` and `progress` on `PaymentDetail` are proper objects, not `string`. The family uses the standard `{ success, message, data }` envelope throughout.
 - **Endpoint:** `GET /payments/{id}/status`, `GET /payments/batches/{id}/status`, `GET /payments/{id}/failure`, `POST …/confirm`, `POST …/cancel`, `POST …/resolve`, and the `receipt`, `failure` and `progress` blocks of `PaymentDetail` (typed `string` in OpenAPI).
 - **Today:** the guide links a "Payments API" document that is not in the repo. None of these bodies are documented, and the envelope of the payments family is unstated.
 - **Needed:** the reference with captured bodies, and OpenAPI response schemas.

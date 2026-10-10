@@ -8,7 +8,7 @@ that adds it all up.
 
 Every response body below was captured from the running API.
 
-Related: Payments API · [Banking API](banking-api-documentation.md) · [Frontend Guide](frontend-integration-guide.md)
+Related: [Payments API](payments-api-documentation.md) · [Banking API](banking-api-documentation.md) · [Frontend Guide](frontend-integration-guide.md)
 
 ---
 

@@ -150,12 +150,52 @@ class PaymentDetailSerializer(PaymentSerializer):
 
         return PaymentDetailSelector()
 
+    # Typed for OpenAPI (PAY-2); they were published as plain strings.
+    @extend_schema_field(
+        {
+            "type": "object",
+            "nullable": True,
+            "description": "Present once SUCCESSFUL, else null.",
+            "properties": {
+                "recipient": {"type": "string", "nullable": True},
+                "amount": {"type": "string", "format": "decimal"},
+                "funding_account": {"type": "string", "nullable": True},
+                "estimated_arrival": {
+                    "type": "string", "format": "date", "nullable": True,
+                },
+                "reference": {"type": "string"},
+                "paid_on": {"type": "string", "format": "date-time"},
+            },
+        }
+    )
     def get_receipt(self, obj):
         return self._selector().receipt(obj)
 
+    @extend_schema_field(
+        {
+            "type": "object",
+            "nullable": True,
+            "description": "Present when FAILED, else null.",
+            "properties": {
+                "reason": {"type": "string"},
+                "detail": {"type": "object"},
+                "can_resolve": {"type": "boolean"},
+            },
+        }
+    )
     def get_failure(self, obj):
         return self._selector().failure_block(obj)
 
+    @extend_schema_field(
+        {
+            "type": "object",
+            "properties": {
+                "completed": {"type": "integer"},
+                "total": {"type": "integer"},
+                "is_complete": {"type": "boolean"},
+            },
+        }
+    )
     def get_progress(self, obj):
         return self._selector().progress(obj)
 

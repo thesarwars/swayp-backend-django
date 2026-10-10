@@ -1,6 +1,6 @@
 """Payment endpoints (E6-S2 … E6-S6)."""
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 
 from apps.common.base_views import BaseAPIView
@@ -28,9 +28,25 @@ from apps.payments.services.resolution_service import (
 )
 from rest_framework.exceptions import ValidationError
 
+from apps.payments.api.serializers.responses import (
+    BatchCancelEnvelope,
+    BatchConfirmEnvelope,
+    BatchStatusEnvelope,
+    PaymentCreateEnvelope,
+    PaymentEnvelope,
+    PaymentStatusEnvelope,
+    envelope,
+)
 from apps.payments.api.serializers.resolution import (
     PaymentFailureResponseSerializer,
     ResolveResponseSerializer,
+)
+
+PaymentDetailEnvelope = envelope(
+    "PaymentDetailEnvelope", PaymentDetailSerializer()
+)
+CONFLICT_RESPONSE = OpenApiResponse(
+    description="The cancellation window has closed (confirmed payments only)."
 )
 
 
@@ -44,6 +60,7 @@ from apps.payments.api.serializers.resolution import (
         "payment is confirmed. Send scheduled_for to future-date it."
     ),
     request=PaymentCreateSerializer,
+    responses={201: PaymentCreateEnvelope},
 )
 class PaymentCreateAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -93,6 +110,7 @@ class PaymentCreateAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
         "second consent."
     ),
     request=ConfirmSerializer,
+    responses={200: BatchConfirmEnvelope},
 )
 class BatchConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -137,6 +155,7 @@ class BatchConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
     tags=["Payments"],
     summary="Confirm a single payment",
     request=ConfirmSerializer,
+    responses={200: PaymentEnvelope},
 )
 class PaymentConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
@@ -176,6 +195,7 @@ class PaymentConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
     tags=["Payments"],
     summary="Payment status",
     description="Ordered stage checklist. Poll while the drawer is open.",
+    responses={200: PaymentStatusEnvelope},
 )
 class PaymentStatusAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -208,6 +228,7 @@ class PaymentStatusAPIView(AccountScopedMixin, BaseAPIView):
     tags=["Payments"],
     summary="Batch status",
     description="Aggregates its payments; a single failure surfaces.",
+    responses={200: BatchStatusEnvelope},
 )
 class BatchStatusAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -236,7 +257,7 @@ class BatchStatusAPIView(AccountScopedMixin, BaseAPIView):
         "State-aware: stages always, a receipt when settled, a failure block "
         "when it failed."
     ),
-    responses={200: PaymentDetailSerializer},
+    responses={200: PaymentDetailEnvelope},
 )
 class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -263,7 +284,7 @@ class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
             "the payment detail."
         ),
         request=RescheduleSerializer,
-        responses={200: PaymentDetailSerializer},
+        responses={200: PaymentDetailEnvelope},
     )
     def patch(self, request, payment_id):
         serializer = RescheduleSerializer(data=request.data)
@@ -289,6 +310,8 @@ class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
     tags=["Payments"],
     summary="Cancel a payment",
     description="Allowed until the cancellation deadline; 409 afterwards.",
+    request=None,
+    responses={200: PaymentEnvelope, 409: CONFLICT_RESPONSE},
 )
 class PaymentCancelAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -308,6 +331,8 @@ class PaymentCancelAPIView(AccountScopedMixin, BaseAPIView):
 @extend_schema(
     tags=["Payments"],
     summary="Cancel a batch",
+    request=None,
+    responses={200: BatchCancelEnvelope, 409: CONFLICT_RESPONSE},
 )
 class BatchCancelAPIView(AccountScopedMixin, BaseAPIView):
 

@@ -787,6 +787,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **App today:** matches `/no funding account/i` and then shows a "Connect a bank account" prompt instead of a toast. A rewording silently turns that prompt into a plain error toast.
 
 #### API-4 · minor · Error bodies are not uniform
+✅ Fixed: every `errors` value is a list of strings, normalized in the exception handler (nesting kept). Every error under `/api/` is the JSON envelope, including unknown routes, trailing slashes and crashes. A missing or foreign id in the URL is 404 everywhere (payments, batches, bank connections, scans, candidates, bills). An unknown id in the request body stays a 400 on that field. QR decode was already enveloped. The declined-card sample is enveloped since BILLING-1.
 - **Today:**
   - Some `errors` values are plain strings instead of string arrays: `errors.subscription`, `errors.plan` (addons), `errors.payment_method_id`, `errors.consent_accepted`, and `errors.connection` on bank disconnect.
   - The declined-card sample has no `success` or `message`.

@@ -2,6 +2,8 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.common.exceptions import NotFoundException
+
 from apps.bill_categories.models import BillCategory
 from apps.bills.models.bill import Bill
 from apps.bills.selectors.bill_selector import BillSelector
@@ -125,9 +127,7 @@ class BillService:
         )
 
         if not bill:
-            raise ValidationError(
-                {"bill": "Bill not found."}
-            )
+            raise NotFoundException("Bill not found.")
 
         return bill
 
@@ -138,11 +138,7 @@ class BillService:
         )
 
         if not bill:
-            raise ValidationError(
-                {
-                    "bill": "Bill not found."
-                }
-            )
+            raise NotFoundException("Bill not found.")
 
         return bill
 

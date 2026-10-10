@@ -26,6 +26,7 @@ from apps.payments.services.authorization_text import processor_for_rail
 from apps.payments.services.payment_create_service import PaymentCreateService
 from apps.payments.services.rails import rail_for_bill
 from apps.vendors.services.late_fee import grace_days, has_late_fee_policy
+from apps.common.exceptions import NotFoundException
 
 RETRY = "retry"
 CHANGE_METHOD = "change_method"
@@ -87,7 +88,7 @@ class PaymentResolutionService:
         ).first()
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         if payment.status != PaymentStatus.FAILED:
             raise ValidationError(
@@ -171,7 +172,7 @@ class PaymentResolutionService:
         )
 
         if failed is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         if failed.status != PaymentStatus.FAILED:
             raise ValidationError(

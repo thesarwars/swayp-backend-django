@@ -134,6 +134,9 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
 
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+
+    # Outermost of ours: rewrites any non-JSON error under /api/ (API-4).
+    "apps.common.middleware.JsonApiErrorMiddleware",
 ]
 
 # 7 days while the app is in development: a 15-minute token expires part-way

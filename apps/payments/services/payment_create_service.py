@@ -36,6 +36,7 @@ from apps.payments.services.authorization_text import (
     for_single,
     processor_for_rail,
 )
+from apps.common.exceptions import NotFoundException
 
 #: Rails a client may request. CHECK is created the same way but mailed.
 SELECTABLE_RAILS = {
@@ -208,7 +209,7 @@ class PaymentCreateService:
         )
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         if payment.status not in CONFIRMABLE or is_confirmed(payment):
             raise ValidationError(

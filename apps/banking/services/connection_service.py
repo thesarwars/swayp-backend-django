@@ -11,6 +11,7 @@ from apps.banking.models import (
     TransactionScan,
 )
 from apps.common.enums import PaymentStatus
+from apps.common.exceptions import NotFoundException
 
 #: A payment in one of these states still needs its funding source.
 IN_FLIGHT_STATUSES = (
@@ -53,7 +54,7 @@ class ConnectionService:
         ).first()
 
         if connection is None:
-            raise ValidationError({"connection": "Connection not found."})
+            raise NotFoundException("Connection not found.")
 
         return connection
 

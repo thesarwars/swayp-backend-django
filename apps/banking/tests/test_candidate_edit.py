@@ -129,6 +129,6 @@ class CandidateEditTests(TestCase):
 
         response = stranger.patch(self._url(), {"amount": "1.00"}, format="json")
 
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 404)
         self.candidate.refresh_from_db()
         self.assertNotEqual(self.candidate.amount, Decimal("1.00"))

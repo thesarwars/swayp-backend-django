@@ -182,7 +182,8 @@ out mid-prompt, but the money has not moved.
 **Declined card → 400**, not 402 — no upgrade fixes a bad card:
 
 ```json
-{ "errors": { "payment_method_id": "Your card was declined." } }
+{ "success": false, "message": "Validation failed.",
+  "errors": { "payment_method_id": ["Your card was declined."] } }
 ```
 
 **Provider unreachable → 503**, "your card has not been charged, try again".

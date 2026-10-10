@@ -264,7 +264,7 @@ again".
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "subscription": "This account already has an active subscription. Change the plan instead." } }
+  "errors": { "subscription": ["This account already has an active subscription. Change the plan instead."] } }
 ```
 
 **400 — unknown plan:**
@@ -350,7 +350,7 @@ GET /api/v1/billing/allowances
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "subscription": "No active subscription." } }
+  "errors": { "subscription": ["No active subscription."] } }
 ```
 
 ### 5.1 What each row means
@@ -415,7 +415,7 @@ only**. Any other rail is a 400 rather than a silent downgrade:
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "expedited": "Only check payments can be expedited." } }
+  "errors": { "expedited": ["Only check payments can be expedited."] } }
 ```
 
 The created payment echoes `"expedited": true` and carries a nearer
@@ -582,7 +582,7 @@ with `data: null`:
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "plan": "Add-ons are available on the Enterprise plan only." } }
+  "errors": { "plan": ["Add-ons are available on the Enterprise plan only."] } }
 ```
 
 **GET does not reject** — on Founding or Standard it returns `200` with
@@ -595,7 +595,7 @@ the user will find out only on submit.
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "quantity": "ERP_SYNC is a single add-on; quantity must be 1." } }
+  "errors": { "quantity": ["ERP_SYNC is a single add-on; quantity must be 1."] } }
 ```
 
 `unit_price` is captured **at the moment of sale**. Enterprise is negotiated,

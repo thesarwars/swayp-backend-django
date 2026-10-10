@@ -13,6 +13,8 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
+from apps.common.exceptions import NotFoundException
+
 from apps.banking.models import (
     BankConnection,
     BankConnectionStatus,
@@ -99,7 +101,7 @@ class ScanService:
         )
 
         if scan is None:
-            raise ValidationError({"scan": "Scan not found."})
+            raise NotFoundException("Scan not found.")
 
         return scan
 

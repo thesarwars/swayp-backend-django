@@ -26,6 +26,7 @@ from apps.common.enums import (
     VendorStatus,
 )
 from apps.vendors.models import Vendor
+from apps.common.exceptions import NotFoundException
 
 #: Used when a candidate has no category guess and no fallback exists.
 
@@ -41,7 +42,7 @@ class BillImportService:
         ).select_related("connection").first()
 
         if scan is None:
-            raise ValidationError({"scan": "Scan not found."})
+            raise NotFoundException("Scan not found.")
 
         return scan
 
@@ -72,7 +73,7 @@ class BillImportService:
         )
 
         if candidate is None:
-            raise ValidationError({"candidate": "Candidate not found."})
+            raise NotFoundException("Candidate not found.")
 
         if candidate.imported_bill_id is not None:
             raise ValidationError(

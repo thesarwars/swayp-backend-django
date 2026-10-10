@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.common.enums import PaymentStageStatus, PaymentStatus
-from apps.common.exceptions import ConflictException
+from apps.common.exceptions import ConflictException, NotFoundException
 from apps.payments.models import (
     Payment,
     PaymentAuthorization,
@@ -53,7 +53,7 @@ class PaymentConfirmService:
         batch = PaymentBatch.objects.filter(id=batch_id, user=user).first()
 
         if batch is None:
-            raise ValidationError({"batch": "Batch not found."})
+            raise NotFoundException("Batch not found.")
 
         # of=("self",) because vendor is nullable, so select_related emits
         # a LEFT JOIN and Postgres refuses FOR UPDATE on its nullable side.
@@ -91,7 +91,7 @@ class PaymentConfirmService:
         )
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         if payment.batch_id:
             raise ValidationError(
@@ -196,7 +196,7 @@ class PaymentConfirmService:
         )
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         return self._cancel_one(payment, now=now)
 
@@ -205,7 +205,7 @@ class PaymentConfirmService:
         batch = PaymentBatch.objects.filter(id=batch_id, user=user).first()
 
         if batch is None:
-            raise ValidationError({"batch": "Batch not found."})
+            raise NotFoundException("Batch not found.")
 
         payments = list(batch.payments.select_for_update())
 

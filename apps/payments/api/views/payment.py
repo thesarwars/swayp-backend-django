@@ -41,6 +41,7 @@ from apps.payments.api.serializers.resolution import (
     PaymentFailureResponseSerializer,
     ResolveResponseSerializer,
 )
+from apps.common.exceptions import NotFoundException
 
 PaymentDetailEnvelope = envelope(
     "PaymentDetailEnvelope", PaymentDetailSerializer()
@@ -204,7 +205,7 @@ class PaymentStatusAPIView(AccountScopedMixin, BaseAPIView):
         payment = selector.get_payment(self.account(request), payment_id)
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         from apps.payments.api.serializers.payment import (
             PaymentStageSerializer,
@@ -237,7 +238,7 @@ class BatchStatusAPIView(AccountScopedMixin, BaseAPIView):
         batch = selector.get_batch(self.account(request), batch_id)
 
         if batch is None:
-            raise ValidationError({"batch": "Batch not found."})
+            raise NotFoundException("Batch not found.")
 
         summary = selector.batch_status(batch)
         summary["payments"] = PaymentSerializer(
@@ -267,7 +268,7 @@ class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
         )
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         return ApiResponse.success(
             data=PaymentDetailSerializer(payment).data,
@@ -451,7 +452,7 @@ class PaymentReceiptPDFAPIView(AccountScopedMixin, BaseAPIView):
         )
 
         if payment is None:
-            raise ValidationError({"payment": "Payment not found."})
+            raise NotFoundException("Payment not found.")
 
         if payment.status != PaymentStatus.SUCCESSFUL:
             raise ConflictException(

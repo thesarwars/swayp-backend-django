@@ -206,7 +206,7 @@ the newest scan across all connections.
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "connection": "…payments in flight…" } }
+  "errors": { "connection": ["…payments in flight…"] } }
 ```
 
 A connection with a payment still moving **cannot** be disconnected — 400.

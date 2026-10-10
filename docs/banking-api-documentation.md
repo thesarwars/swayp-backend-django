@@ -341,7 +341,7 @@ link.
 >
 > ```json
 > { "success": false, "message": "Validation failed.",
->   "errors": { "connection": "Cannot disconnect while 1 payment(s) are in flight. Cancel or wait for them to settle first." } }
+>   "errors": { "connection": ["Cannot disconnect while 1 payment(s) are in flight. Cancel or wait for them to settle first."] } }
 > ```
 >
 > Surface that message; the user needs to know what to do about it.
@@ -443,8 +443,10 @@ UTC, ids UUIDs.
 | 409 | `Idempotency-Key` reused with a different body |
 | 429 | routing validation rate limit |
 
-A connection or scan belonging to another user returns a **400 "not found"**
-rather than 404 — it is treated as a validation failure on the id you sent.
+A connection, scan or candidate in the **URL** that is missing or belongs to
+another user returns **404**. An unknown id in the **request body** (e.g.
+`connection_id` on `POST /scans`, `account_id` on `POST /accounts`) is a
+**400** on that field, because the body is what was wrong.
 
 ---
 

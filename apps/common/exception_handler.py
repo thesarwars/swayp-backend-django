@@ -17,7 +17,7 @@ def custom_exception_handler(exc, context):
         if "detail" not in response.data:
             built = ApiResponse.error(
                 message="Validation failed.",
-                errors=response.data,
+                errors=_as_lists(response.data),
                 status_code=response.status_code,
             )
         else:
@@ -31,6 +31,27 @@ def custom_exception_handler(exc, context):
         return _carry_retry_after(built, exc, original=response)
 
     return _carry_retry_after(response, exc)
+
+
+def _as_lists(errors):
+    """Every field's errors as a list of strings (API-4).
+
+    A serializer reports ``{"field": ["..."]}``, but a service raising
+    ``ValidationError({"field": "..."})`` reported a bare string, so a
+    client had to accept both. Nested fields keep their nesting; only the
+    leaves change.
+    """
+    if isinstance(errors, dict):
+        return {key: _as_lists(value) for key, value in errors.items()}
+
+    if isinstance(errors, (list, tuple)):
+        if any(isinstance(item, (dict, list, tuple)) for item in errors):
+            # A list of per-item errors (many=True): keep the positions.
+            return [_as_lists(item) for item in errors]
+
+        return [str(item) for item in errors]
+
+    return [str(errors)]
 
 
 def _add_codes(response, exc, context):

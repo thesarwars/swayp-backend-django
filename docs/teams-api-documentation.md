@@ -245,7 +245,7 @@ again.
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "email": "This person is already on your team." } }
+  "errors": { "email": ["This person is already on your team."] } }
 ```
 
 ### 5.3 Accept
@@ -360,7 +360,7 @@ POST /api/v1/teams/entities
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "plan": "Multiple entities are available on the Enterprise plan only." } }
+  "errors": { "plan": ["Multiple entities are available on the Enterprise plan only."] } }
 ```
 
 Note this is a **400, not a 402** — the gate is the plan *tier*, and the

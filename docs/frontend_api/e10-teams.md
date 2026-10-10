@@ -238,7 +238,7 @@ The **first** entity is free on any plan. The **second** requires Enterprise:
 
 ```json
 { "success": false, "message": "Validation failed.",
-  "errors": { "plan": "Multiple entities are available on the Enterprise plan only." } }
+  "errors": { "plan": ["Multiple entities are available on the Enterprise plan only."] } }
 ```
 
 Note that is a **400, not a 402** — the gate is the plan *tier* and the

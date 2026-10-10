@@ -346,6 +346,13 @@ so `payment_rail` stays populated.
 | 422 | QR payload unreadable → "scan again", not a server error |
 | 429 | OTP resend or routing-validation rate limit; honour `Retry-After` |
 
+**The shape is the same everywhere:** every `errors` value is a **list of
+strings** (nested objects keep their nesting, with lists at the leaves).
+Every error under `/api/` is JSON, unknown routes included:
+`{ "success": false, "message": "Not found." }`. An id in the URL that is
+missing or not yours is **404**. An unknown id in the request body is a
+**400** on that field.
+
 **Three quirks:**
 
 - Vendor create nests branch errors one level deeper:

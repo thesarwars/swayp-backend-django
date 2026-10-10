@@ -55,6 +55,7 @@ class HomeService:
             "unread_notification_count": NotificationSelector().unread_count(
                 user=viewer or user
             ),
+            "funding_account": self._funding_account(user),
             "stats": summary,
             "recent_bills": list(
                 self.occurrences.get_recent_occurrences(
@@ -73,6 +74,33 @@ class HomeService:
                     )[:PAY_PANEL_ITEM_LIMIT]
                 ),
             },
+        }
+
+    @staticmethod
+    def _funding_account(user):
+        """The account a payment would debit, for the "From" row (DASH-9).
+
+        The same rule PaymentCreateService applies when no account is named:
+        the default funding source on an ACTIVE connection. None is exactly
+        the case where creating a payment is refused, so the screen can say
+        "connect a bank" before the user tries to pay.
+        """
+        from apps.banking.models import BankAccount, BankConnectionStatus
+
+        account = BankAccount.objects.filter(
+            connection__user=user,
+            connection__status=BankConnectionStatus.ACTIVE,
+            is_default_funding_source=True,
+        ).first()
+
+        if account is None:
+            return None
+
+        return {
+            "id": account.id,
+            "name": account.name,
+            "mask": account.mask,
+            "display": account.masked_name,
         }
 
     @staticmethod

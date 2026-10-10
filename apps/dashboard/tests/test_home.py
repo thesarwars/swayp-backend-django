@@ -47,15 +47,16 @@ VENDORS_URL = "/api/v1/vendors"
 VENDORS_SUMMARY_URL = "/api/v1/vendors/summary"
 
 #: The endpoint issues one aggregate, one bill count, one recent-bills read,
-#: one vendor-preview read, one pay-panel read and one unread-notification
-#: count (DASH-4) — plus one membership lookup to resolve which account the
-#: caller acts on (E10). Exact by design: this is the N+1 guard, so an eighth
-#: query has to be a deliberate edit to this number.
+#: one vendor-preview read, one pay-panel read, one unread-notification
+#: count (DASH-4) and one funding-account read (DASH-9) — plus one membership
+#: lookup to resolve which account the caller acts on (E10). Exact by design:
+#: this is the N+1 guard, so a ninth query has to be a deliberate edit to
+#: this number.
 #:
 #: The membership lookup is a single indexed read, memoised per request, so
 #: it is a constant and not a per-row cost — which is what
 #: test_home_query_count_is_independent_of_row_count actually guards.
-EXPECTED_QUERIES = 7
+EXPECTED_QUERIES = 8
 
 #: A regression tripwire for AC3, not a production p95 — the suite runs on
 #: in-memory SQLite. The budget is the epic's 500 ms so the number stays
@@ -804,6 +805,7 @@ class HomePayloadShapeTests(HomeTestCase):
             {
                 "greeting",
                 "unread_notification_count",
+                "funding_account",
                 "stats",
                 "recent_bills",
                 "vendors_preview",
@@ -990,3 +992,42 @@ class MonthThirdIsolationTests(_PinnedClockMixin, HomeIsolationTests):
     """The 3rd: "today - 2" is day 1, the other date the fixture used to reuse."""
 
     PINNED_NOW = dt.datetime(2026, 9, 3, 16, 0, tzinfo=dt.timezone.utc)
+
+
+class HomeFundingAccountTests(HomeTestCase):
+    """DASH-9: the "From" row shows the account a payment would debit."""
+
+    def test_no_bank_means_null(self):
+        self.assertIsNone(self._home()["funding_account"])
+
+    def test_the_default_funding_source_on_an_active_connection(self):
+        from apps.banking.factories import (
+            BankAccountFactory,
+            BankConnectionFactory,
+        )
+
+        connection = BankConnectionFactory(user=self.user)
+        BankAccountFactory(connection=connection, is_default_funding_source=False)
+        default = BankAccountFactory(
+            connection=connection, is_default_funding_source=True, mask="4821"
+        )
+
+        account = self._home()["funding_account"]
+
+        self.assertEqual(str(account["id"]), str(default.id))
+        self.assertEqual(account["mask"], "4821")
+        self.assertIn("4821", account["display"])
+
+    def test_a_disconnected_bank_is_not_a_funding_account(self):
+        """Payments refuse it, so the screen must not offer it."""
+        from apps.banking.factories import (
+            BankAccountFactory,
+            BankConnectionFactory,
+        )
+
+        connection = BankConnectionFactory(
+            user=self.user, status="DISCONNECTED"
+        )
+        BankAccountFactory(connection=connection, is_default_funding_source=True)
+
+        self.assertIsNone(self._home()["funding_account"])

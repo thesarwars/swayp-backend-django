@@ -17,6 +17,9 @@ GET /api/v1/dashboard/home?tab=upcoming
 {
   "greeting": { "name": "Ada" },
   "unread_notification_count": 3,
+  "funding_account": { "id": "…", "name": "Chase Business Checking",
+                       "mask": "4821",
+                       "display": "Chase Business Checking ****4821" },
   "stats": { "due_this_month": "0.00", "total_bills": 1, "paid": 0 },
   "recent_bills": [],
   "vendors_preview": [
@@ -55,6 +58,15 @@ clicks.
 
 `pay_panel.items` rows are the same shape as
 [`bills/occurrences`](e4-bills.md) — one row component, two screens.
+
+### Funding account
+
+`funding_account` is the account a payment would be debited from: the
+default funding source on an active bank connection, the same rule
+`POST /payments` applies when no account is named. Use it for the "From" row.
+It is `null` when there is none, which is exactly when creating a payment is
+refused, so show "Connect a bank" there instead of letting the user reach a
+400.
 
 ### Vendor cards
 

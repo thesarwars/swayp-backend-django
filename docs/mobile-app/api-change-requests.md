@@ -300,6 +300,7 @@ Contents:
 - **App today:** the card's "Last Date:" line became "This month:" with `monthly_amount`.
 
 #### DASH-9 · minor · Funding account on the home dashboard
+- **✅ Fixed**: `GET /dashboard/home` now has `funding_account: { id, name, mask, display } | null`. It is the account a payment would debit, chosen by the same rule `POST /payments` uses. `null` means a payment would be refused for lack of a bank. See e8 §1, "Funding account".
 - **Endpoint:** `GET /dashboard/home`.
 - **Needed:** `funding_account: { id, name, mask, display } | null`. It already exists in `banking/onboarding-summary`.
 - **Screen:** home, Details Confirmation card ("From").

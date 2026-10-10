@@ -98,8 +98,22 @@ class HomeVendorPreviewSerializer(serializers.Serializer):
     )
 
 
+class HomeFundingAccountSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    mask = serializers.CharField()
+    display = serializers.CharField()
+
+
 class HomeSerializer(serializers.Serializer):
     greeting = HomeGreetingSerializer()
+    funding_account = HomeFundingAccountSerializer(
+        allow_null=True,
+        help_text=(
+            "The account a payment would debit; null when there is none, "
+            "which is when creating a payment is refused."
+        ),
+    )
     unread_notification_count = serializers.IntegerField(
         help_text="The signed-in person's unread notifications."
     )

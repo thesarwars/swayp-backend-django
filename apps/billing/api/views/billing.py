@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.billing.api.serializers.billing import (
     AddOnSerializer,
+    FeeChargeQuerySerializer,
     FeeChargeSerializer,
     InvoicePreviewSerializer,
     BillingConfigSerializer,
@@ -26,6 +27,7 @@ from apps.billing.services.allowance_service import AllowanceService
 from apps.billing.services.provider_service import BillingProviderService
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.common.base_views import BaseAPIView
+from apps.common.pagination import PaginationService
 from apps.common.responses import ApiResponse
 from apps.teams.access import AccountScopedMixin, RequiresCapability
 from apps.teams.permissions import MANAGE_BILLING
@@ -280,12 +282,21 @@ class InvoicePreviewAPIView(AccountScopedMixin, BaseAPIView):
 @extend_schema(
     tags=["Billing"],
     summary="Fee charges",
-    description="The per-transaction fee ledger, newest first.",
+    description=(
+        "The per-transaction fee ledger, newest first, paged. Filter by "
+        "state and by the day charged (from_date, to_date, inclusive); "
+        "filters apply before paging. payment_id links to the receipt."
+    ),
+    parameters=[FeeChargeQuerySerializer],
     responses={200: FeeChargeSerializer(many=True)},
 )
 class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
+        query = FeeChargeQuerySerializer(data=request.query_params)
+        query.is_valid(raise_exception=True)
+        params = query.validated_data
+
         subscription = SubscriptionService().current(self.account(request))
 
         if subscription is None:
@@ -293,12 +304,25 @@ class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
                 {"subscription": "No active subscription."}
             )
 
+        fees = subscription.fee_charges.select_related("payment")
+
+        if params.get("state"):
+            fees = fees.filter(state=params["state"])
+
+        if params.get("from_date"):
+            fees = fees.filter(created_at__date__gte=params["from_date"])
+
+        if params.get("to_date"):
+            fees = fees.filter(created_at__date__lte=params["to_date"])
+
+        result = PaginationService.paginate(
+            fees, page=params["page"], page_size=params["pageSize"]
+        )
+
         return ApiResponse.success(
-            data=FeeChargeSerializer(
-                subscription.fee_charges.select_related("payment"),
-                many=True,
-            ).data,
+            data=FeeChargeSerializer(result["items"], many=True).data,
             message="Fee charges fetched successfully.",
+            pagination=result["pagination"],
         )
 
 

@@ -399,10 +399,17 @@ refund in §7 will trigger on precisely the date the user was looking at.
 ### 6.4 The ledger
 
 ```
-GET /api/v1/billing/fees
+GET /api/v1/billing/fees?page=1&pageSize=20&state=&from_date=&to_date=
 ```
 
-**200** — newest first:
+| Query | Meaning |
+|---|---|
+| `page`, `pageSize` | Paging, as everywhere; `pageSize` ≤ 100 |
+| `state` | `PENDING`, `BILLED` or `REFUNDED` |
+| `from_date`, `to_date` | Day charged, `YYYY-MM-DD`, both inclusive; backwards is a 400 |
+
+Filters apply before paging. **200** — newest first, with `pagination`
+beside `data`:
 
 ```json
 {
@@ -414,6 +421,7 @@ GET /api/v1/billing/fees
       "kind": "CHECK_OVERAGE",
       "amount": "2.99",
       "state": "PENDING",
+      "payment_id": "5b1f0c2e-7d7a-4c1e-9a55-2f4c8d0e1b3a",
       "payment_reference": "SWP-20260801-0003",
       "guaranteed_arrival": null,
       "refunded_at": null,
@@ -425,17 +433,21 @@ GET /api/v1/billing/fees
       "kind": "SAME_DAY_ACH",
       "amount": "4.99",
       "state": "PENDING",
+      "payment_id": "0e6d9a41-3b2f-4f0a-8c7e-6a1d5b9c2f70",
       "payment_reference": "SWP-20260801-0000",
       "guaranteed_arrival": "2026-07-29",
       "refunded_at": null,
       "refund_reason": "",
       "created_at": "2026-07-29T08:54:46.518961Z"
     }
-  ]
+  ],
+  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
+                  "totalItems": 2, "hasNext": false, "hasPrevious": false }
 }
 ```
 
-`payment_reference` is the same `SWP-…` string the payment receipt shows, so
+`payment_id` opens the payment (`GET /payments/<payment_id>`) and its
+receipt. `payment_reference` is the same `SWP-…` string the payment receipt shows, so
 a fee links straight back to what caused it.
 
 `guaranteed_arrival` is `null` for `CHECK_OVERAGE` — see §7.

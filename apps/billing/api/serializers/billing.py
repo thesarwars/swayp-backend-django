@@ -4,11 +4,13 @@ from apps.billing.models import (
     AddOnKind,
     EnterpriseAddOn,
     FeeCharge,
+    FeeState,
     Plan,
     PlanCode,
     Subscription,
     SubscriptionStatus,
 )
+from apps.common.serializers import PaginationQuerySerializer
 
 
 class PlanSerializer(serializers.ModelSerializer):
@@ -166,7 +168,30 @@ class SetAddOnSerializer(serializers.Serializer):
     quantity = serializers.IntegerField(min_value=0, default=1)
 
 
+class FeeChargeQuerySerializer(PaginationQuerySerializer):
+    """Filters for the fee ledger (BILLING-9). Applied before paging."""
+
+    state = serializers.ChoiceField(choices=FeeState.choices, required=False)
+    from_date = serializers.DateField(
+        required=False, help_text="Charged on or after this day."
+    )
+    to_date = serializers.DateField(
+        required=False, help_text="Charged on or before this day."
+    )
+
+    def validate(self, attrs):
+        start, end = attrs.get("from_date"), attrs.get("to_date")
+
+        if start and end and start > end:
+            raise serializers.ValidationError(
+                {"to_date": "Must be on or after from_date."}
+            )
+
+        return attrs
+
+
 class FeeChargeSerializer(serializers.ModelSerializer):
+    payment_id = serializers.UUIDField(source="payment.id", read_only=True)
     payment_reference = serializers.CharField(
         source="payment.transaction_reference", read_only=True
     )
@@ -178,6 +203,7 @@ class FeeChargeSerializer(serializers.ModelSerializer):
             "kind",
             "amount",
             "state",
+            "payment_id",
             "payment_reference",
             "guaranteed_arrival",
             "refunded_at",

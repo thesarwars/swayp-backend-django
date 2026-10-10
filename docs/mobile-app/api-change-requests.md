@@ -729,6 +729,7 @@ These matter once the bill detail screens are built:
 - **App today:** builds the feature lines from the plan's allowances.
 
 #### BILLING-9 · minor · Fees list
+✅ Fixed: `GET /billing/fees` is paged (`page`, `pageSize`, `pagination` beside `data`) and filters before paging by `state` and `from_date`/`to_date` (inclusive). Each row carries `payment_id`.
 - **Endpoint:** `GET /billing/fees`.
 - **Needed:** pagination, filters (`state`, date range), and `payment_id` on each row to link to the receipt.
 

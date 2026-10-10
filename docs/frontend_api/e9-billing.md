@@ -336,16 +336,28 @@ send**, not at arrival.
 fee, no row. Hide the option rather than offering something undeliverable.
 
 ```
-GET /api/v1/billing/fees
+GET /api/v1/billing/fees?page=1&pageSize=20&state=&from_date=&to_date=
 ```
 
 ```json
-[ { "id": "ec0e143a-…", "kind": "SAME_DAY_ACH", "amount": "4.99",
-    "state": "REFUNDED", "payment_reference": "SWP-20260801-0000",
-    "guaranteed_arrival": "2026-07-29",
-    "refunded_at": "2026-07-29T08:54:46.555733Z",
-    "refund_reason": "Delivery guarantee missed" } ]
+{ "data": [
+    { "id": "ec0e143a-…", "kind": "SAME_DAY_ACH", "amount": "4.99",
+      "state": "REFUNDED", "payment_id": "5b1f…",
+      "payment_reference": "SWP-20260801-0000",
+      "guaranteed_arrival": "2026-07-29",
+      "refunded_at": "2026-07-29T08:54:46.555733Z",
+      "refund_reason": "Delivery guarantee missed",
+      "created_at": "2026-07-29T08:54:46.518961Z" } ],
+  "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
+                  "totalItems": 1, "hasNext": false, "hasPrevious": false } }
 ```
+
+- Paged like every other list (`page`, `pageSize` ≤ 100), newest first.
+- Filters apply **before** paging: `state` (`PENDING`, `BILLED`, `REFUNDED`)
+  and the day charged, `from_date` / `to_date` (`YYYY-MM-DD`, both
+  inclusive). An unknown state or a backwards range is a 400.
+- `payment_id` opens the payment and its receipt
+  ([E6](e6-payments.md)): `GET /payments/<payment_id>`.
 
 ### Guarantee refunds
 

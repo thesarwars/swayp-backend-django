@@ -216,3 +216,73 @@ class BillingConfigTests(BillingTestCase):
             data = self.client.get("/api/v1/billing/config").json()["data"]
 
         self.assertEqual(data, {"collects_money": False, "publishable_key": ""})
+
+
+class FeeListTests(BillingTestCase):
+    """BILLING-9: the fee ledger is paged, filterable and links to payments."""
+
+    URL = "/api/v1/billing/fees"
+
+    def setUp(self):
+        super().setUp()
+        from apps.billing.factories import FeeChargeFactory
+        from apps.billing.models import FeeState
+        from apps.payments.factories import PaymentFactory
+
+        self.subscription = self.subscribe()
+
+        def fee(state, day):
+            charge = FeeChargeFactory(
+                subscription=self.subscription,
+                payment=PaymentFactory(user=self.user),
+                state=state,
+            )
+            # created_at is auto_now_add; move it with an update.
+            type(charge).objects.filter(pk=charge.pk).update(
+                created_at=dt.datetime(
+                    day.year, day.month, day.day, 12, tzinfo=dt.timezone.utc
+                )
+            )
+            return charge
+
+        self.pending = fee(FeeState.PENDING, D(2026, 9, 1))
+        self.refunded = fee(FeeState.REFUNDED, D(2026, 9, 10))
+        self.billed = fee(FeeState.BILLED, D(2026, 9, 20))
+
+    def _ids(self, query=""):
+        body = self.client.get(f"{self.URL}{query}").json()
+        return [row["id"] for row in body["data"]], body
+
+    def test_rows_carry_payment_id_and_the_list_is_paged(self):
+        ids, body = self._ids("?page=1&pageSize=2")
+
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(body["pagination"]["totalItems"], 3)
+        self.assertTrue(body["pagination"]["hasNext"])
+        self.assertEqual(
+            body["data"][0]["payment_id"], str(self.billed.payment_id)
+        )
+
+    def test_state_filter(self):
+        ids, _ = self._ids("?state=REFUNDED")
+
+        self.assertEqual(ids, [str(self.refunded.id)])
+
+    def test_date_range_is_inclusive(self):
+        ids, _ = self._ids("?from_date=2026-09-01&to_date=2026-09-10")
+
+        self.assertEqual(
+            ids, [str(self.refunded.id), str(self.pending.id)]
+        )
+
+    def test_a_backwards_range_is_a_400(self):
+        response = self.client.get(
+            f"{self.URL}?from_date=2026-09-10&to_date=2026-09-01"
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_an_unknown_state_is_a_400(self):
+        response = self.client.get(f"{self.URL}?state=LOST")
+
+        self.assertEqual(response.status_code, 400)

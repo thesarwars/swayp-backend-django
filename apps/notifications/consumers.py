@@ -3,13 +3,18 @@
     ws(s)://<host>/ws/notifications/
     Authorization: Bearer <access JWT>          native apps (DASH-3)
 
-    ws(s)://<host>/ws/notifications/?token=<access JWT>    browsers
+    ws(s)://<host>/ws/notifications/?ticket=<ticket>       browsers (SEC-4)
+
+    ws(s)://<host>/ws/notifications/?token=<access JWT>    browsers, legacy
 
 A native client sends the access token as an Authorization header, which
 keeps it out of the URL and so out of proxy and server logs. The browser
-WebSocket API cannot set headers, so a browser still puts the token in the
-query string. That is why it is a short-lived access token here rather than a
-refresh token or a session cookie. When both are sent, the header wins.
+WebSocket API cannot set headers, so a browser first asks
+POST /notifications/ws-ticket for a single-use, 60-second ticket and puts
+that in the URL instead: by the time a log is read, it is spent.
+``?token=`` still works until the web app has moved to tickets; it puts a
+live access token in the logs, so it is to be removed. Precedence: header,
+then ticket, then token.
 
 Read-only by design. The socket delivers; every action a user can take on a
 notification (mark read, read all) stays on the authenticated REST API, so
@@ -54,6 +59,39 @@ def _user_from_token(raw_token):
     return user
 
 
+@database_sync_to_async
+def _user_from_ticket(ticket):
+    from apps.notifications.services.ws_ticket_service import (
+        WebSocketTicketService,
+    )
+    from apps.users.models.user import User
+
+    user_id = WebSocketTicketService().redeem(ticket)
+
+    if user_id is None:
+        return None
+
+    return User.objects.filter(id=user_id, is_active=True).first()
+
+
+def _query_param(scope, name):
+    from urllib.parse import unquote
+
+    query = (scope.get("query_string") or b"").decode(errors="ignore")
+
+    for part in query.split("&"):
+        key, _, value = part.partition("=")
+
+        if key == name:
+            return unquote(value)
+
+    return ""
+
+
+def _has_authorization(scope):
+    return any(name == b"authorization" for name, _ in scope.get("headers", []))
+
+
 def _token_from_scope(scope):
     for name, value in scope.get("headers", []):
         if name == b"authorization":
@@ -86,7 +124,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4503)
             return
 
-        user = await _user_from_token(_token_from_scope(self.scope))
+        ticket = _query_param(self.scope, "ticket")
+
+        if ticket and not _has_authorization(self.scope):
+            user = await _user_from_ticket(ticket)
+        else:
+            user = await _user_from_token(_token_from_scope(self.scope))
 
         if user is None:
             # 4401 rather than a plain close: the client has to be able to

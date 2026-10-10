@@ -135,16 +135,27 @@ A handshake with an `Authorization` header skips the browser origin check,
 which a native app would otherwise fail: React Native sends no `Origin`, or the
 API's own host, and neither is the frontend's origin.
 
-**Browser: the token goes in the query string**, because the browser WebSocket
-API cannot set headers:
+**Browser: use a ticket.** The browser WebSocket API cannot set headers, and a
+token in the URL is written to proxy and server logs. So first ask for a
+single-use ticket over the authenticated API, then put the ticket in the URL:
 
 ```
-wss://<api host>/ws/notifications/?token=<access JWT>
+POST /api/v1/notifications/ws-ticket        (Authorization: Bearer <access>)
+→ { "data": { "ticket": "q3V…", "expires_in": 60 } }
+
+wss://<api host>/ws/notifications/?ticket=q3V…
 ```
 
-The browser path is checked against the frontend's origin. Either way, use the
-short-lived *access* token. Never send a refresh token. If both are sent, the
-header wins.
+A ticket opens **one** socket and dies after 60 seconds either way, so a copy
+in a log is useless. **Fetch a new one for every connect and reconnect.** A
+used or expired ticket closes with `4401`, as an expired token does.
+
+`?token=<access JWT>` still works for now so the web app can switch over, but
+it puts a live session in the logs and **will be removed**. Don't build on it.
+
+The browser path is checked against the frontend's origin. Never send a
+refresh token. Precedence if more than one is sent: header, then ticket, then
+token.
 
 On success the server sends:
 
@@ -181,7 +192,7 @@ of your list and increment the unread badge; no refetch needed.
 
 | Code | Meaning | What to do |
 |---|---|---|
-| `4401` | Token invalid, expired, or account deactivated | Refresh the token, then reconnect **once** |
+| `4401` | Token or ticket invalid, expired or used, or account deactivated | Browser: fetch a new ticket (refreshing the token if that 401s), reconnect **once**. Native: refresh, reconnect once |
 | `4503` | Realtime disabled on this deployment | Stop reconnecting. Fall back to polling |
 | `1006` | Network dropped | Reconnect with backoff |
 
@@ -205,8 +216,10 @@ than closing the connection.
 ```js
 let delay = 1000;
 
-function connect() {
-  const ws = new WebSocket(`${WS_URL}?token=${accessToken}`);
+async function connect() {
+  // Browser: a fresh single-use ticket every time (native: Authorization header).
+  const { data } = await api.post("/notifications/ws-ticket");
+  const ws = new WebSocket(`${WS_URL}?ticket=${data.ticket}`);
 
   ws.onopen = () => { delay = 1000; };
 

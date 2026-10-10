@@ -846,6 +846,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **App today:** shows server messages as they are. It never invents its own "no account found" text.
 
 #### SEC-4 · major · WebSocket sends the access token in the URL
+✅ Fixed: browsers now call `POST /notifications/ws-ticket` and connect with `?ticket=`. A ticket is random, single-use, valid for 60 seconds, and stored only as a hash. Native apps keep the `Authorization` header (DASH-3). `?token=` still works so the web app can switch over; once it has, it should be removed.
 - **🟡 Partly fixed** (with DASH-3): native clients now send `Authorization: Bearer …` on the handshake, so the mobile app's token never appears in a URL. Browsers still use `?token=`, because they cannot set handshake headers; the single-use ticket is still open for them.
 - **Endpoint:** `wss://…/ws/notifications/?token=`.
 - **Today:** the JWT in the query string ends up in proxy and server logs.

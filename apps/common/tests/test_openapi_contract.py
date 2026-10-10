@@ -205,6 +205,9 @@ class NotificationContractTests(ContractTestCase):
         )
         self.check("PATCH", "/api/v1/notifications/read-all", status=200)
 
+    def test_ws_ticket(self):
+        self.check("POST", "/api/v1/notifications/ws-ticket", status=200)
+
     def test_preferences_and_devices(self):
         self.check("GET", "/api/v1/notifications/preferences", status=200)
         self.check("PATCH", "/api/v1/notifications/preferences",

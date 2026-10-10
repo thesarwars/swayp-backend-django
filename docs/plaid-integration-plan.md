@@ -114,7 +114,17 @@ while it is empty never reports readiness and its scan waits forever; the
 provider logs a warning rather than omitting it quietly. Verified: sandbox
 accepts a link token carrying it.
 
-### The one failure
+### The one failure — resolved for Stripe (2026-10-10)
+
+**Resolved.** The Stripe integration was connected in the Plaid Dashboard
+(Developers → Integrations → Stripe → Connect, against Swayp's own Stripe
+account). Re-run against the sandbox on 2026-10-10:
+`/processor/stripe/bank_account_token/create` now returns a Stripe
+bank-account token (`btok_…`) for a First Platypus Bank checking account.
+Only Stripe was retried; it is the only processor that matters since ACH
+moved to Stripe Treasury (PRD D-1). Production needs the same connection
+made with the live Stripe account, plus Auth approved in Plaid's production
+access. The original finding follows for the record.
 
 `create_processor_token` returns `INVALID_PRODUCT` for **every** processor —
 `moov`, `dwolla`, and Stripe's dedicated
@@ -303,11 +313,11 @@ Not built: the webhook wait (§2.1), and §4.1–4.3 below.
    `/api/v1/webhooks/<processor>` works as well as the canonical versionless
    path. `reverse()` still returns the versionless one.
 5. ~~§4.2 scan stages and §4.3 institution search.~~ Done.
-6. `create_processor_token` — **blocked** on the Plaid entitlement in §2.
-   Written to the documented shapes, stub-tested, sandbox test skipped. This
-   is the only remaining code-level blocker, and it is not ours to unblock.
-   Since PRD D-1 only the **Stripe** branch matters: it is how a linked bank
-   account reaches Stripe Treasury.
+6. ~~`create_processor_token` — blocked on the Plaid entitlement in §2.~~
+   **Unblocked 2026-10-10** for Stripe: the integration is connected and the
+   sandbox returns a `btok_…` token. Since PRD D-1 only the Stripe branch
+   matters: it is how a linked bank account reaches Stripe Treasury. For
+   production, connect the live Stripe account in Plaid too.
 7. ~~Moov's signature scheme~~ — no longer applies; Moov was removed (PRD D-1).
 
 ### The webhook is no longer mandatory

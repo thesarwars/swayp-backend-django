@@ -482,3 +482,52 @@ class PaymentRefTests(AutopayConsentTestCase):
         response = self.create(payment_ref="x" * 101)
 
         self.assertEqual(response.status_code, 400)
+
+
+class CreateRulesTests(AutopayConsentTestCase):
+    """BILLS-11: what bill create refuses, as field errors."""
+
+    def test_an_inactive_category_is_refused(self):
+        self.category.is_active = False
+        self.category.save(update_fields=["is_active"])
+
+        response = self.create()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("category", response.data["errors"])
+
+    def test_a_deleted_vendor_is_refused(self):
+        self.vendor.status = "DELETED"
+        self.vendor.save(update_fields=["status"])
+
+        response = self.create()
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("vendor", response.data["errors"])
+
+    def test_another_vendors_payment_method_is_refused(self):
+        import uuid
+
+        response = self.create(payment_method=str(uuid.uuid4()))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("payment_method", response.data["errors"])
+
+    def test_notes_are_capped(self):
+        self.assertEqual(self.create(notes="x" * 2001).status_code, 400)
+        self.assertEqual(self.create(notes="x" * 2000).status_code, 201)
+
+    def test_updating_to_an_inactive_category_is_refused(self):
+        bill_id = self.create().data["data"]["id"]
+        retired = BillCategory.objects.create(
+            name="Retired", icon="https://e.com/r.png", color="#333",
+            is_active=False,
+        )
+
+        response = self.client.patch(
+            f"/api/v1/bills/{bill_id}/update",
+            {"category": str(retired.id)},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

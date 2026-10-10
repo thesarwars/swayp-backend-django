@@ -60,7 +60,11 @@ class BillCreateSerializer(serializers.Serializer):
     autopay_mode = serializers.ChoiceField(choices=AutopayMode.choices,default=AutopayMode.REMIND)
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,default=BillSource.MANUAL)
-    notes = serializers.CharField(required=False,allow_blank=True,default="")
+    # Capped (BILLS-11): it was unlimited, and it renders on the detail
+    # screen and the invoice.
+    notes = serializers.CharField(
+        max_length=2000, required=False, allow_blank=True, default=""
+    )
     payment_ref = serializers.CharField(
         max_length=100, required=False, allow_blank=True, default=""
     )
@@ -127,7 +131,9 @@ class BillUpdateSerializer(serializers.Serializer):
     autopay_mode = serializers.ChoiceField(choices=AutopayMode.choices,required=False)
     payment_method = serializers.UUIDField(required=False,allow_null=True)
     source = serializers.ChoiceField(choices=BillSource.choices,required=False)
-    notes = serializers.CharField(required=False,allow_blank=True)
+    notes = serializers.CharField(
+        max_length=2000, required=False, allow_blank=True
+    )
     payment_ref = serializers.CharField(
         max_length=100, required=False, allow_blank=True
     )

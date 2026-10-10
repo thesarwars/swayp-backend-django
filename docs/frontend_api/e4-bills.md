@@ -171,6 +171,26 @@ only; there is no `BIWEEKLY` or `YEARLY`.
 `vendor` and `category` here are **names**, for display. `payment_method` is
 the method's type (`ACH`, `CHECK`, `NETWORK`) or `null`.
 
+### What create checks
+
+| Field | Rule | Error |
+|---|---|---|
+| `vendor` | One of the account's **active** vendors | 400 `errors.vendor` |
+| `category` | An **active** bill category | 400 `errors.category` |
+| `payment_method` | Optional, and must belong to that vendor. **Omitted means none**: there is no default. An autopay bill with no method pays by standard ACH. | 400 `errors.payment_method` |
+| `amount` | At least `0.01`, two decimals, up to 16 digits before the point | 400 `errors.amount` |
+| `anchor_date` | Any date. **A past date is accepted**: it creates the current period's occurrence (which can be `OVERDUE` at once) and the ones ahead, never a backlog of past ones. | — |
+| `notes` | Up to 2,000 characters | 400 `errors.notes` |
+| `payment_ref` | Up to 100 characters | 400 `errors.payment_ref` |
+| `autopay_mode: AUTO` | Needs `autopay_consent` (step 5). **It does not need a connected bank** to create. Without one, each autopay run fails and notifies the user, so prompt for a bank first. | 400 `errors.autopay_consent` |
+
+**Lead time is not checked at create.** A bill due tomorrow by check is
+accepted. To grey out a method that cannot make the next due date, use the
+`schedule` that `GET vendors/<id>/payment-methods?due_date=&amount=` returns
+for each method (step 4).
+
+The same rules apply to `PATCH bills/<id>/update` for the fields it sends.
+
 ### Step 4 has a trap ⚠️
 
 The payment-method step is served by

@@ -433,6 +433,7 @@ Contents:
 - **App today:** writes it into `notes` as "Ref …".
 
 #### BILLS-11 · minor · Document the create rules
+- **✅ Fixed and documented**: a table of every create rule is now in e4 §4, "What create checks". Answers: an omitted `payment_method` means **none** (autopay then uses standard ACH). Lead time is **not** checked; use the method `schedule`. A past `anchor_date` **is** accepted and creates the current period's occurrence, never a backlog. `amount` is ≥ 0.01. `notes` is now capped at 2,000 characters. `AUTO` does **not** need a connected bank to create, but runs fail without one. Tightened: an inactive category or a deleted vendor is now refused with a field error (it was accepted, or a bare 404). A per-method `earliest_due_date` is not added; the `schedule` already gives it.
 - **Endpoint:** `POST /bills/create`, `GET /vendors/{id}/payment-methods` (`schedule`).
 - **Needed:**
   - The default when `payment_method` is omitted.

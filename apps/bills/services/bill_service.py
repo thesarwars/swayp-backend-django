@@ -1,5 +1,4 @@
 from django.db import transaction
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
@@ -9,7 +8,7 @@ from apps.bills.selectors.bill_selector import BillSelector
 from apps.bills.serializers.bill_review_serializer import build_review
 from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from apps.bills.services.consent_service import ConsentService
-from apps.common.enums import AutopayMode
+from apps.common.enums import AutopayMode, VendorStatus
 from apps.payments.models import Payment
 from apps.vendors.models import Vendor, VendorPaymentMethod
 
@@ -25,26 +24,33 @@ class BillService:
     def create_bill(self, *, user, validated_data, meta=None):
         consent = validated_data.get("autopay_consent")
 
-        vendor = get_object_or_404(
-            Vendor,
+        vendor = Vendor.objects.filter(
             id=validated_data["vendor"],
             user=user,
-        )
+            status=VendorStatus.ACTIVE,
+        ).first()
 
-        category = get_object_or_404(
-            BillCategory,
-            id=validated_data["category"],
-        )
+        # 400 on the field rather than a bare 404 (BILLS-11), and an inactive
+        # or deleted one is refused: a bill against a removed vendor, or in
+        # a category no screen lists any more, cannot be shown or paid.
+        if vendor is None:
+            raise ValidationError({"vendor": ["Vendor not found."]})
+
+        category = self._active_category(validated_data["category"])
 
         payment_method = None
         payment_method_id = validated_data.get("payment_method")
 
         if payment_method_id:
-            payment_method = get_object_or_404(
-                VendorPaymentMethod,
+            payment_method = VendorPaymentMethod.objects.filter(
                 id=payment_method_id,
                 vendor=vendor,
-            )
+            ).first()
+
+            if payment_method is None:
+                raise ValidationError(
+                    {"payment_method": ["Invalid payment method."]}
+                )
 
         bill = Bill.objects.create(
             user=user,
@@ -140,6 +146,17 @@ class BillService:
 
         return bill
 
+    @staticmethod
+    def _active_category(category_id):
+        category = BillCategory.objects.filter(
+            id=category_id, is_active=True
+        ).first()
+
+        if category is None:
+            raise ValidationError({"category": ["Category not found."]})
+
+        return category
+
     #: Editing any of these changes the recurrence, so the unsettled part of
     #: the schedule has to be rebuilt rather than left disagreeing with it.
     SCHEDULE_FIELDS = ("frequency", "anchor_date")
@@ -188,10 +205,7 @@ class BillService:
         terms_before = self._authorized_terms(bill)
 
         if "category" in validated_data:
-            bill.category = get_object_or_404(
-                BillCategory,
-                id=validated_data["category"],
-            )
+            bill.category = self._active_category(validated_data["category"])
 
         if "payment_method" in validated_data:
             payment_method_id = validated_data["payment_method"]

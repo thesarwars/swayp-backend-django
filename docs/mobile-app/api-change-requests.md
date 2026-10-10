@@ -508,6 +508,7 @@ These matter once the bill detail screens are built:
 - **App today:** "Recipient:" shows `providerName`, or a dash when it is null.
 
 #### PAY-4 · major · A payment or occurrence cannot be traced back to its bill or vendor
+- **✅ Fixed**: every payment body (create, detail, status, cancel, resolve) now has `vendor_id`, `bill_id`, `funding_account_id` and `payment_method_id`, next to `bill_occurrence`. New `GET /bills/occurrences/{occurrence_id}` returns one occurrence in the list's row shape, including `bill_id`, `vendor_id`, `status` and `payment_id`; it is 404 if the occurrence is not the account's. Notification links with an `occurrence_id` or `bill_id` can now open the bill, and "Choose payment method" has the ids it needs. See e6 §2.
 - **Endpoint:** `GET /payments/{id}`, and a new `GET /bills/occurrences/{occurrence_id}`.
 - **Needed:** the occurrence route, and `vendor_id`, `bill_id`, `funding_account_id` and `payment_method_id` on `PaymentDetail`.
 - **Screen:**

@@ -181,6 +181,15 @@ class BillOccurrenceSelector:
 
         return queryset.select_related(*_RELATED).order_by("due_date")
 
+    def get_occurrence(self, user, occurrence_id, today=None):
+        """One row, the same shape as the list, or None (PAY-4)."""
+        return (
+            annotate_row(self._for_user(user), today or today_eastern())
+            .select_related(*_RELATED)
+            .filter(id=occurrence_id)
+            .first()
+        )
+
     def get_next_due(self, user, today=None):
         """Nearest unsettled occurrence (E4-S8 — excludes SCHEDULED/PAID)."""
         today = today or today_eastern()

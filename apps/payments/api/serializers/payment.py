@@ -61,6 +61,23 @@ class PaymentSerializer(serializers.ModelSerializer):
     funding_account = serializers.CharField(
         source="funding_account.masked_name", read_only=True, default=None,
     )
+    # PAY-4: enough to get from a payment to its vendor, bill and accounts
+    # without a second lookup. bill_occurrence (below) is the occurrence id.
+    vendor_id = serializers.UUIDField(read_only=True, allow_null=True)
+    funding_account_id = serializers.UUIDField(read_only=True, allow_null=True)
+    bill_id = serializers.UUIDField(
+        source="bill_occurrence.bill_id",
+        read_only=True,
+        allow_null=True,
+        default=None,
+    )
+    payment_method_id = serializers.UUIDField(
+        source="bill_occurrence.bill.payment_method_id",
+        read_only=True,
+        allow_null=True,
+        default=None,
+        help_text="The bill's saved method, which the money is sent to.",
+    )
 
     class Meta:
         model = Payment
@@ -75,9 +92,13 @@ class PaymentSerializer(serializers.ModelSerializer):
             "total",
             "currency",
             "rail",
+            "vendor_id",
             "vendor_name",
             "funding_account",
+            "funding_account_id",
+            "bill_id",
             "bill_occurrence",
+            "payment_method_id",
             "batch",
             "initiated_date",
             "estimated_arrival",

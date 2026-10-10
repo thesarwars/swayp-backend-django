@@ -934,3 +934,40 @@ class RailDefaultAndQuoteTests(PayFlowTestCase):
         self.assertEqual(rails["ACH_SAMEDAY"]["fee"], "4.99")
         self.assertEqual(rails["CHECK"]["expedited"]["fee"], "8.99")
         self.assertTrue(rails["CHECK"]["available"])
+
+
+class TraceabilityTests(PayFlowTestCase):
+    """PAY-4: a payment leads to its vendor, bill and accounts, and an
+    occurrence can be fetched by id."""
+
+    def test_payment_bodies_carry_the_ids(self):
+        occurrence = self.occurrence()
+        payment = self.create([occurrence])["payments"][0]
+
+        data = self.client.get(f"/api/v1/payments/{payment.id}").json()["data"]
+
+        self.assertEqual(data["vendor_id"], str(self.bill.vendor_id))
+        self.assertEqual(data["bill_id"], str(self.bill.id))
+        self.assertEqual(data["bill_occurrence"], str(occurrence.id))
+        self.assertEqual(data["funding_account_id"], str(self.account.id))
+        self.assertEqual(data["payment_method_id"], str(self.method.id))
+
+    def test_an_occurrence_by_id_is_the_list_row(self):
+        occurrence = self.occurrence()
+        payment = self.create([occurrence])["payments"][0]
+
+        data = self.client.get(
+            f"/api/v1/bills/occurrences/{occurrence.id}"
+        ).json()["data"]
+
+        self.assertEqual(data["id"], str(occurrence.id))
+        self.assertEqual(data["bill_id"], str(self.bill.id))
+        self.assertEqual(data["status"], "SCHEDULED")
+        self.assertEqual(data["payment_id"], str(payment.id))
+
+    def test_another_accounts_occurrence_is_404(self):
+        theirs = BillOccurrenceFactory()
+
+        response = self.client.get(f"/api/v1/bills/occurrences/{theirs.id}")
+
+        self.assertEqual(response.status_code, 404)

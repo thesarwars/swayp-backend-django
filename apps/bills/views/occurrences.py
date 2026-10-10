@@ -8,8 +8,11 @@ from apps.bills.serializers.bill_occurrence_row_serializer import (
     BillOccurrenceRowSerializer,
 )
 from apps.bills.services.bill_service import BillService
+from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
+from apps.common.exceptions import NotFoundException
 from apps.common.pagination import StandardPagination
 from apps.common.responses import ApiResponse
+from apps.common.swagger import NOT_FOUND_RESPONSE, UNAUTHORIZED_RESPONSE
 from apps.teams.access import AccountScopedMixin
 
 
@@ -70,4 +73,37 @@ class BillOccurrenceListAPIView(AccountScopedMixin, APIView):
             data=body["items"],
             message="Bill occurrences fetched successfully.",
             pagination=body["pagination"],
+        )
+
+
+@extend_schema(
+    tags=["Bills"],
+    summary="One bill occurrence",
+    description=(
+        "The same row the occurrence list returns, by id: bill_id, "
+        "vendor_id, status, payment_id and the rest. For notification deep "
+        "links that carry only an occurrence_id. 404 if it is not the "
+        "account's."
+    ),
+    responses={
+        200: BillOccurrenceRowSerializer,
+        401: UNAUTHORIZED_RESPONSE,
+        404: NOT_FOUND_RESPONSE,
+    },
+)
+class BillOccurrenceDetailAPIView(AccountScopedMixin, APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, occurrence_id):
+        occurrence = BillOccurrenceSelector().get_occurrence(
+            self.account(request), occurrence_id
+        )
+
+        if occurrence is None:
+            raise NotFoundException("Bill occurrence not found.")
+
+        return ApiResponse.success(
+            data=BillOccurrenceRowSerializer(occurrence).data,
+            message="Bill occurrence fetched successfully.",
         )

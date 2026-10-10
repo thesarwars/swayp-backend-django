@@ -15,7 +15,10 @@ from apps.bills.views.bill_occurrence import (
 )
 from apps.bills.views.invoice import BillInvoiceAPIView
 from apps.bills.views.next_due import NextDueAPIView
-from apps.bills.views.occurrences import BillOccurrenceListAPIView
+from apps.bills.views.occurrences import (
+    BillOccurrenceDetailAPIView,
+    BillOccurrenceListAPIView,
+)
 from apps.bills.views.payments import BillPaymentHistoryAPIView
 from apps.bills.views.qr import BillQRDecodeAPIView
 from apps.bills.views.summary import BillSummaryAPIView
@@ -33,6 +36,13 @@ urlpatterns = [
         "/occurrences",
         BillOccurrenceListAPIView.as_view(),
         name="bill-occurrence-list",
+    ),
+    # After /occurrences/upcoming in effect: the uuid converter cannot match
+    # "upcoming", so the two never collide.
+    path(
+        "/occurrences/<uuid:occurrence_id>",
+        BillOccurrenceDetailAPIView.as_view(),
+        name="bill-occurrence-detail",
     ),
     path(
         "/qr/decode",

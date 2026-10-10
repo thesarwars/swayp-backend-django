@@ -87,8 +87,10 @@ POST /api/v1/payments
     { "id": "febd4a55-…", "transaction_reference": "SWP-20260728-0001",
       "status": "PENDING", "amount": "3200.00", "fee": "0.00",
       "total": "3200.00", "currency": "USD", "rail": "ACH_STANDARD",
-      "vendor_name": "WeWork",
+      "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork",
       "funding_account": "Chase Business Checking ****4821",
+      "funding_account_id": "a91…", "bill_id": "d788620d-…",
+      "bill_occurrence": "e200c2f4-…", "payment_method_id": "5c2e…",
       "initiated_date": "2026-08-28", "estimated_arrival": "2026-09-01",
       "cancellation_deadline": "2026-08-29T03:59:00Z",
       "scheduled_for": null, "expedited": false } ],
@@ -98,6 +100,13 @@ POST /api/v1/payments
 
 `batch_id` is **`null`** for a single payment — that is the signal to use the
 single-payment confirm endpoint instead.
+
+Every payment body (create, detail, status, cancel, resolve) carries
+`vendor_id`, `bill_id`, `bill_occurrence` (the occurrence id),
+`funding_account_id` and `payment_method_id` (the bill's saved method, which
+the money goes to). Use them to go from a payment to its bill or vendor. For
+a deep link that carries only an occurrence id, `GET
+bills/occurrences/<id>` returns that one row, in the same shape as the list.
 
 **`authorization_text` must be displayed verbatim.** Do not summarise, reflow
 or translate it: it is stored as the record of what the user agreed to, and it

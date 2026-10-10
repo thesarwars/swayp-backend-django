@@ -54,7 +54,9 @@ class RoutingValidationService:
         """Describe a routing number without ever echoing it back."""
         digits = normalize(routing_number)
 
-        if not digits:
+        # "abc" has no digits but was not empty: it is the wrong shape, not
+        # missing, and saying "required" sent people looking for a blank field.
+        if not str(routing_number or "").strip():
             return self._invalid("Routing number is required.")
 
         if len(digits) != ROUTING_LENGTH:

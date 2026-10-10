@@ -173,7 +173,17 @@ POST /api/v1/banking/routing/validate    { "routing_number": "021000021" }
 
 ⚠️ **A bad routing number is a 200, not a 400.** The *request* succeeded; the
 *number* didn't. Branch on `data.valid`, and show `data.bank_name` when it is
-true. Rate limited to 30/min.
+true. Show `data.message` as the reason:
+
+| Input | Status | Body |
+|---|---|---|
+| A real routing number | 200 | `valid: true`, `bank_name`, `aba_verified: true` |
+| Wrong length or letters (`12345`, `abc`) | 200 | `valid: false`, `"Routing number must be 9 digits."` |
+| Bad prefix | 200 | `valid: false`, `"Routing number does not begin with a valid ABA prefix."` |
+| Bad checksum | 200 | `valid: false`, `"Routing number failed the ABA checksum."` |
+| Masked (`****0021`) | **400** | `errors.routing_number: ["Send the routing number, not a masked value."]` |
+| Empty | **400** | `errors.routing_number: ["This field may not be blank."]` |
+| Over 30 per minute | **429** | `{ success: false, message: "Request was throttled. Expected available in N seconds." }` plus a **`Retry-After`** header (seconds) |
 
 ---
 

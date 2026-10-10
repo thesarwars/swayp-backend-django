@@ -122,3 +122,44 @@ class EndpointTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+
+
+class RoutingErrorBodyTests(TestCase):
+    """VEND-10: what each kind of bad input gets back."""
+
+    URL = "/api/v1/banking/routing/validate"
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        from apps.vendors.factories import UserFactory
+
+        cache.clear()
+        self.client = APIClient()
+        self.client.force_authenticate(user=UserFactory())
+
+    def post(self, value):
+        return self.client.post(self.URL, {"routing_number": value}, format="json")
+
+    def test_letters_are_the_wrong_length_not_missing(self):
+        data = self.post("abc").json()["data"]
+
+        self.assertFalse(data["valid"])
+        self.assertEqual(data["message"], "Routing number must be 9 digits.")
+
+    def test_masked_and_blank_are_400s(self):
+        for value in ("****0021", ""):
+            with self.subTest(value=value):
+                response = self.post(value)
+
+                self.assertEqual(response.status_code, 400)
+                self.assertIn("routing_number", response.json()["errors"])
+
+    def test_a_429_carries_retry_after(self):
+        response = None
+        for _ in range(31):
+            response = self.post("021000021")
+
+        self.assertEqual(response.status_code, 429)
+        self.assertIn("Retry-After", response.headers)
+        self.assertGreater(int(response.headers["Retry-After"]), 0)

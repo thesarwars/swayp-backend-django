@@ -26,7 +26,7 @@ def custom_exception_handler(exc, context):
                 status_code=response.status_code,
             )
 
-        return _carry_retry_after(built, exc)
+        return _carry_retry_after(built, exc, original=response)
 
     return _carry_retry_after(response, exc)
 
@@ -44,9 +44,19 @@ def _flatten_detail(detail):
     return str(detail)
 
 
-def _carry_retry_after(response, exc):
-    """Preserve Retry-After, which rebuilding the body would otherwise drop."""
+def _carry_retry_after(response, exc, original=None):
+    """Preserve Retry-After, which rebuilding the body would otherwise drop.
+
+    Two sources: our own throttles set ``exc.retry_after``, and DRF's built-in
+    throttling (ScopedRateThrottle and friends) puts the header on the
+    response it builds. Only the first used to survive, so every DRF-throttled
+    429 (routing validation, the AI cash context) arrived with "available in
+    60 seconds" in the text and no header to act on (VEND-10).
+    """
     retry_after = getattr(exc, "retry_after", None)
+
+    if not retry_after and original is not None:
+        retry_after = original.get("Retry-After")
 
     if retry_after:
         response["Retry-After"] = str(retry_after)

@@ -652,7 +652,7 @@ These matter once the bill detail screens are built:
 - **App today:** after PATCH it uses the values it sent, coerces `total_paid`, and never reads `bills`.
 
 #### VEND-10 · minor · Error bodies for QR decode and routing validation
-- **🟡 Partly fixed** (with BILLS-2): the QR decode 422 is now the standard envelope `{ success: false, message }`. Routing validation is still open.
+- **✅ Fixed**: the QR decode 422 is the standard envelope (BILLS-2). Routing validation's answers are documented in e3 §4: a bad number is a **200** with `valid: false` and a reason; a masked or empty value is a **400** on `errors.routing_number`; over 30/min is a **429**. Two bugs found and fixed: **the 429 was missing its `Retry-After` header**, on every endpoint using DRF's throttling, not only this one, and `"abc"` was told "Routing number is required." instead of "must be 9 digits".
 - **Endpoint:** `POST /vendors/qr/decode`, `POST /banking/routing/validate`.
 - **Today:** the QR 422 body is `{ detail }` instead of the standard envelope. For routing validation, the status and body for a masked or malformed number, and the 429 body and `Retry-After`, are undocumented.
 - **Screen:** add a payee → bank details.

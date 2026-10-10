@@ -77,6 +77,15 @@ class SubscriptionService:
     def founding_lock_available(self):
         return self.founding_seats_taken() < FOUNDING_LOCK_LIMIT
 
+    def founding_spots_remaining(self):
+        return max(FOUNDING_LOCK_LIMIT - self.founding_seats_taken(), 0)
+
+    def trial_eligible(self, account):
+        """A free trial is for an account's first subscription only
+        (BILLING-4). Before, every new subscription started one, so cancel
+        and resubscribe was a fresh free month, indefinitely."""
+        return not Subscription.objects.filter(account=account).exists()
+
     @transaction.atomic
     def subscribe(self, *, account, plan_code, today=None,
                   payment_method_id=""):
@@ -110,10 +119,9 @@ class SubscriptionService:
         # ACTIVE during the trial, deliberately. A trial is a promise not
         # to charge yet, not a reduced product, and gating features on it
         # would make the free period worthless for evaluating the paid one.
+        trial_days = plan.trial_days if self.trial_eligible(account) else 0
         trial_end = (
-            today + dt.timedelta(days=plan.trial_days)
-            if plan.trial_days
-            else None
+            today + dt.timedelta(days=trial_days) if trial_days else None
         )
 
         subscription = Subscription.objects.create(
@@ -129,7 +137,7 @@ class SubscriptionService:
         self._provider().start(
             subscription,
             payment_method_id=payment_method_id,
-            trial_days=plan.trial_days,
+            trial_days=trial_days,
         )
 
         return subscription

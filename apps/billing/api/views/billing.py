@@ -8,6 +8,7 @@ from apps.billing.api.serializers.billing import (
     AddOnSerializer,
     FeeChargeSerializer,
     InvoicePreviewSerializer,
+    PlanOfferSerializer,
     PlanSerializer,
     SetAddOnSerializer,
     SetupIntentSerializer,
@@ -28,16 +29,30 @@ from apps.teams.permissions import MANAGE_BILLING
 @extend_schema(
     tags=["Billing"],
     summary="List plans",
-    description="The three tiers and what each includes.",
-    responses={200: PlanSerializer(many=True)},
+    description=(
+        "The three tiers and what each includes, plus what this account "
+        "would get by subscribing now: trial_eligible, lock_available and "
+        "founding_spots_remaining."
+    ),
+    responses={200: PlanOfferSerializer(many=True)},
 )
-class PlanListAPIView(BaseAPIView):
+class PlanListAPIView(AccountScopedMixin, BaseAPIView):
 
     def get(self, request):
         plans = Plan.objects.filter(is_active=True).order_by("monthly_price")
+        service = SubscriptionService()
 
         return ApiResponse.success(
-            data=PlanSerializer(plans, many=True).data,
+            data=PlanOfferSerializer(
+                plans,
+                many=True,
+                context={
+                    "trial_eligible": service.trial_eligible(
+                        self.account(request)
+                    ),
+                    "spots_remaining": service.founding_spots_remaining(),
+                },
+            ).data,
             message="Plans fetched successfully.",
         )
 

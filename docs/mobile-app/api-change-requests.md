@@ -693,6 +693,7 @@ These matter once the bill detail screens are built:
 - **App today:** calls setup on every checkout press. When money is collected, only a trial plan can be started in the app: card entry needs the Stripe SDK, which is deferred. Other plans show "Card payment isn't available in the app yet".
 
 #### BILLING-4 · major · Plan eligibility per account
+- **✅ Fixed (and an abuse hole closed)**: every new subscription used to start a trial, so cancel and resubscribe gave **another free trial**. Now the trial is for an account's first subscription only. `GET /billing/plans` adds, per account, `trial_eligible`, `lock_available` and `founding_spots_remaining`. See e9 §5, "The 14-day trial".
 - **Endpoint:** `GET /billing/plans`.
 - **Today:** `trial_days` and `price_locked` are properties of the plan. The app cannot tell a returning customer, or customer number 501, that the offer no longer applies.
 - **Needed:** `trial_eligible` and `lock_available` (or `founding_spots_remaining`) per account.

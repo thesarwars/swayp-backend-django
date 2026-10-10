@@ -36,6 +36,41 @@ class PlanSerializer(serializers.ModelSerializer):
         )
 
 
+class PlanOfferSerializer(PlanSerializer):
+    """A plan as offered to this account (BILLING-4).
+
+    trial_days and price_locked describe the plan; these say whether this
+    account would actually get them, so the badge and the button can stop
+    promising a trial to a returning customer or a lock to customer 501.
+    """
+
+    trial_eligible = serializers.SerializerMethodField(
+        help_text="Subscribing now starts the plan's free trial."
+    )
+    lock_available = serializers.SerializerMethodField(
+        help_text="Subscribing now locks this plan's price (Founding only)."
+    )
+    founding_spots_remaining = serializers.SerializerMethodField(
+        help_text="Price-locked Founding spots left; null on other plans."
+    )
+
+    class Meta(PlanSerializer.Meta):
+        fields = PlanSerializer.Meta.fields + (
+            "trial_eligible",
+            "lock_available",
+            "founding_spots_remaining",
+        )
+
+    def get_trial_eligible(self, plan):
+        return bool(plan.trial_days) and self.context["trial_eligible"]
+
+    def get_lock_available(self, plan):
+        return plan.price_locked and self.context["spots_remaining"] > 0
+
+    def get_founding_spots_remaining(self, plan):
+        return self.context["spots_remaining"] if plan.price_locked else None
+
+
 class SubscriptionSerializer(serializers.ModelSerializer):
     plan = PlanSerializer(read_only=True)
     # Present only on the response that created the subscription, and only

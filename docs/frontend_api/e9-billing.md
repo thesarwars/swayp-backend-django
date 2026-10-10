@@ -162,6 +162,19 @@ read the trial from these instead:
 
 `null` and `0` are different — a banner must tell them apart.
 
+**One trial per account.** An account that has subscribed before (even one
+that cancelled) gets no second trial. `GET /billing/plans` says what **this
+account** would get by subscribing now:
+
+| Field | Meaning |
+|---|---|
+| `trial_eligible` | Subscribing starts the plan's trial. `false` for a returning account, or a plan with no trial. |
+| `lock_available` | Subscribing locks this plan's price (Founding). `false` once the 500 spots are gone. |
+| `founding_spots_remaining` | Founding spots left; `null` on other plans |
+
+Show the "14-day free trial" badge and the "claim my spot" button from these,
+not from `trial_days` and `price_locked`, which describe the plan in general.
+
 ### Change plan, cancel
 
 ```

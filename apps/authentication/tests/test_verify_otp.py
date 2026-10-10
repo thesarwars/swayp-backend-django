@@ -15,6 +15,7 @@ from django.utils import timezone
 
 from rest_framework.test import APIClient
 
+from apps.authentication.api.serializers.otp import NO_CODE_PENDING
 from apps.authentication.models import OTP, OTPPurpose, RefreshToken
 from apps.authentication.utils.otp import OTPService
 from apps.users.models.user import User
@@ -162,7 +163,11 @@ class MergedVerifyTests(TestCase):
 
     # -- what the failures say --------------------------------------------
 
-    def test_an_already_used_code_says_so(self):
+    # SEC-3: "no code pending" is one message. It used to say "used
+    # already" or "finish signing up", which told anyone holding only the
+    # address that it was registered, and whether it was verified.
+
+    def test_an_already_used_code_says_request_a_new_one(self):
         user = self.register()
         OTP.objects.filter(user=user).delete()
         self.issue(user, OTPPurpose.REGISTRATION, code="999999")
@@ -171,16 +176,20 @@ class MergedVerifyTests(TestCase):
         response = self.verify(otp="999999")
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("used already", str(response.data["errors"]["otp"]))
+        self.assertEqual(response.data["errors"]["otp"], [NO_CODE_PENDING])
 
-    def test_an_unverified_account_with_no_code_is_told_to_request_one(self):
+    def test_no_code_reads_the_same_as_no_account(self):
         user = self.register()
         OTP.objects.filter(user=user).delete()
 
-        response = self.verify(otp="000000")
+        registered = self.verify(otp="000000")
+        unknown = self.client.post(
+            VERIFY_URL, {"email": "nobody@example.com", "otp": "000000"},
+            format="json",
+        )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("finish signing up", str(response.data["errors"]["otp"]))
+        self.assertEqual(registered.status_code, 400)
+        self.assertEqual(registered.json(), unknown.json())
 
     def test_an_expired_code_says_expired_not_missing(self):
         user = self.register()

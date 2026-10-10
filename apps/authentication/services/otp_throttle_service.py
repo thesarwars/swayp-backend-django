@@ -55,3 +55,40 @@ class OTPThrottleService:
             raise OTPThrottledException(retry_after=max(retry_after, 1))
 
         return 0
+
+
+class AddressThrottle:
+    """The same limits, counted per address rather than per account (SEC-3).
+
+    OTPThrottleService counts an account's OTP rows, so only a real account
+    could ever be throttled: a 429 for one address and a 200 for another
+    said which one was registered. This counts requests for the address
+    itself, the same way whether or not an account uses it, so the throttle
+    answers identically for both.
+    """
+
+    def __init__(self):
+        self.limits = OTPThrottleService()
+
+    def check(self, *, email, purpose):
+        import hashlib
+
+        from django.core.cache import cache
+
+        digest = hashlib.sha256(email.strip().lower().encode()).hexdigest()
+        key = f"otp-address:{purpose}:{digest}"
+        now = timezone.now().timestamp()
+        recent = [t for t in cache.get(key, []) if now - t < 3600]
+
+        if recent and now - recent[-1] < self.limits.min_gap_seconds:
+            raise OTPThrottledException(
+                retry_after=int(self.limits.min_gap_seconds - (now - recent[-1]))
+                or 1,
+            )
+
+        if len(recent) >= self.limits.hourly_limit:
+            raise OTPThrottledException(
+                retry_after=max(int(recent[0] + 3600 - now), 1)
+            )
+
+        cache.set(key, [*recent, now], timeout=3600)

@@ -95,12 +95,11 @@ goes straight to the dashboard — do not send them to Sign In afterwards.
 accepts. Sending `LOGIN` is a 400 naming the valid choice, which is the answer
 to "where did my login code go".
 
-When there is no code to spend, the error says which case it is rather than a
-flat "not found": *"No verification code is pending. Request a new one to
-finish signing up"* when the account was never verified, and *"…It may have
-been used already"* when it was. The second is what a double-submitted form
-produces, so treat it as success-already-happened rather than an error worth
-alarming about.
+When there is no code to spend, the error is always *"No code is pending for
+this address. Request a new one."* That is also the answer for an address
+with no account, so the screen cannot tell a stranger who is registered
+(SEC-3). A double-submitted form produces it too: if the first submit
+succeeded, treat it as already done.
 
 ---
 
@@ -268,13 +267,17 @@ A throttled resend does **not** invalidate the code the user already holds, so
   Send the user to "Send again"; there is no cooldown beyond the resend
   throttle. Phone sign-in answers with its usual generic error instead, so it
   still cannot reveal whether a number is registered.
-- **`resend-otp` returns the masked address** in `data.email`, the same as
-  registration and forgot-password:
+- **`resend-otp` answers the same whether or not the address has an
+  account**, with the masked address in `data.email`:
 
   ```json
-  { "success": true, "message": "OTP has been sent to x***e@gmail.com.",
+  { "success": true,
+    "message": "If an account uses x***e@gmail.com, a code has been sent to it.",
     "data": { "email": "x***e@gmail.com" } }
   ```
+
+  Its throttle (60 s gap, 5 an hour) counts per **address**, so an unknown
+  address gets the same 429 as a real one.
 
 - **`login/phone/request` is throttled on the server** with the same 60 s / 5
   per hour limits. Its answer stays neutral, so a throttled request still
@@ -316,12 +319,22 @@ registrations. Once a code is verified, it can no longer be sent to
 The one-step form still works: `reset-password` with `{ email, otp,
 password }` and no early check. Send `otp` or `reset_token`, never both.
 
-`forgot-password` answers with the masked address, same shape as registration:
+`forgot-password` answers **the same for every address**, registered or not,
+so it cannot be used to find out who has an account. Show the message as is;
+never say "no account found":
 
 ```json
-{ "success": true, "message": "OTP has been sent to x***e@gmail.com.",
+{ "success": true,
+  "message": "If an account uses x***e@gmail.com, a code has been sent to it.",
   "data": { "email": "x***e@gmail.com" } }
 ```
+
+It is throttled like resend: 60 s between requests and 5 an hour per
+address, 429 with `Retry-After`.
+
+**Registration is the one exception.** It has to say "Email already exists."
+because the user must choose another address. It is rate-limited to 10
+attempts an hour per IP (429) to keep that from being used to test lists.
 
 Same password rules as registration — character classes, no length minimum,
 and **no `confirm_password`**.

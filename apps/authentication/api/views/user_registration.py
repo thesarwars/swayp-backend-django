@@ -11,6 +11,7 @@ from apps.authentication.api.serializers.user_registration import (
     MaskedEmailSerializer,
     RegisterSerializer,
 )
+from apps.authentication.throttles import RegisterRateThrottle
 from apps.authentication.services.registration_service import (
     RegistrationService,
 )
@@ -61,6 +62,8 @@ from apps.authentication.services.registration_service import (
 
 
 class RegisterView(PublicAPIView):
+
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request):
         serializer = RegisterSerializer(data=request.data)

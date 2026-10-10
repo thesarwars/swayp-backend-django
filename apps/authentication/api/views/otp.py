@@ -15,6 +15,7 @@ from apps.authentication.api.serializers.otp import (
 )
 from apps.authentication.api.serializers.user_registration import MaskedEmailSerializer
 from apps.authentication.models import OTPPurpose
+from apps.authentication.services.otp_throttle_service import AddressThrottle
 from apps.authentication.services.resend_otp_service import (
     ResendOTPService,
 )
@@ -22,6 +23,10 @@ from apps.authentication.services.verify_otp_service import (
     VerifyOTPService,
 )
 
+
+
+#: The same words whether or not an account uses the address (SEC-3).
+NEUTRAL_SENT = "If an account uses {email}, a code has been sent to it."
 
 @extend_schema(
     tags=["Authentication"],
@@ -112,19 +117,26 @@ class ResendOTPView(PublicAPIView):
         serializer.is_valid(raise_exception=True)
 
         user = serializer.validated_data["user"]
+        address = serializer.validated_data["email"]
+        purpose = serializer.validated_data["purpose"]
 
-        ResendOTPService.resend(
-            user,
-            serializer.validated_data["purpose"],
-            channel=serializer.validated_data.get("channel"),
-        )
+        # Counted per address before anything else, so an unknown address
+        # is throttled exactly like a real one (SEC-3).
+        AddressThrottle().check(email=address, purpose=purpose)
 
-        email = mask_email(user.email)
+        if user is not None:
+            ResendOTPService.resend(
+                user,
+                purpose,
+                channel=serializer.validated_data.get("channel"),
+            )
+
+        email = mask_email(address)
 
         return Response(
             {
                 "success": True,
-                "message": f"OTP has been sent to {email}.",
+                "message": NEUTRAL_SENT.format(email=email),
                 "data": {"email": email},
             },
             status=status.HTTP_200_OK,

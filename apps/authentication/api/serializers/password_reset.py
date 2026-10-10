@@ -10,14 +10,9 @@ class ForgotPasswordSerializer(serializers.Serializer):
     def validate_email(self, value):
         value = value.lower().strip()
 
-        try:
-            user = User.objects.get(email=value)
-        except User.DoesNotExist:
-            raise serializers.ValidationError(
-                "User does not exist."
-            )
+        # None for an unknown address; the view answers identically (SEC-3).
+        self.user = User.objects.filter(email__iexact=value).first()
 
-        self.user = user
         return value
 
 

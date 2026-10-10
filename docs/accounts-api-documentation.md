@@ -204,6 +204,13 @@ seconds. Disable the resend button and count down.
 A throttled resend does **not** invalidate the code the user already holds, so
 "wait and use the code you have" remains valid.
 
+### Neutral by design (SEC-3)
+The answer is identical whether or not an account uses the address:
+`"If an account uses x***e@acme.com, a code has been sent to it."`, with the
+masked address in `data.email`. The 60 s / 5-per-hour throttle counts per
+address, so an unknown address is throttled exactly like a real one (429
+with `Retry-After`).
+
 ---
 
 ## 5b. Phone-Number Login
@@ -380,6 +387,13 @@ Send a password reset OTP to the user email.
   "message": "OTP sent successfully."
 }
 ```
+
+### Neutral by design (SEC-3)
+The answer is identical whether or not an account uses the address:
+`"If an account uses x***e@acme.com, a code has been sent to it."`, with the
+masked address in `data.email`. The 60 s / 5-per-hour throttle counts per
+address, so an unknown address is throttled exactly like a real one (429
+with `Retry-After`).
 
 ---
 

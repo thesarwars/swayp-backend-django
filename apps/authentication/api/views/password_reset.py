@@ -12,6 +12,9 @@ from apps.authentication.api.serializers.password_reset import (
     ResetPasswordSerializer,
 )
 from apps.authentication.api.serializers.user_registration import MaskedEmailSerializer
+from apps.authentication.api.views.otp import NEUTRAL_SENT
+from apps.authentication.models import OTPPurpose
+from apps.authentication.services.otp_throttle_service import AddressThrottle
 from apps.authentication.services.forgot_password_service import (
     ForgotPasswordService,
 )
@@ -47,16 +50,23 @@ class ForgotPasswordView(PublicAPIView):
 
         serializer.is_valid(raise_exception=True)
 
-        ForgotPasswordService.send(
-            serializer.user
+        address = serializer.validated_data["email"]
+
+        # Per address, and it had no limit at all before: anyone could make
+        # the server email a reset code to an inbox as often as they liked.
+        AddressThrottle().check(
+            email=address, purpose=OTPPurpose.RESET_PASSWORD
         )
 
-        email = mask_email(serializer.user.email)
+        if serializer.user is not None:
+            ForgotPasswordService.send(serializer.user)
+
+        email = mask_email(address)
 
         return Response(
             {
                 "success": True,
-                "message": f"OTP has been sent to {email}.",
+                "message": NEUTRAL_SENT.format(email=email),
                 "data": {"email": email},
             }
         )

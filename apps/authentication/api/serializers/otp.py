@@ -36,6 +36,13 @@ VERIFIABLE_PURPOSES = (
 DEFAULT_PURPOSES = (OTPPurpose.REGISTRATION,)
 
 
+#: The answer when no code is waiting, for an account or for an address with
+#: no account. It used to say "for this account" or "to finish signing up",
+#: which told a stranger the address was registered and whether it was
+#: verified (SEC-3).
+NO_CODE_PENDING = "No code is pending for this address. Request a new one."
+
+
 class ResendOTPSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
@@ -52,12 +59,10 @@ class ResendOTPSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs["email"].lower().strip()
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "User does not exist."})
-
-        attrs["user"] = user
+        # None for an unknown address: the view answers the same either way
+        # (SEC-3), so this must not say which it is.
+        attrs["user"] = User.objects.filter(email__iexact=email).first()
+        attrs["email"] = email
 
         return attrs
 
@@ -86,16 +91,13 @@ class VerifyOTPSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs["email"].lower().strip()
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            raise serializers.ValidationError({"email": "User does not exist."})
+        user = User.objects.filter(email__iexact=email).first()
 
         purposes = (
             [attrs["purpose"]] if attrs.get("purpose") else list(DEFAULT_PURPOSES)
         )
 
-        pending = list(
+        pending = [] if user is None else list(
             OTP.objects.filter(
                 user=user,
                 purpose__in=purposes,
@@ -109,7 +111,9 @@ class VerifyOTPSerializer(serializers.Serializer):
                     {"otp": "No reset code is pending. Request a new one."}
                 )
 
-            raise serializers.ValidationError({"otp": self._nothing_pending(user)})
+            # An unknown address lands here too, with the same words as an
+            # account that has no code (SEC-3).
+            raise serializers.ValidationError({"otp": NO_CODE_PENDING})
 
         now = timezone.now()
         live = [otp for otp in pending if otp.expires_at >= now]
@@ -143,26 +147,6 @@ class VerifyOTPSerializer(serializers.Serializer):
         newest.save(update_fields=["attempts"])
 
         raise serializers.ValidationError({"otp": "Invalid OTP."})
-
-    @staticmethod
-    def _nothing_pending(user):
-        """Say which of the two "no code" stories this is.
-
-        A bare "OTP not found." covered both a code that was already spent and
-        one that was never issued. They need different things from the user,
-        and the old message sent people looking at the code in their hand
-        rather than at the flow they were in.
-        """
-        if not user.is_verified:
-            return (
-                "No verification code is pending. Request a new one to "
-                "finish signing up."
-            )
-
-        return (
-            "No verification code is pending for this account. It may have "
-            "been used already — request a new one."
-        )
 
 
 class VerifyOTPResponseSerializer(serializers.Serializer):

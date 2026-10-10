@@ -834,6 +834,11 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 - **App today:** release builds refuse any API URL that is not `https://`.
 
 #### SEC-3 · major · Auth endpoints reveal which accounts exist
+✅ Fixed:
+- **forgot-password and resend-otp** answer identically for every address ("If an account uses x***e@…, a code has been sent to it.").
+- **Their throttle** counts per address, so an unknown address gets the same 429. forgot-password had no limit at all before.
+- **verify-otp** answers an unknown address with the same "No code is pending for this address" a real account gets. The old messages also revealed whether the account was verified.
+- **register** still says "Email already exists.", because the user needs to know, and is now limited to 10 attempts an hour per IP.
 - **Endpoint:** `verify-otp`, `resend-otp`, `forgot-password` ("User does not exist."), `register` ("Phone number already exists.").
 - **Today:** phone sign-in is deliberately neutral ("If that number is registered, a code has been sent."), but these endpoints are not. Observed.
 - **Needed:** neutral answers, at least for forgot-password and resend-otp.

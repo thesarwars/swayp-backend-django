@@ -705,6 +705,7 @@ These matter once the bill detail screens are built:
 - **App today:** treats any 2xx as cancelled.
 
 #### BILLING-6 · major · `PAST_DUE` and `provider_status` are undocumented
+- **✅ Fixed (and a bug found)**: a past-due account used to look **planless**: `GET subscription` answered `null`, limits and fees fell back to the no-plan rules, and **subscribe opened a second subscription**. Now `PAST_DUE` counts as the live plan. `GET` returns it with `past_due: true`, allowances still apply, and a second subscribe is a 400. **Recovery:** Stripe retries the charge, or the owner replaces the card (`POST /billing/payment-method`, BILLING-1); either returns it to `ACTIVE`. If Stripe gives up, it becomes `CANCELLED`. `provider_status` is Stripe's raw status string, for support use only; branch on `status` and `past_due`. See e9 §5, "Past due".
 - **Endpoint:** `GET /billing/subscription`.
 - **Needed:** when these occur (mock and Stripe), whether `GET subscription` still returns the row, whether allowances still apply, and how the customer recovers (depends on BILLING-1).
 - **Screen:** subscriptions index banner.

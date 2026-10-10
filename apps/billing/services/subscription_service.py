@@ -35,6 +35,11 @@ def add_month(value):
     return dt.date(year, month, min(value.day, last_day))
 
 
+#: Subscriptions the account currently holds. CANCELLED is the only state
+#: that frees the account to subscribe again.
+LIVE_STATUSES = (SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE)
+
+
 class SubscriptionService:
 
     def get_plan(self, code):
@@ -46,9 +51,19 @@ class SubscriptionService:
         return plan
 
     def current(self, account):
+        """The account's live subscription: ACTIVE, or PAST_DUE.
+
+        PAST_DUE counts (BILLING-6). A failed card charge is something the
+        customer fixes by replacing the card, and the plan stays in force
+        meanwhile, as the billing webhook already intends. Treating it as
+        "no subscription" made the account look planless everywhere: GET
+        subscription answered null, plan limits fell back to the no-plan
+        rules, fees were skipped, and subscribe would open a second
+        subscription beside the unpaid one.
+        """
         return (
             Subscription.objects.filter(
-                account=account, status=SubscriptionStatus.ACTIVE
+                account=account, status__in=LIVE_STATUSES
             )
             .select_related("plan")
             .first()

@@ -175,6 +175,16 @@ effect at the new price with no credit. Don't promise one.
 ⚠️ **Leaving Founding gives up the price lock permanently.** Warn when
 `locked_price !== null`.
 
+### Past due
+
+When a charge fails, `status` becomes `PAST_DUE` and `past_due` is `true`.
+**The plan stays in force**: limits, seats and banks are unchanged, and Stripe
+retries the charge. Show a banner and send the owner to replace the card
+(`POST /billing/payment-method`, §5b). A successful retry, or a new card,
+returns it to `ACTIVE`. If Stripe gives up, the subscription ends
+(`CANCELLED`). While past due the account can't open a second subscription;
+`POST` is a 400.
+
 **Writes are owner-only.** `POST`/`PATCH`/`DELETE` need `manage_billing` —
 **not even an admin** has it, because a plan change changes what the owner is
 charged. Reads are open to the whole team. Gate the screen on

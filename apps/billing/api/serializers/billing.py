@@ -7,6 +7,7 @@ from apps.billing.models import (
     Plan,
     PlanCode,
     Subscription,
+    SubscriptionStatus,
 )
 
 
@@ -48,6 +49,15 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     effective_price = serializers.DecimalField(
         max_digits=18, decimal_places=2, read_only=True
     )
+    past_due = serializers.SerializerMethodField(
+        help_text=(
+            "The last charge failed. The plan stays in force; replace the "
+            "card (POST billing/payment-method) to recover."
+        )
+    )
+
+    def get_past_due(self, subscription):
+        return subscription.status == SubscriptionStatus.PAST_DUE
 
     def get_client_secret(self, subscription):
         return getattr(subscription, "pending_client_secret", "") or ""
@@ -69,6 +79,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "locked_price",
             "effective_price",
             "provider_status",
+            "past_due",
             "client_secret",
             "trial_end",
             "is_trialing",

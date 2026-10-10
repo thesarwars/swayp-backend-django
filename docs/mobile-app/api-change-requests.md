@@ -323,7 +323,7 @@ Contents:
 - **App today:** the avatar comes from the summary's `profilePicture` (https only). The greeting is computed from the device clock.
 
 #### DASH-12 · product decision · The design has a wallet, the API has none
-- **⏸ Product decision, deferred; no backend work.** There is no wallet by design (E6 §1.3), and the product owner has deferred it. If it stays deferred, the home balance card can use real data that exists today: `stats.due_this_month` for "Due this month", and `funding_account.display` for "From" (DASH-9). A stored-value wallet would need a ledger the backend does not hold, so it needs a product decision before any API work.
+- **🚫 Obsolete**: the wallet has been dropped from the product, so there is nothing to build. Remove the balance card, the "Balance" pill, "From My Wallet / Wallet Number", and the wallet tab's Add Funds, Transfer Fund and deposit history. Where the home screen needs real figures instead, use `stats.due_this_month` ("Due this month") and `funding_account.display` for "From" (DASH-9).
 - **Endpoint:** none (`GET /wallet` is a 404, and E6 §1.3 says there is no wallet by design).
 - **Today:** the home balance card ($12,547.80), the "Balance" pill and "From My Wallet / Wallet Number" are design content with no data behind them. So are the wallet tab's Add Funds, Transfer Fund and deposit history.
 - **Needed:** a product decision, not an endpoint. Either the labels change (for example "Due this month"), or product keeps a stored-value wallet, which would need a ledger the backend says it will not hold.

@@ -195,6 +195,7 @@ Contents:
 - **App today:** a recovered link (an exchange whose answer was lost) and an exchange answered without `scan` both start a second scan.
 
 #### BANK-7 · minor · Onboarding summary is missing two counts
+- **✅ Fixed**: `onboarding-summary` now has `detection.months_history` (the window of the newest scan, `null` before any scan) and `bills.total_bills` (the same number `bills/summary` reports). Both are in the OpenAPI schema. See e5 §7.
 - **Endpoint:** `GET /banking/onboarding-summary`.
 - **Needed:** `detection.months_history` (for "From N mo history") and `bills.total_bills` (it already exists in `bills/summary`), for the "Bills (n)" chip.
 - **Screen:** bills ready.

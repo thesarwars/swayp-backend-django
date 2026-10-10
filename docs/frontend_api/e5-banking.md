@@ -194,9 +194,10 @@ GET /api/v1/banking/onboarding-summary
     "funding_account": { "account_id": "…", "name": "Chase Business Checking",
                          "mask": "4821",
                          "display": "Chase Business Checking ****4821" } },
-  "detection": { "detected": 0, "imported": 0, "pending": 0 },
+  "detection": { "detected": 0, "imported": 0, "pending": 0,
+                 "months_history": 24 },
   "bills": { "total_due_this_month": "0.00", "overdue_count": 0,
-             "due_count": 0, "upcoming_count": 1 },
+             "due_count": 0, "upcoming_count": 1, "total_bills": 1 },
   "rail_readiness": { "total_vendors": 1, "network_matched": 0,
                       "ach_captured": 1, "check_ready": 0,
                       "needs_details": 0 }
@@ -206,7 +207,10 @@ GET /api/v1/banking/onboarding-summary
 Every key above is always present. `connection` is `null` until a bank is
 linked, `funding_account` is `null` when the connection has no accounts,
 `institution_logo` is `""` when the provider has none, and `connected_at` is
-when the user consented to the link. The OpenAPI schema
+when the user consented to the link. `detection.months_history` is the window
+of the newest scan ("From 24 mo history"), `null` before any scan.
+`bills.total_bills` counts active bills, for the "Bills (n)" chip; it is the
+same number `bills/summary` reports. The OpenAPI schema
 (`OnboardingSummaryResponse`) declares the same fields.
 
 `rail_readiness` counts each active vendor once, by its best rail: network,

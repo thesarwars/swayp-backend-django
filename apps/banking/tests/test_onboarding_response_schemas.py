@@ -63,6 +63,32 @@ class OnboardingResponseSchemaTests(TestCase):
         assert_same_shape(self, body["data"], OnboardingSummarySerializer())
         self.assertIsNotNone(body["data"]["connection"])
 
+    def test_summary_counts_months_and_bills(self):
+        """BANK-7: the window of the newest scan, and the bills/summary total."""
+        self.client.post(
+            f"/api/v1/banking/scans/{self.scan_id}/import",
+            {"all": True},
+            format="json",
+        )
+
+        data = self.client.get("/api/v1/banking/onboarding-summary").json()["data"]
+        bills_summary = self.client.get("/api/v1/bills/summary").json()["data"]
+
+        self.assertEqual(data["detection"]["months_history"], 24)
+        self.assertGreater(data["bills"]["total_bills"], 0)
+        self.assertEqual(
+            data["bills"]["total_bills"], bills_summary["total_bills"]
+        )
+
+    def test_months_history_is_null_before_any_scan(self):
+        client = APIClient()
+        client.force_authenticate(user=UserFactory())
+
+        data = client.get("/api/v1/banking/onboarding-summary").json()["data"]
+
+        self.assertIsNone(data["detection"]["months_history"])
+        assert_same_shape(self, data, OnboardingSummarySerializer())
+
     def test_import(self):
         response = self.client.post(
             f"/api/v1/banking/scans/{self.scan_id}/import",

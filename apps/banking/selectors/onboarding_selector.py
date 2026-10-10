@@ -10,6 +10,7 @@ from apps.banking.models import (
     BankConnection,
     BankConnectionStatus,
     BillDetectionCandidate,
+    TransactionScan,
 )
 from apps.bills.selectors.bill_occurrence_selector import BillOccurrenceSelector
 from apps.common.dates import today_eastern
@@ -79,10 +80,20 @@ class OnboardingSelector:
         detected = aggregates["detected"] or 0
         imported = aggregates["imported"] or 0
 
+        # The window of the newest scan, for "From N mo history" (BANK-7).
+        # Null before any scan exists.
+        latest = (
+            TransactionScan.objects.filter(connection__user=user)
+            .order_by("-created_at")
+            .values_list("months_history", flat=True)
+            .first()
+        )
+
         return {
             "detected": detected,
             "imported": imported,
             "pending": detected - imported,
+            "months_history": latest,
         }
 
     def bill_totals(self, user, today):
@@ -94,6 +105,8 @@ class OnboardingSelector:
             "overdue_count": summary["overdue_count"],
             "due_count": summary["due_count"],
             "upcoming_count": summary["upcoming_count"],
+            # The "Bills (n)" chip; the same number bills/summary reports.
+            "total_bills": summary["total_bills"],
         }
 
     def rail_readiness(self, user):

@@ -34,6 +34,10 @@ class OnboardingDetectionSerializer(serializers.Serializer):
     detected = serializers.IntegerField()
     imported = serializers.IntegerField()
     pending = serializers.IntegerField()
+    months_history = serializers.IntegerField(
+        allow_null=True,
+        help_text="Window of the newest scan; null before any scan.",
+    )
 
 
 class OnboardingBillsSerializer(serializers.Serializer):
@@ -43,6 +47,9 @@ class OnboardingBillsSerializer(serializers.Serializer):
     overdue_count = serializers.IntegerField()
     due_count = serializers.IntegerField()
     upcoming_count = serializers.IntegerField()
+    total_bills = serializers.IntegerField(
+        help_text="Active bills; the same number bills/summary reports."
+    )
 
 
 class RailReadinessSerializer(serializers.Serializer):

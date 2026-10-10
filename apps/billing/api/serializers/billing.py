@@ -133,7 +133,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_is_trialing(self, subscription) -> bool:
         return subscription.is_trialing()
 
-    def get_trial_days_remaining(self, subscription) -> int:
+    def get_trial_days_remaining(self, subscription) -> int | None:
         return subscription.trial_days_remaining()
 
     class Meta:
@@ -317,3 +317,20 @@ class InvoiceHistoryItemSerializer(serializers.Serializer):
     paid_at = serializers.DateTimeField(allow_null=True)
     pdf_url = serializers.CharField(allow_blank=True)
     hosted_url = serializers.CharField(allow_blank=True)
+
+
+class AllowanceRowSerializer(serializers.Serializer):
+    limit = serializers.IntegerField(
+        allow_null=True, help_text="null means unlimited."
+    )
+    unlimited = serializers.BooleanField()
+    used = serializers.IntegerField()
+    remaining = serializers.IntegerField(
+        allow_null=True, help_text="null when unlimited."
+    )
+
+
+class AllowancesSerializer(serializers.Serializer):
+    CHECKS = AllowanceRowSerializer(help_text="Resets each cycle.")
+    SEATS = AllowanceRowSerializer()
+    BANKS = AllowanceRowSerializer()

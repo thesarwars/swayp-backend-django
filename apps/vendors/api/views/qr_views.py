@@ -12,6 +12,9 @@ from apps.vendors.services.qr_decoder import QRDecodeService
 
 
 class QRDecodeAPIView(APIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     """
     POST /vendors/qr/decode/
     Accepts:

@@ -25,6 +25,9 @@ from .schemas import payment_failed_schema
 
 class PaymentHistoryAPIView(BaseAPIView):
 
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
+
     service_class = PaymentService
 
     @payment_history_schema

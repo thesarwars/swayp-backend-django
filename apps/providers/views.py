@@ -13,6 +13,9 @@ from .services import ProviderService
 
 class ProviderListAPIView(BaseAPIView):
 
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
+
     service_class = ProviderService
 
     @provider_list_schema

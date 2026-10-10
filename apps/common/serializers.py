@@ -24,6 +24,14 @@ class SuccessResponseSerializer(serializers.Serializer):
 
 
 class ErrorResponseSerializer(serializers.Serializer):
-    success = serializers.BooleanField()
+    """Every error body (API-3, API-4)."""
+
+    success = serializers.BooleanField(help_text="Always false.")
     message = serializers.CharField()
-    errors = serializers.DictField(required=False)
+    code = serializers.CharField(
+        help_text="Stable machine-readable code; branch on this."
+    )
+    errors = serializers.DictField(
+        required=False,
+        help_text="Per field, a list of messages. Nested fields nest.",
+    )

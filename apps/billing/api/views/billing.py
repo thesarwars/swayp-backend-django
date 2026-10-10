@@ -8,6 +8,7 @@ from apps.billing.api.serializers.billing import (
     AddOnSerializer,
     FeeChargeQuerySerializer,
     FeeChargeSerializer,
+    AllowancesSerializer,
     InvoicePreviewSerializer,
     BillingConfigSerializer,
     CardSerializer,
@@ -84,6 +85,8 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
     ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
+    nullable_data = ("GET",)
+    may_be_unavailable = True
 
     def get(self, request):
         subscription = self.service.current(self.account(request))
@@ -97,6 +100,15 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             message="Subscription fetched successfully.",
         )
 
+    @extend_schema(
+        summary="Subscribe",
+        description=(
+            "Starts the plan; with payment_method_id from a confirmed "
+            "SetupIntent when money is collected. 201."
+        ),
+        request=SubscribeSerializer,
+        responses={201: SubscriptionSerializer},
+    )
     def post(self, request):
         """Subscribe to a plan."""
         # A retry must not start a second subscription or charge (API-2).
@@ -120,6 +132,15 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             status_code=status.HTTP_201_CREATED,
         )
 
+    @extend_schema(
+        summary="Change plan",
+        description=(
+            "Keeps the current cycle. 402 if the account's usage would not "
+            "fit the new plan."
+        ),
+        request=SubscribeSerializer,
+        responses={200: SubscriptionSerializer},
+    )
     def patch(self, request):
         """Change plan, keeping the current cycle."""
         serializer = SubscribeSerializer(data=request.data)
@@ -135,6 +156,15 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
             message="Plan changed.",
         )
 
+    @extend_schema(
+        summary="Cancel at period end",
+        description=(
+            "The plan stays live until cancels_on, then ends. Undo with "
+            "POST subscription/resume."
+        ),
+        request=None,
+        responses={200: SubscriptionSerializer},
+    )
     def delete(self, request):
         """Cancel at the end of the paid period (BILLING-5)."""
         subscription = self.service.cancel(account=self.account(request))
@@ -161,6 +191,7 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
+    may_be_unavailable = True
     permission_classes = BaseAPIView.permission_classes + [
         RequiresCapability
     ]
@@ -182,6 +213,7 @@ class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
         "Usage against each allowance. limit null means unlimited. Seats and "
         "banks are standing capacity; checks reset each cycle."
     ),
+    responses={200: AllowancesSerializer},
 )
 class AllowanceAPIView(AccountScopedMixin, BaseAPIView):
 
@@ -216,6 +248,7 @@ class AddOnAPIView(AccountScopedMixin, BaseAPIView):
     ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
+    nullable_data = ("POST",)
 
     def _subscription(self, request):
         subscription = SubscriptionService().current(self.account(request))
@@ -237,6 +270,12 @@ class AddOnAPIView(AccountScopedMixin, BaseAPIView):
             message="Add-ons fetched successfully.",
         )
 
+    @extend_schema(
+        summary="Add, update or remove an add-on",
+        description="quantity 0 removes it, and data is then null.",
+        request=SetAddOnSerializer,
+        responses={200: AddOnSerializer},
+    )
     def post(self, request):
         subscription = self._subscription(request)
 
@@ -297,6 +336,9 @@ class InvoicePreviewAPIView(AccountScopedMixin, BaseAPIView):
 )
 class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
 
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
+
     def get(self, request):
         query = FeeChargeQuerySerializer(data=request.query_params)
         query.is_valid(raise_exception=True)
@@ -345,6 +387,7 @@ class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
 class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
+    may_be_unavailable = True
     permission_classes = BaseAPIView.permission_classes + [
         RequiresCapability
     ]
@@ -413,6 +456,8 @@ class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
     ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
+    nullable_data = ("GET",)
+    may_be_unavailable = True
 
     def get(self, request):
         subscription = self.service.current(self.account(request))
@@ -483,6 +528,15 @@ class BillingConfigAPIView(BaseAPIView):
     responses={200: InvoiceHistoryItemSerializer(many=True)},
 )
 class InvoiceHistoryAPIView(AccountScopedMixin, BaseAPIView):
+
+    may_be_unavailable = True
+    response_extra = {
+        "next_cursor": {
+            "type": "string",
+            "nullable": True,
+            "description": "Send as starting_after for the next page.",
+        },
+    }
 
     def get(self, request):
         query = InvoiceHistoryQuerySerializer(data=request.query_params)

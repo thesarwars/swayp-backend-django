@@ -21,6 +21,9 @@ from apps.vendors.services.directory_service import DirectoryService
     ],
 )
 class ProviderDirectorySearchAPIView(ListAPIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     """Configured-account directory search — behind the DirectoryProvider
     interface (mock today), paginated, with the verified/network badges."""
 

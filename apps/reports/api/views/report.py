@@ -51,6 +51,9 @@ from apps.vendors.models.vendor import Vendor
     },
 )
 class PaymentsReportAPIView(AccountScopedMixin, BaseAPIView):
+
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
     """Query-time payments report (E8-S2)."""
 
     service_class = ReportService

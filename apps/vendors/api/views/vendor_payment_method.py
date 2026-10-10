@@ -51,6 +51,9 @@ from apps.teams.access import AccountScopedMixin
     ),
 )
 class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
@@ -138,6 +141,9 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
     ),
 )
 class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     """
     GET
     PUT/PATCH
@@ -196,6 +202,9 @@ class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroy
 
 
 class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     """
     POST
     /vendors/{vendor_id}/payment-methods/{method_id}/set-primary/

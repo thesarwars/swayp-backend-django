@@ -61,6 +61,39 @@ class StandardPagination(PageNumberPagination):
 
             return []
 
+    def get_paginated_response_schema(self, schema):
+        """``{items, pagination}``, as get_paginated_response sends it, not
+        DRF's count/next/previous/results (API-1)."""
+        page = {"type": "integer"}
+
+        return {
+            "type": "object",
+            "required": ["items", "pagination"],
+            "properties": {
+                "items": schema,
+                "pagination": {
+                    "type": "object",
+                    "required": [
+                        "page", "pageSize", "totalPages", "totalItems",
+                        "hasNext", "hasPrevious",
+                    ],
+                    "properties": {
+                        "page": page,
+                        "pageSize": page,
+                        "totalPages": page,
+                        "totalItems": page,
+                        "hasNext": {"type": "boolean"},
+                        "hasPrevious": {"type": "boolean"},
+                        "page_size": page,
+                        "total_pages": page,
+                        "total_items": page,
+                        "has_next": {"type": "boolean"},
+                        "has_previous": {"type": "boolean"},
+                    },
+                },
+            },
+        }
+
     def get_paginated_response(self, data):
         paginator = self.page.paginator
 

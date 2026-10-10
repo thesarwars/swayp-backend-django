@@ -25,6 +25,9 @@ from apps.teams.access import AccountScopedMixin
 )
 class BillPaymentHistoryAPIView(AccountScopedMixin, APIView):
 
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
+
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):

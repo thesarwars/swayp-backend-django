@@ -45,6 +45,9 @@ from apps.vendors.models import (
 )
 class VendorListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
 
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
+
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
@@ -84,6 +87,9 @@ class VendorListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAP
         )
     
 class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "vendor_id"
 
@@ -142,6 +148,9 @@ class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
 
 class VendorSummaryAPIView(AccountScopedMixin, APIView):
 
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -168,6 +177,9 @@ class VendorSummaryAPIView(AccountScopedMixin, APIView):
     responses={200: VendorDetailSerializer},
 )
 class VendorRestoreAPIView(AccountScopedMixin, APIView):
+
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
 
     permission_classes = [IsAuthenticated]
 

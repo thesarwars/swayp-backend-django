@@ -20,6 +20,9 @@ from apps.vendors.models import VendorActivity
 )
 class VendorActivityListAPIView(AccountScopedMixin, ListAPIView):
 
+    # Bare body, no {success, message, data} (see apps/common/schema.py).
+    response_envelope = False
+
     permission_classes = [IsAuthenticated]
     serializer_class = VendorActivitySerializer
 

@@ -20,6 +20,9 @@ from apps.notifications.services import NotificationService
 
 class NotificationListAPIView(BaseAPIView):
 
+    # pagination beside data in the schema (apps/common/schema.py).
+    paginated_response = True
+
     service_class = NotificationService
 
     @extend_schema(

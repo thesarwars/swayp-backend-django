@@ -16,7 +16,12 @@ from rest_framework.exceptions import ValidationError
 
 from apps.banking.models import BankAccount, BankConnectionStatus
 from apps.bills.models.bill_occurrence import BillOccurrence
-from apps.common.dates import cutoff_datetime_et, estimated_arrival, initiation_date
+from apps.common.dates import (
+    cutoff_datetime_et,
+    estimated_arrival,
+    initiation_date,
+    today_eastern,
+)
 from apps.common.enums import (
     BillOccurrenceStatus,
     PaymentRail,
@@ -178,6 +183,75 @@ class PaymentCreateService:
             )
 
         return create_with_reference(build, today=today)
+
+    @transaction.atomic
+    def reschedule(self, *, user, payment_id, scheduled_for, today=None):
+        """Move an unconfirmed payment to another date, in place (PAY-7).
+
+        It used to take cancel + create, which released and re-reserved the
+        bill and issued a new reference. Only before confirm: once the user
+        has authorized a date, a new date needs new consent, which is a new
+        payment. ``scheduled_for`` None makes it pay-now again.
+        """
+        from apps.payments.services.confirm_service import (
+            CONFIRMABLE,
+            is_confirmed,
+        )
+
+        today = today or today_eastern()
+
+        payment = (
+            Payment.objects.select_for_update()
+            .filter(id=payment_id, user=user)
+            .select_related("bill_occurrence")
+            .first()
+        )
+
+        if payment is None:
+            raise ValidationError({"payment": "Payment not found."})
+
+        if payment.status not in CONFIRMABLE or is_confirmed(payment):
+            raise ValidationError(
+                {
+                    "payment": (
+                        "Only an unconfirmed payment can be rescheduled. "
+                        "Cancel it and create a new one instead."
+                    )
+                }
+            )
+
+        if scheduled_for is not None and scheduled_for < today:
+            raise ValidationError(
+                {"scheduled_for": "Choose today or a later date."}
+            )
+
+        anchor = scheduled_for or payment.bill_occurrence.due_date
+        initiated = max(
+            initiation_date(anchor, payment.rail, expedited=payment.expedited),
+            today,
+        )
+
+        payment.scheduled_for = scheduled_for
+        payment.initiated_date = initiated
+        payment.estimated_arrival = estimated_arrival(
+            initiated, payment.rail, expedited=payment.expedited
+        )
+        payment.cancellation_deadline = self.cancellation_deadline(initiated)
+        payment.status = (
+            PaymentStatus.SCHEDULED if scheduled_for else PaymentStatus.PENDING
+        )
+        payment.save(
+            update_fields=[
+                "scheduled_for",
+                "initiated_date",
+                "estimated_arrival",
+                "cancellation_deadline",
+                "status",
+                "updated_at",
+            ]
+        )
+
+        return payment
 
     @staticmethod
     def _assert_rails_fit(occurrences, rails, *, explicit):

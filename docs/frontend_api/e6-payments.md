@@ -203,6 +203,20 @@ Full detail with `stages`, `receipt`, `failure` and `progress`.
 
 ---
 
+### Changing the date before confirming
+
+```
+PATCH /api/v1/payments/<payment_id>     { "scheduled_for": "2026-09-20" }
+```
+
+Moves an **unconfirmed** payment to another date in place: same payment, same
+reference, and the bill stays reserved. The start, arrival and cancellation
+dates are recomputed, and the answer is the payment detail. `null` makes it
+pay now again. The date must be today or later. Weekends and holidays are
+accepted, because dates are counted from it in business days. A confirmed
+payment is a 400: its date was part of what the user authorized, so cancel
+it and create a new one.
+
 ## 3. Cancelling
 
 ```

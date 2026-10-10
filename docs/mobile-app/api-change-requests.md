@@ -549,6 +549,7 @@ These matter once the bill detail screens are built:
 - **App today:** sends lowercase actions. It reads the resolve body on a best-effort basis and compares the returned id with the failed one. With a new authorization text it opens Confirm, otherwise Processing.
 
 #### PAY-7 · minor · Reschedule in place
+- **✅ Fixed**: `PATCH /payments/{id}` with `{ scheduled_for }` moves an unconfirmed payment to a new date in place: same payment and reference, recomputed dates, and the answer is the payment detail. `null` means pay now. The date must be today or later. **Non-business days are accepted** for `scheduled_for`; the dates count from it in business days. A confirmed payment cannot be moved (400), because its date was authorized. See e6 §2, "Changing the date before confirming".
 - **Endpoint:** `POST /payments` + `cancel`, or a new `PATCH` of `scheduled_for`.
 - **Needed:** reschedule an unconfirmed payment without cancel + create. Say whether non-business days are accepted for `scheduled_for`.
 - **Screen:** schedule.

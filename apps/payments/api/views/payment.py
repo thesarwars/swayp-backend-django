@@ -11,6 +11,7 @@ from apps.payments.api.serializers.payment import (
     PaymentCreateSerializer,
     PaymentDetailSerializer,
     PaymentSerializer,
+    RescheduleSerializer,
     ResolveSerializer,
 )
 from apps.payments.idempotency import IdempotencyMixin
@@ -249,6 +250,37 @@ class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
         return ApiResponse.success(
             data=PaymentDetailSerializer(payment).data,
             message="Payment fetched successfully.",
+        )
+
+    @extend_schema(
+        tags=["Payments"],
+        summary="Reschedule an unconfirmed payment",
+        description=(
+            "Changes scheduled_for in place (null = pay now) and recomputes "
+            "the start, arrival and cancellation dates. Only before confirm; "
+            "a confirmed payment needs cancel and a new payment. Answers with "
+            "the payment detail."
+        ),
+        request=RescheduleSerializer,
+        responses={200: PaymentDetailSerializer},
+    )
+    def patch(self, request, payment_id):
+        serializer = RescheduleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        PaymentCreateService().reschedule(
+            user=self.account(request),
+            payment_id=payment_id,
+            scheduled_for=serializer.validated_data["scheduled_for"],
+        )
+
+        payment = PaymentDetailSelector().get_payment(
+            self.account(request), payment_id
+        )
+
+        return ApiResponse.success(
+            data=PaymentDetailSerializer(payment).data,
+            message="Payment rescheduled.",
         )
 
 

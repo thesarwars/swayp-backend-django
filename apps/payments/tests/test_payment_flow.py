@@ -1019,3 +1019,67 @@ class ResolutionShapeTests(PayFlowTestCase):
         )
 
         self.assertEqual(result["payment"].rail, PaymentRail.CHECK)
+
+
+class RescheduleTests(PayFlowTestCase):
+    """PAY-7: an unconfirmed payment moves to another date in place."""
+
+    def patch(self, payment, scheduled_for):
+        return self.client.patch(
+            f"/api/v1/payments/{payment.id}",
+            {"scheduled_for": scheduled_for},
+            format="json",
+        )
+
+    def test_rescheduling_keeps_the_payment_and_moves_its_dates(self):
+        from apps.common.dates import today_eastern
+
+        payment = self.create([self.occurrence()])["payments"][0]
+        target = today_eastern() + dt.timedelta(days=30)
+
+        response = self.patch(payment, target.isoformat())
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["data"]
+        self.assertEqual(data["id"], str(payment.id))
+        self.assertEqual(data["transaction_reference"], payment.transaction_reference)
+        self.assertEqual(data["scheduled_for"], target.isoformat())
+        self.assertEqual(data["status"], "SCHEDULED")
+        self.assertEqual(Payment.objects.count(), 1)
+
+    def test_null_makes_it_pay_now(self):
+        from apps.common.dates import today_eastern
+
+        payment = self.create(
+            [self.occurrence()],
+            scheduled_for=today_eastern() + dt.timedelta(days=10),
+        )["payments"][0]
+
+        data = self.patch(payment, None).json()["data"]
+
+        self.assertIsNone(data["scheduled_for"])
+        self.assertEqual(data["status"], "PENDING")
+
+    def test_a_past_date_is_refused(self):
+        payment = self.create([self.occurrence()])["payments"][0]
+
+        self.assertEqual(self.patch(payment, "2020-01-01").status_code, 400)
+
+    def test_a_confirmed_payment_cannot_be_moved(self):
+        from apps.common.dates import today_eastern
+
+        payment = self.create(
+            [self.occurrence()],
+            scheduled_for=today_eastern() + dt.timedelta(days=10),
+        )["payments"][0]
+        PaymentConfirmService().confirm_payment(
+            user=self.user, payment_id=payment.id,
+            authorization_text=AUTH_TEXT,
+            meta={"ip": "203.0.113.9", "user_agent": "t"},
+        )
+
+        response = self.patch(
+            payment, (today_eastern() + dt.timedelta(days=20)).isoformat()
+        )
+
+        self.assertEqual(response.status_code, 400)

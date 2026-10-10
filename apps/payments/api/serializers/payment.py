@@ -167,6 +167,18 @@ class PaymentCreateResponseSerializer(serializers.Serializer):
     total = serializers.DecimalField(max_digits=18, decimal_places=2)
 
 
+class RescheduleSerializer(serializers.Serializer):
+    """PATCH payments/<id> (PAY-7)."""
+
+    scheduled_for = serializers.DateField(
+        allow_null=True,
+        help_text=(
+            "The new date, today or later; null to pay now. Weekends and "
+            "holidays are accepted: dates count from it in business days."
+        ),
+    )
+
+
 class ResolveSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=[(a, a) for a in ACTIONS])
     payment_method_id = serializers.UUIDField(required=False)

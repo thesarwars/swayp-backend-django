@@ -157,3 +157,46 @@ class CancelAtPeriodEndTests(BillingTestCase):
         cancelled = self.service.cancel(account=account, today=D(2026, 8, 3))
 
         self.assertEqual(cancelled.cancels_on, subscription.trial_end)
+
+
+class DowngradeBelowUsageTests(BillingTestCase):
+    """BILLING-7: a plan too small for current usage is refused with 402."""
+
+    def test_too_many_banks_for_the_target_plan(self):
+        from apps.banking.factories import BankConnectionFactory
+
+        self.subscribe(PlanCode.STANDARD)
+        for _ in range(3):
+            BankConnectionFactory(user=self.user)
+
+        response = self.client.patch(
+            "/api/v1/billing/subscription",
+            {"plan": PlanCode.FOUNDING},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 402)
+        self.assertIn("3 connected banks in use", response.json()["message"])
+        self.assertEqual(
+            self.service.current(self.user).plan.code, PlanCode.STANDARD
+        )
+
+    def test_a_downgrade_that_fits_goes_through(self):
+        self.subscribe(PlanCode.STANDARD)
+
+        response = self.client.patch(
+            "/api/v1/billing/subscription",
+            {"plan": PlanCode.FOUNDING},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_changing_with_no_subscription_is_a_400(self):
+        response = self.client.patch(
+            "/api/v1/billing/subscription",
+            {"plan": PlanCode.FOUNDING},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

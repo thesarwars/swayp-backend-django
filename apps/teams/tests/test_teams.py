@@ -382,10 +382,14 @@ class InvitationTests(TestCase):
             for index in range(3)
         ]
 
-        # Downgrade to Founding (3 seats). The account is now over.
-        SubscriptionService().change_plan(
-            account=self.account, plan_code=PlanCode.FOUNDING
-        )
+        # The plan shrinks to Founding (3 seats) underneath the invitations.
+        # Set directly: an in-app downgrade is now refused while usage would
+        # not fit (BILLING-7), but a plan can still change outside the app
+        # (an admin edit, a provider-side change), and acceptance must
+        # re-check rather than trust the count at invite time.
+        subscription = SubscriptionService().current(self.account)
+        subscription.plan = plan(PlanCode.FOUNDING)
+        subscription.save(update_fields=["plan"])
 
         user = UserFactory(email=members[-1].email)
 

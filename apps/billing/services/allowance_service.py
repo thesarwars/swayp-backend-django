@@ -66,6 +66,28 @@ class AllowanceService:
         """The ceiling, or ``None`` for unlimited."""
         return getattr(subscription.plan, self.LIMIT_FIELD[kind])
 
+    def overages_for_plan(self, subscription, plan):
+        """What would be over the limit if ``subscription`` moved to ``plan``
+        (BILLING-7). A list of (kind, used, limit), empty when it fits.
+
+        Capacity kinds only: seats and banks are standing usage. Checks reset
+        each cycle, so a smaller check allowance is not something to block.
+        """
+        over = []
+
+        for kind in (AllowanceKind.SEATS, AllowanceKind.BANKS):
+            limit = getattr(plan, self.LIMIT_FIELD[kind])
+
+            if limit is None:
+                continue
+
+            used = self.used(subscription, kind)
+
+            if used > limit:
+                over.append((kind, used, limit))
+
+        return over
+
     def counter(self, subscription, kind):
         counter, _ = AllowanceCounter.objects.get_or_create(
             subscription=subscription,

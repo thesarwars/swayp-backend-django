@@ -170,6 +170,8 @@ class SubscriptionService:
         if plan.id == subscription.plan_id:
             return subscription
 
+        self._assert_fits(subscription, plan)
+
         subscription.plan = plan
         subscription.locked_price = (
             subscription.locked_price
@@ -186,6 +188,37 @@ class SubscriptionService:
         self._provider().change_plan(subscription)
 
         return subscription
+
+    @staticmethod
+    def _assert_fits(subscription, plan):
+        """Refuse a downgrade the account's usage would not fit (BILLING-7).
+
+        It used to go through, leaving an account with three banks on a
+        one-bank plan: over its limits from the moment it changed.
+        """
+        from apps.billing.services.allowance_service import AllowanceService
+        from apps.common.exceptions import PlanLimitExceededException
+
+        allowances = AllowanceService()
+        over = allowances.overages_for_plan(subscription, plan)
+
+        if not over:
+            return
+
+        parts = []
+
+        for kind, used, limit in over:
+            singular, plural = allowances.NOUN[kind]
+            parts.append(
+                f"{used} {singular if used == 1 else plural} in use, "
+                f"{plan.name} allows {limit}"
+            )
+
+        raise PlanLimitExceededException(
+            "This plan is too small for the account: "
+            + "; ".join(parts)
+            + ". Remove the extra ones first, or choose a bigger plan."
+        )
 
     @transaction.atomic
     def renew(self, subscription, today=None):

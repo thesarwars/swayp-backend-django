@@ -714,6 +714,7 @@ These matter once the bill detail screens are built:
 - **App today:** shows a past-due banner.
 
 #### BILLING-7 · major · Plan change when usage exceeds the target plan
+- **✅ Fixed**: a downgrade used to go through even when the account was over the new plan's limits. Now it is a **402** naming each limit, for example *"3 connected banks in use, Founding allows 1"*, and nothing changes. It covers seats (pending invitations count) and banks; checks reset monthly and never block. A change with no subscription is a **400** on `errors.subscription`. BILLING-11 adds a machine-readable `code` to the 402. See e9 §5.
 - **Endpoint:** `PATCH /billing/subscription`.
 - **Needed:** define the status code and a displayable message for a downgrade below current usage (seats, banks), and for a change with no subscription.
 - **Screen:** manage plan.

@@ -185,6 +185,19 @@ DELETE /api/v1/billing/subscription
 Cycle boundaries are kept and **there is no proration** — the change takes
 effect at the new price with no credit. Don't promise one.
 
+**A plan too small for the account is refused.** Moving to a plan with fewer
+seats or banks than the account uses now is a **402**, and nothing changes:
+
+```json
+{ "success": false,
+  "message": "This plan is too small for the account: 3 connected banks in use, Founding allows 1. Remove the extra ones first, or choose a bigger plan." }
+```
+
+Pending invitations count as seats, so revoke spare invitations before
+downgrading. The check covers seats and banks; checks reset monthly, so a
+smaller check allowance never blocks a change. `PATCH` with no subscription is
+a 400. Warn before the user picks a smaller plan, but rely on this answer.
+
 **Cancelling keeps the paid period.** `DELETE` doesn't end the plan at once:
 it stays `ACTIVE`, with every allowance, until `cancels_on`, then ends. That
 date is the end of the paid month, or the trial's end during a trial.

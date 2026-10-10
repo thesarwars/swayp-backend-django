@@ -687,6 +687,7 @@ These matter once the bill detail screens are built:
 - **App today:** shows the current-cycle invoice plus billed fees.
 
 #### BILLING-3 · major · Reading `collects_money` creates a SetupIntent
+- **✅ Fixed**: new `GET /billing/config` returns `{ collects_money, publishable_key }` and creates nothing. Call `payment-method/setup` only when the card form is about to open. See e9 §1.
 - **Endpoint:** `POST /billing/payment-method/setup`; new, for example `GET /billing/config`.
 - **Today:** the only way to learn whether the provider takes real money (and the publishable key) is the setup call, which creates a SetupIntent every time.
 - **Needed:** a call with no side effects.

@@ -77,6 +77,15 @@ class BillingProviderService:
     def collects_money(self):
         return getattr(self.provider, "collects_money", False)
 
+    @property
+    def publishable_key(self):
+        """The processor's public key for the client SDK, or "" (BILLING-3).
+        Public by design; never a secret."""
+        if not self.collects_money:
+            return ""
+
+        return getattr(self.provider, "_publishable", "") or ""
+
     def swayp_status(self, provider_status, default=None):
         return swayp_status(provider_status, default)
 

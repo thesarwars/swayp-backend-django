@@ -8,6 +8,7 @@ from apps.billing.api.serializers.billing import (
     AddOnSerializer,
     FeeChargeSerializer,
     InvoicePreviewSerializer,
+    BillingConfigSerializer,
     CardSerializer,
     PlanOfferSerializer,
     ReplaceCardSerializer,
@@ -409,4 +410,29 @@ class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
         return ApiResponse.success(
             data=CardSerializer(card).data,
             message="Card updated.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Billing configuration",
+    description=(
+        "Whether this deployment collects money, and the processor's "
+        "publishable key for the card form. Creates nothing; call it before "
+        "showing checkout instead of payment-method/setup, which opens a "
+        "SetupIntent every time."
+    ),
+    responses={200: BillingConfigSerializer},
+)
+class BillingConfigAPIView(BaseAPIView):
+
+    def get(self, request):
+        provider = BillingProviderService()
+
+        return ApiResponse.success(
+            data={
+                "collects_money": provider.collects_money,
+                "publishable_key": provider.publishable_key,
+            },
+            message="Billing configuration fetched successfully.",
         )

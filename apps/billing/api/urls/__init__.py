@@ -4,6 +4,7 @@ from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
 from apps.billing.api.views.billing import (
     AddOnAPIView,
     AllowanceAPIView,
+    BillingConfigAPIView,
     FeeChargeListAPIView,
     InvoicePreviewAPIView,
     PaymentMethodAPIView,
@@ -15,6 +16,7 @@ from apps.billing.api.views.billing import (
 
 urlpatterns = [
     path("/plans", PlanListAPIView.as_view(), name="billing-plan-list"),
+    path("/config", BillingConfigAPIView.as_view(), name="billing-config"),
     path(
         "/subscription/resume",
         SubscriptionResumeAPIView.as_view(),

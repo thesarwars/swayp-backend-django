@@ -12,7 +12,18 @@ Setup: Stripe Billing
 
 ## 1. Ask whether money is being collected — don't assume
 
-Stripe is wired, but whether it charges is configuration:
+Stripe is wired, but whether it charges is configuration. Ask with a read
+that creates nothing:
+
+```
+GET /api/v1/billing/config
+```
+
+```json
+{ "collects_money": true, "publishable_key": "pk_test_…" }
+```
+
+Only when you are about to show the card form, open a SetupIntent:
 
 ```
 POST /api/v1/billing/payment-method/setup
@@ -23,6 +34,9 @@ POST /api/v1/billing/payment-method/setup
   "publishable_key": "pk_test_…",
   "collects_money": true }
 ```
+
+Every `setup` call creates a SetupIntent at Stripe, so don't use it just to
+learn `collects_money`.
 
 **`collects_money: false`** means no processor is configured — entitlements
 are recorded and nothing is charged. **Skip the card form entirely** rather

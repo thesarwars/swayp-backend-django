@@ -200,3 +200,19 @@ class DowngradeBelowUsageTests(BillingTestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class BillingConfigTests(BillingTestCase):
+    """BILLING-3: collects_money without opening a SetupIntent."""
+
+    def test_the_mock_collects_nothing_and_creates_nothing(self):
+        from unittest.mock import patch
+
+        with patch(
+            "apps.billing.services.provider_service.BillingProviderService.create_setup_intent",
+            side_effect=AssertionError("must not open a SetupIntent"),
+            create=True,
+        ):
+            data = self.client.get("/api/v1/billing/config").json()["data"]
+
+        self.assertEqual(data, {"collects_money": False, "publishable_key": ""})

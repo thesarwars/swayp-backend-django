@@ -217,3 +217,12 @@ class ReplaceCardSerializer(serializers.Serializer):
     payment_method_id = serializers.CharField(
         help_text="From a SetupIntent confirmed with the processor's SDK."
     )
+
+
+class BillingConfigSerializer(serializers.Serializer):
+    collects_money = serializers.BooleanField(
+        help_text="False on the mock deployment: no card is ever collected."
+    )
+    publishable_key = serializers.CharField(
+        allow_blank=True, help_text="For the processor's client SDK; \"\" when none."
+    )

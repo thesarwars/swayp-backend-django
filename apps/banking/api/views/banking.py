@@ -120,7 +120,7 @@ class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
     request=LinkExchangeSerializer,
     responses={201: BankConnectionSerializer},
 )
-class LinkExchangeAPIView(AccountScopedMixin, BaseAPIView):
+class LinkExchangeAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = BankLinkService
     # Connecting a bank exposes the account's money (E10-S1).
@@ -130,6 +130,10 @@ class LinkExchangeAPIView(AccountScopedMixin, BaseAPIView):
     required_capability = MANAGE_BANKS
 
     def post(self, request):
+        # A retry after a lost answer must not link the bank twice (API-2).
+        return self.run_idempotent(request, lambda: self._exchange(request))
+
+    def _exchange(self, request):
         serializer = LinkExchangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

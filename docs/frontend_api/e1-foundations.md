@@ -39,7 +39,20 @@ The same cutoff decides whether same-day ACH is still offered today (see
 
 ## 2. Idempotency
 
-Endpoints that create money-moving work accept an `Idempotency-Key` header:
+Every endpoint a retry could duplicate accepts an `Idempotency-Key` header.
+**This is the complete list; no other endpoint reads the header:**
+
+| Endpoint | Without a key, a retry would… |
+|---|---|
+| `POST /payments` | create a second payment |
+| `POST /payments/<id>/confirm`, `POST /payments/batches/<id>/confirm` | confirm twice |
+| `POST /payments/<id>/resolve` | create a second replacement payment |
+| `POST /banking/link/exchange` | link the bank twice (or hit a false 402 on Founding) |
+| `POST /banking/scans/<id>/import` | create the bills twice |
+| `POST /bills/create` | create a second bill, and with autopay a second authorization |
+| `POST /vendors`, `POST /vendors/<id>/payment-methods` | save a duplicate payee |
+| `POST /billing/subscription` | start a second subscription |
+
 
 ```
 POST /api/v1/payments
@@ -47,8 +60,13 @@ Idempotency-Key: 8f14e45f-ceea-467a-9f1c-1b8a4a2f0a11
 ```
 
 - Same key, same body → the **original response** is replayed. Safe to retry.
-- Same key, **different** body → **409**.
+- Same key, **different** body → **409** `code: "idempotency_key_reused"`.
+- Same key while the first is still running → **409**
+  `code: "idempotency_in_progress"`; wait and retry.
+- A request that **failed** (any 4xx/5xx) releases its key, so retrying with
+  it runs the request again.
 - Omitted → the request is processed normally.
+- Keys are per user and per endpoint.
 
 Generate one UUID per user intent, not per network attempt. Retrying a
 timed-out request must reuse the same key, or you will create two payments.

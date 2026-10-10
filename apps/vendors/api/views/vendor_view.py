@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 from apps.vendors.services.vendor_service import (
     VendorService,
 )
+from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
 from apps.vendors.models import (
     Vendor,
@@ -42,7 +43,7 @@ from apps.vendors.models import (
         responses={201: VendorDetailSerializer},
     ),
 )
-class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
+class VendorListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
 
     permission_classes = [IsAuthenticated]
 
@@ -61,6 +62,12 @@ class VendorListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
         return VendorListSerializer
 
     def create(self, request, *args, **kwargs):
+        # A retry must not save a duplicate payee (API-2).
+        return self.run_idempotent(
+            request, lambda: self._create(request, *args, **kwargs)
+        )
+
+    def _create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

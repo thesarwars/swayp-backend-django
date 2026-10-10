@@ -35,6 +35,7 @@ from apps.vendors.selectors.vendor_selector import (
     VendorSelector,
 
 )
+from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
 
 
@@ -49,7 +50,7 @@ from apps.teams.access import AccountScopedMixin
         responses={201: VendorPaymentMethodSerializer},
     ),
 )
-class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView):
+class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
@@ -91,6 +92,12 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, ListCreateAPIView
         return context
 
     def create(self, request, *args, **kwargs):
+        # A retry must not save a duplicate payee (API-2).
+        return self.run_idempotent(
+            request, lambda: self._create(request, *args, **kwargs)
+        )
+
+    def _create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

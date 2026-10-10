@@ -12,9 +12,10 @@ from apps.bills.serializers.bill_review_serializer import (
 )
 from apps.common.swagger import BAD_REQUEST_RESPONSE, UNAUTHORIZED_RESPONSE
 from apps.common.request_meta import request_meta
+from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
 
-class BillCreateAPIView(AccountScopedMixin, APIView):
+class BillCreateAPIView(AccountScopedMixin, IdempotencyMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def __init__(self, **kwargs):
@@ -37,6 +38,11 @@ class BillCreateAPIView(AccountScopedMixin, APIView):
         },
     )
     def post(self, request):
+        # A retry must not create a second bill, or with autopay a second
+        # debit authorization (API-2).
+        return self.run_idempotent(request, lambda: self._create(request))
+
+    def _create(self, request):
         serializer = BillCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

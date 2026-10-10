@@ -29,6 +29,7 @@ from apps.billing.services.subscription_service import SubscriptionService
 from apps.common.base_views import BaseAPIView
 from apps.common.pagination import PaginationService
 from apps.common.responses import ApiResponse
+from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin, RequiresCapability
 from apps.teams.permissions import MANAGE_BILLING
 
@@ -73,7 +74,7 @@ class PlanListAPIView(AccountScopedMixin, BaseAPIView):
     ),
     responses={200: SubscriptionSerializer},
 )
-class SubscriptionAPIView(AccountScopedMixin, BaseAPIView):
+class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = SubscriptionService
     # Reading the plan is fine for anyone on the team; changing it is not,
@@ -98,6 +99,10 @@ class SubscriptionAPIView(AccountScopedMixin, BaseAPIView):
 
     def post(self, request):
         """Subscribe to a plan."""
+        # A retry must not start a second subscription or charge (API-2).
+        return self.run_idempotent(request, lambda: self._subscribe(request))
+
+    def _subscribe(self, request):
         serializer = SubscribeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

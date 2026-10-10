@@ -766,6 +766,7 @@ The schema is reliable for paths, request bodies and enums, but often wrong for 
 | Billing | Model the envelope. Add request bodies for POST/PATCH subscription and POST addons. `POST subscription` should be 201. `is_trialing` should be boolean and `trial_days_remaining` integer or null. `GET subscription` should be nullable. Add the allowances schema. POST addons returns one object or null. Declare 400/403/503. |
 
 #### API-2 · major · Say which endpoints honour `Idempotency-Key`
+✅ Fixed: `POST /banking/link/exchange`, `POST /bills/create`, `POST /vendors`, `POST /vendors/{id}/payment-methods` and `POST /billing/subscription` now honour it, beside payments create/confirm/resolve and scan import. E1 §2 lists every endpoint that reads the header (the complete list) and the 409 codes.
 - **Today:** E1 says endpoints that create money-moving work accept the header, and gives `POST /payments` as the example. Only `banking/scans/{id}/import` says so explicitly in its own doc.
 - **Needed:** list every endpoint that honours it, and add it where it is missing. These are the ones that matter:
 

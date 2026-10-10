@@ -258,3 +258,24 @@ class ProfileServiceTests(TestCase):
         self.assertTrue(
             BusinessProfile.objects.filter(profile=profile).exists()
         )
+
+
+class ProfilePatchResponseTests(TestCase):
+    """AUTH-12: PATCH answers with the full updated profile, enveloped, so the
+    client does not have to refetch after a save."""
+
+    def setUp(self):
+        self.user = UserFactory(first_name="Ada", last_name="Reed")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_patch_returns_the_same_body_as_a_fresh_get(self):
+        response = self.client.patch(
+            URL, {"address": "1 Main St"}, format="json"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["success"])
+        self.assertEqual(body["data"]["address"], "1 Main St")
+        self.assertEqual(body["data"], self.client.get(URL).json()["data"])

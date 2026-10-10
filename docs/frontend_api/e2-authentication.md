@@ -273,6 +273,9 @@ GET   /api/v1/users/profile
 PATCH /api/v1/users/profile
 ```
 
+Both answer in the standard envelope, `{ "success", "message", "data" }`.
+`data` is the profile:
+
 ```json
 {
   "account_type": "BUSINESS",
@@ -294,6 +297,15 @@ PATCH /api/v1/users/profile
 ```
 
 `PATCH` is partial — send only what changed. An empty body is a 400.
+
+**`PATCH` answers with the full updated profile**, the same body as `GET`:
+every field, not only the ones you sent, inside the usual envelope. Use it
+directly; there is no need to refetch `GET users/profile` after a save.
+
+```json
+{ "success": true, "message": "Profile updated.",
+  "data": { "account_type": "BUSINESS", "email": "jane@acme.com", "…": "…" } }
+```
 
 **Read-only here:** `account_type`, `email`, `phone_number`, `is_verified`.
 The first changes what the account *is*; `email` and `phone_number` are login

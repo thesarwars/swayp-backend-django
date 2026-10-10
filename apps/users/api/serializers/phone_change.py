@@ -16,5 +16,11 @@ class PhoneChangeVerifySerializer(PhoneChangeRequestSerializer):
     otp = serializers.CharField(min_length=6, max_length=6)
 
 
-class PhoneChangeRequestResponseSerializer(serializers.Serializer):
+class PhoneChangeSentSerializer(serializers.Serializer):
     email = serializers.CharField(help_text="Masked address the code went to.")
+
+
+class PhoneChangeRequestResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = PhoneChangeSentSerializer()

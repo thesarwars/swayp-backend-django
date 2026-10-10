@@ -13,7 +13,10 @@ from apps.users.api.serializers.phone_change import (
     PhoneChangeRequestSerializer,
     PhoneChangeVerifySerializer,
 )
-from apps.users.api.serializers.profile import ProfileSerializer
+from apps.users.api.serializers.profile import (
+    ProfileResponseSerializer,
+    ProfileSerializer,
+)
 from apps.users.services.phone_change_service import PhoneChangeService
 from apps.users.services.profile_service import ProfileService
 
@@ -64,7 +67,7 @@ class PhoneChangeRequestAPIView(BaseAPIView):
     ),
     request=PhoneChangeVerifySerializer,
     responses={
-        200: ProfileSerializer,
+        200: ProfileResponseSerializer,
         400: BAD_REQUEST_RESPONSE,
         401: UNAUTHORIZED_RESPONSE,
     },

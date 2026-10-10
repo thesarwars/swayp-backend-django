@@ -35,6 +35,15 @@ class ProfileSerializer(serializers.Serializer):
     ein = serializers.CharField(allow_null=True)
 
 
+class ProfileResponseSerializer(serializers.Serializer):
+    """What GET and PATCH both answer: the full profile in the standard
+    envelope. PATCH returns every field, not only the ones it changed."""
+
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = ProfileSerializer()
+
+
 class ProfileUpdateSerializer(serializers.Serializer):
     """Partial update. Every field optional — this backs a settings screen
     where somebody fixes one typo, not a form that resubmits everything."""

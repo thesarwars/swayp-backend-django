@@ -71,7 +71,7 @@ POST /api/v1/banking/link/token     { "platform": "ios" }   ← optional: ios, a
 ```json
 { "success": true, "message": "Link token created.",
   "data": { "link_token": "link-mock-96d92229-…", "expiration": null,
-    "provider": "mock", "months_history": 24 } }
+    "provider": "MOCK", "months_history": 24 } }
 ```
 
 `months_history` is the window the scan will read, so the screens before the

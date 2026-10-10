@@ -225,6 +225,7 @@ Contents:
 - **App today:** calls `skip-bank` in the background (retried twice) and closes the flow at once. It ignores the answer, then refetches `users/onboarding`.
 
 #### BANK-11 · minor · `provider` casing
+- **✅ Fixed**: `LinkToken.provider` is now upper case (`"MOCK"`, `"PLAID"`), matching `BankConnection.provider` and the API's other enums.
 - **Endpoint:** `LinkToken.provider` and `BankConnection.provider`.
 - **Today:** `"mock"` in one, `"MOCK"` in the other.
 - **Needed:** one casing.

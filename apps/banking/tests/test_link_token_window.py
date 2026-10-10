@@ -79,3 +79,22 @@ class LinkTokenPlatformParamTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+@override_settings(BANK_DATA_PROVIDER="mock")
+class ProviderCasingTests(TestCase):
+    """BANK-11: link/token and the connection spell the provider the same."""
+
+    def test_link_token_and_connection_agree(self):
+        client = APIClient()
+        client.force_authenticate(user=UserFactory())
+
+        token = client.post("/api/v1/banking/link/token").json()["data"]
+        connection = client.post(
+            "/api/v1/banking/link/exchange",
+            {"public_token": "public-mock-chase", "consent_accepted": True},
+            format="json",
+        ).json()["data"]
+
+        self.assertEqual(token["provider"], "MOCK")
+        self.assertEqual(connection["provider"], token["provider"])

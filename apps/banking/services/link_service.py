@@ -45,7 +45,9 @@ class BankLinkService:
         return {
             "link_token": token.token,
             "expiration": token.expiration,
-            "provider": self.provider.name,
+            # Upper case, as stored on BankConnection.provider (BANK-11): the
+            # same provider must not be "mock" here and "MOCK" there.
+            "provider": self.provider.name.upper(),
             "months_history": MAX_MONTHS_HISTORY,
         }
 

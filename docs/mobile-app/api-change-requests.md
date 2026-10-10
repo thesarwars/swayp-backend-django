@@ -265,6 +265,7 @@ Contents:
 - **App today:** the bell polls the profile summary every 60 s while home is focused. "Mark all read" shows when any loaded row is unread, so the badge and the list can disagree.
 
 #### DASH-5 · minor · Mark-read answers
+- **✅ Fixed**: `PATCH /notifications/{id}/read` returns the updated row in `data` (`isRead`, `readAt`) and a top-level `unreadCount`. `PATCH /notifications/read-all` returns `data.markedCount` and `unreadCount` (0). Re-reading an already-read notification is a 200 that keeps the original `readAt`. Another person's or an unknown id is 404. See e8 §4, "Marking read".
 - **Endpoint:** `PATCH /notifications/{id}/read`, `PATCH /notifications/read-all`.
 - **Needed:** return the updated row (`isRead`, `readAt`) and the new unread count. Document what re-reading a read notification returns, and the 404 rule.
 - **App today:** updates the list optimistically, rolls back on error, handles a 404 quietly, then refetches the unread count.

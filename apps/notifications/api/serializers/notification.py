@@ -59,5 +59,22 @@ class NotificationQuerySerializer(
 class MarkNotificationReadResponseSerializer(
     serializers.Serializer
 ):
+    """The updated row, and the badge count after the change (DASH-5)."""
+
     success = serializers.BooleanField()
     message = serializers.CharField()
+    data = NotificationSerializer()
+    unreadCount = serializers.IntegerField()
+
+
+class MarkedCountSerializer(serializers.Serializer):
+    markedCount = serializers.IntegerField(
+        help_text="Notifications that were unread and are now read."
+    )
+
+
+class MarkAllReadResponseSerializer(serializers.Serializer):
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    data = MarkedCountSerializer()
+    unreadCount = serializers.IntegerField(help_text="Always 0.")

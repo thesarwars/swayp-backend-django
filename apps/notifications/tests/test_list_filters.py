@@ -153,3 +153,53 @@ class UnreadCountTests(TestCase):
             home["unread_notification_count"],
             summary["unreadNotificationCount"],
         )
+
+
+class MarkReadResponseTests(TestCase):
+    """DASH-5: mark-read answers with what changed, so the client can update
+    the row and the badge without refetching."""
+
+    def setUp(self):
+        self.user = UserFactory()
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_marking_one_returns_the_row_and_the_new_count(self):
+        target = NotificationFactory(user=self.user)
+        NotificationFactory(user=self.user)
+
+        body = self.client.patch(f"{LIST_URL}/{target.id}/read").json()
+
+        self.assertEqual(body["data"]["id"], str(target.id))
+        self.assertTrue(body["data"]["isRead"])
+        self.assertIsNotNone(body["data"]["readAt"])
+        self.assertEqual(body["unreadCount"], 1)
+
+    def test_marking_an_already_read_one_is_idempotent(self):
+        target = NotificationFactory(user=self.user)
+        first = self.client.patch(f"{LIST_URL}/{target.id}/read").json()
+
+        second = self.client.patch(f"{LIST_URL}/{target.id}/read")
+
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.json()["data"]["readAt"], first["data"]["readAt"])
+
+    def test_another_persons_notification_is_404(self):
+        theirs = NotificationFactory()
+
+        response = self.client.patch(f"{LIST_URL}/{theirs.id}/read")
+
+        self.assertEqual(response.status_code, 404)
+        theirs.refresh_from_db()
+        self.assertFalse(theirs.is_read)
+
+    def test_read_all_returns_how_many_changed(self):
+        NotificationFactory.create_batch(2, user=self.user)
+        NotificationFactory(user=self.user, is_read=True)
+
+        body = self.client.patch(f"{LIST_URL}/read-all").json()
+        again = self.client.patch(f"{LIST_URL}/read-all").json()
+
+        self.assertEqual(body["data"]["markedCount"], 2)
+        self.assertEqual(body["unreadCount"], 0)
+        self.assertEqual(again["data"]["markedCount"], 0)

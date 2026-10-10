@@ -68,4 +68,5 @@ class NotificationService:
         *,
         user,
     ):
-        self.repository.mark_all_as_read(user)
+        """How many were unread and are now read; 0 when there were none."""
+        return self.repository.mark_all_as_read(user)

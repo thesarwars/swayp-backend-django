@@ -8,6 +8,7 @@ from apps.common.swagger import (
     UNAUTHORIZED_RESPONSE,
 )
 from apps.notifications.api.serializers.notification import (
+    MarkAllReadResponseSerializer,
     MarkNotificationReadResponseSerializer,
     NotificationListResponseSerializer,
     NotificationQuerySerializer,
@@ -75,7 +76,12 @@ class NotificationReadAPIView(BaseAPIView):
     @extend_schema(
         tags=["Notifications"],
         summary="Mark Notification As Read",
-        description="Marks a notification as read.",
+        description=(
+            "Marks one of the caller's notifications as read and returns it, "
+            "with the unread count after the change. Idempotent: an "
+            "already-read notification answers 200 with its original readAt. "
+            "Another person's id, or an unknown one, is 404."
+        ),
         responses={
             200: MarkNotificationReadResponseSerializer,
             400: BAD_REQUEST_RESPONSE,
@@ -88,13 +94,17 @@ class NotificationReadAPIView(BaseAPIView):
         request,
         notification_id,
     ):
-        self.service.mark_as_read(
+        notification = self.service.mark_as_read(
             user=request.user,
             notification_id=notification_id,
         )
 
         return ApiResponse.success(
+            data=NotificationSerializer(notification).data,
             message="Notification marked as read.",
+            extra={
+                "unreadCount": self.service.unread_count(user=request.user),
+            },
         )
 
 
@@ -105,18 +115,26 @@ class NotificationReadAllAPIView(BaseAPIView):
     @extend_schema(
         tags=["Notifications"],
         summary="Mark All Notifications As Read",
-        description="Marks all unread notifications as read.",
+        description=(
+            "Marks all of the caller's unread notifications as read. "
+            "data.markedCount is how many changed (0 when none were unread); "
+            "unreadCount is then 0."
+        ),
         responses={
-            200: MarkNotificationReadResponseSerializer,
+            200: MarkAllReadResponseSerializer,
             400: BAD_REQUEST_RESPONSE,
             401: UNAUTHORIZED_RESPONSE,
         },
     )
     def patch(self, request):
-        self.service.mark_all_as_read(
+        marked = self.service.mark_all_as_read(
             user=request.user,
         )
 
         return ApiResponse.success(
+            data={"markedCount": marked},
             message="All notifications marked as read.",
+            extra={
+                "unreadCount": self.service.unread_count(user=request.user),
+            },
         )

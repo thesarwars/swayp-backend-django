@@ -204,6 +204,26 @@ Notifications are **personal, not account-wide** — a team member sees their
 own, not the owner's. This is the one place that scopes to the user rather
 than the account.
 
+### Marking read
+
+`PATCH notifications/<id>/read` answers with **the updated row** (same shape
+as the list) and the badge count after the change:
+
+```json
+{ "success": true, "message": "Notification marked as read.",
+  "data": { "id": "…", "isRead": true, "readAt": "2026-10-10T12:00:00Z", "…": "…" },
+  "unreadCount": 2 }
+```
+
+- **Idempotent.** Marking an already-read notification is a 200 that changes
+  nothing; `readAt` keeps its original time.
+- **404** for an id that is not the caller's, including a team member trying
+  someone else's.
+
+`PATCH notifications/read-all` answers `data.markedCount` (how many were
+unread, 0 if none) and `unreadCount` (now 0). Update the list and the badge
+from these; there is no need to refetch.
+
 ### Preferences
 
 ```

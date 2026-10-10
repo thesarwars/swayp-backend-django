@@ -64,6 +64,71 @@ class PaymentDetailSelector:
             "payments": payments,
         }
 
+    def authorization(self, payment):
+        """Who approved this payment, with what words, and when (PAY-1).
+
+        Memoised on the instance: the serializer reads three fields from it.
+        The text is the per-payment consent, else the batch's, else the
+        bill's standing authorization for an autopay payment.
+        """
+        cached = getattr(payment, "_authorization_cache", None)
+
+        if cached is not None:
+            return cached
+
+        from datetime import timedelta
+
+        from django.conf import settings
+
+        from apps.common.enums import PaymentStageStatus
+        from apps.payments.models import PaymentStageName
+
+        stage = payment.stages.filter(
+            stage=PaymentStageName.AUTHORIZED,
+            status=PaymentStageStatus.DONE,
+        ).first()
+
+        text = None
+
+        if stage is not None:
+            consent = payment.authorizations.order_by("-accepted_at").first()
+
+            if consent is None and payment.batch_id:
+                consent = payment.batch.authorizations.order_by(
+                    "-accepted_at"
+                ).first()
+
+            if consent is None and payment.bill_occurrence_id:
+                consent = (
+                    payment.bill_occurrence.bill.standing_authorizations.filter(
+                        revoked_at__isnull=True
+                    )
+                    .order_by("-accepted_at")
+                    .first()
+                )
+
+            text = consent.authorization_text if consent else None
+
+        confirm_by = None
+
+        if stage is None and payment.status in (
+            PaymentStatus.SCHEDULED,
+            PaymentStatus.PENDING,
+        ):
+            confirm_by = payment.created_at + timedelta(
+                minutes=getattr(settings, "PAYMENT_CONFIRM_TIMEOUT_MINUTES", 30)
+            )
+
+        result = {
+            "authorized_at": stage.finished_at if stage else None,
+            "authorization_text": text,
+            "confirm_by": confirm_by,
+        }
+
+        payment._authorization_cache = result
+
+        return result
+
     def receipt(self, payment):
         """Receipt fields for a settled payment (840:28867)."""
         if payment.status != PaymentStatus.SUCCESSFUL:

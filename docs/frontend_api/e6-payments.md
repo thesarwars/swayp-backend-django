@@ -13,6 +13,21 @@ Select bills, authorize once, watch the stages, handle what goes wrong.
 `POST /payments/` only **reserves** the work and returns text to display.
 Nothing leaves the account until `confirm/`. Two steps, always.
 
+The reservation marks the bill occurrence `SCHEDULED` at once, so reminders
+stop. **An unconfirmed payment lapses after 30 minutes**: it is cancelled and
+its bill is released. `GET payments/<id>` shows the time as `confirm_by`. If
+the user comes back after that, create a new payment. An unconfirmed payment
+can also be cancelled at any time (§3), so a "Back" from the confirm screen
+should cancel it.
+
+`GET payments/<id>` says where an interrupted flow stands:
+
+| Field | Meaning |
+|---|---|
+| `authorized_at` | When it was confirmed. `null` means not confirmed yet. |
+| `authorization_text` | The text the user agreed to, or `null` before that. |
+| `confirm_by` | When an unconfirmed payment lapses. `null` once confirmed or finished. |
+
 ### 1.2 One authorization covers a batch
 
 Selecting six bills produces six payments and **one** `PaymentBatch`. The user
@@ -155,6 +170,11 @@ POST /api/v1/payments/batches/<batch_id>/cancel
 Allowed **until `cancellation_deadline`**, including while the payment is
 `PROCESSING` — ACH can be pulled back before it settles, and Swayp voids it at
 the processor too. Past the deadline it is a **409**.
+
+**The deadline only applies once the payment is confirmed.** An unconfirmed
+payment has authorized nothing, so it can be cancelled at any time. (For pay
+now, the deadline has already passed when the payment is created, so before
+this rule an abandoned one could never be cancelled.)
 
 ⚠️ **`cancellation_deadline` is UTC on the wire, Eastern in meaning.**
 

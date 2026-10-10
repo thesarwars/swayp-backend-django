@@ -28,6 +28,19 @@ CANCELLABLE = (
 )
 
 
+def is_confirmed(payment):
+    """Has the user (or a standing authorization) approved this payment?
+
+    The AUTHORIZED stage is marked DONE at confirm, and by autopay from the
+    bill's standing authorization. An unconfirmed payment has no stages at
+    all: they are seeded at confirm.
+    """
+    return payment.stages.filter(
+        stage=PaymentStageName.AUTHORIZED,
+        status=PaymentStageStatus.DONE,
+    ).exists()
+
+
 class PaymentConfirmService:
 
     def __init__(self):
@@ -209,7 +222,47 @@ class PaymentConfirmService:
 
         return {"batch": batch, "cancelled": cancelled}
 
-    def _cancel_one(self, payment, now=None):
+    def expire_unconfirmed(self, *, older_than):
+        """Cancel payments nobody confirmed in time; returns how many (PAY-1).
+
+        Creating a payment reserves its bill (the occurrence goes SCHEDULED
+        so reminders stop). If the user never confirms, that reservation
+        would strand the bill, so it lapses.
+        """
+        stale = (
+            Payment.objects.filter(
+                status__in=CONFIRMABLE, created_at__lt=older_than
+            )
+            .exclude(
+                stages__stage=PaymentStageName.AUTHORIZED,
+                stages__status=PaymentStageStatus.DONE,
+            )
+            .values_list("id", flat=True)
+        )
+
+        expired = 0
+
+        for payment_id in list(stale):
+            with transaction.atomic():
+                payment = (
+                    Payment.objects.select_for_update()
+                    .filter(id=payment_id, status__in=CONFIRMABLE)
+                    .first()
+                )
+
+                # Re-checked under the lock: it may have been confirmed or
+                # cancelled since the list was read.
+                if payment is None or is_confirmed(payment):
+                    continue
+
+                self._cancel_one(
+                    payment, detail="Not confirmed in time"
+                )
+                expired += 1
+
+        return expired
+
+    def _cancel_one(self, payment, now=None, detail="Cancelled by user"):
         now = now or timezone.now()
 
         if payment.status not in CANCELLABLE:
@@ -218,8 +271,15 @@ class PaymentConfirmService:
                 f"{payment.status} and can no longer be cancelled."
             )
 
+        # The deadline protects money the user has authorized to move. An
+        # unconfirmed payment has moved nothing and authorized nothing, so it
+        # can always be cancelled (PAY-1). Before, a pay-now payment's
+        # deadline had passed before it was even created, so one abandoned
+        # at the confirm screen could never be cancelled and its bill stayed
+        # SCHEDULED for good.
         if (
-            payment.cancellation_deadline
+            is_confirmed(payment)
+            and payment.cancellation_deadline
             and now > payment.cancellation_deadline
         ):
             raise ConflictException(
@@ -235,7 +295,7 @@ class PaymentConfirmService:
         payment.status = PaymentStatus.CANCELLED
         payment.save(update_fields=["status", "updated_at"])
 
-        self.stages.fail(payment, detail="Cancelled by user")
+        self.stages.fail(payment, detail=detail)
 
         self._release_occurrence(payment)
 

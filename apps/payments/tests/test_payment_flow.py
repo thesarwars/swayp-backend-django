@@ -450,9 +450,17 @@ class CancelTests(PayFlowTestCase):
         self.assertEqual(cancelled.status, PaymentStatus.CANCELLED)
 
     def test_cancelling_after_the_deadline_is_a_conflict(self):
+        """Once confirmed, the deadline holds: money is committed to move."""
         from apps.common.exceptions import ConflictException
 
-        payment = self.create([self.occurrence()])["payments"][0]
+        payment = self.create([self.occurrence()], scheduled_for=D(2026, 8, 20))[
+            "payments"
+        ][0]
+        PaymentConfirmService().confirm_payment(
+            user=self.user, payment_id=payment.id,
+            authorization_text=AUTH_TEXT,
+            meta={"ip": "203.0.113.9", "user_agent": "t"},
+        )
 
         with self.assertRaises(ConflictException):
             PaymentConfirmService().cancel_payment(
@@ -763,3 +771,88 @@ class DeprecationTests(PayFlowTestCase):
         self.assertEqual(
             self.client.get("/api/v1/wallet/summary").status_code, 404
         )
+
+
+class UnconfirmedPaymentTests(PayFlowTestCase):
+    """PAY-1: creating a payment reserves its bill. If nobody confirms it,
+    the reservation must not strand the bill."""
+
+    def meta(self):
+        return {"ip": "203.0.113.9", "user_agent": "SwaypApp/1.0"}
+
+    def test_an_unconfirmed_payment_can_be_cancelled_after_the_deadline(self):
+        occurrence = self.occurrence()
+        payment = self.create([occurrence])["payments"][0]
+
+        cancelled = PaymentConfirmService().cancel_payment(
+            user=self.user, payment_id=payment.id,
+            now=payment.cancellation_deadline + dt.timedelta(days=1),
+        )
+
+        self.assertEqual(cancelled.status, PaymentStatus.CANCELLED)
+        occurrence.refresh_from_db()
+        self.assertNotEqual(occurrence.status, BillOccurrenceStatus.SCHEDULED)
+
+    def test_an_unconfirmed_payment_lapses_and_frees_its_bill(self):
+        occurrence = self.occurrence()
+        payment = self.create([occurrence])["payments"][0]
+        occurrence.refresh_from_db()
+        self.assertEqual(occurrence.status, BillOccurrenceStatus.SCHEDULED)
+
+        expired = PaymentConfirmService().expire_unconfirmed(
+            older_than=timezone.now() + dt.timedelta(seconds=1)
+        )
+
+        self.assertEqual(expired, 1)
+        payment.refresh_from_db()
+        occurrence.refresh_from_db()
+        self.assertEqual(payment.status, PaymentStatus.CANCELLED)
+        self.assertEqual(occurrence.status, BillOccurrenceStatus.UPCOMING)
+
+    def test_a_young_payment_is_left_alone(self):
+        payment = self.create([self.occurrence()])["payments"][0]
+
+        expired = PaymentConfirmService().expire_unconfirmed(
+            older_than=timezone.now() - dt.timedelta(minutes=30)
+        )
+
+        self.assertEqual(expired, 0)
+        payment.refresh_from_db()
+        self.assertNotEqual(payment.status, PaymentStatus.CANCELLED)
+
+    def test_a_confirmed_payment_never_lapses(self):
+        payment = self.create(
+            [self.occurrence()], scheduled_for=D(2026, 8, 20)
+        )["payments"][0]
+        PaymentConfirmService().confirm_payment(
+            user=self.user, payment_id=payment.id,
+            authorization_text=AUTH_TEXT, meta=self.meta(),
+        )
+
+        expired = PaymentConfirmService().expire_unconfirmed(
+            older_than=timezone.now() + dt.timedelta(seconds=1)
+        )
+
+        self.assertEqual(expired, 0)
+
+    def test_detail_says_whether_and_how_it_was_authorized(self):
+        payment = self.create(
+            [self.occurrence()], scheduled_for=D(2026, 8, 20)
+        )["payments"][0]
+
+        before = self.client.get(f"/api/v1/payments/{payment.id}").json()["data"]
+
+        self.assertIsNone(before["authorized_at"])
+        self.assertIsNone(before["authorization_text"])
+        self.assertIsNotNone(before["confirm_by"])
+
+        PaymentConfirmService().confirm_payment(
+            user=self.user, payment_id=payment.id,
+            authorization_text=AUTH_TEXT, meta=self.meta(),
+        )
+
+        after = self.client.get(f"/api/v1/payments/{payment.id}").json()["data"]
+
+        self.assertIsNotNone(after["authorized_at"])
+        self.assertEqual(after["authorization_text"], AUTH_TEXT)
+        self.assertIsNone(after["confirm_by"])

@@ -366,6 +366,12 @@ CELERY_ENABLE_UTC = True
 
 # Beat schedule — later epics register jobs here
 # (send_otp, sync_transactions, autopay_scheduler…).
+# Minutes a created payment may wait for "Confirm & Send" before it lapses
+# and its bill is released (PAY-1).
+PAYMENT_CONFIRM_TIMEOUT_MINUTES = env.int(
+    "PAYMENT_CONFIRM_TIMEOUT_MINUTES", default=30
+)
+
 CELERY_BEAT_SCHEDULE = {
     # E4-S6. Runs before the business day in ET so a bill due today already
     # has its occurrence row when the user opens the app. Occurrence status
@@ -387,6 +393,12 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=4, minute=30),
     },
     # E6-S7: hourly sweep for payments the processor never reported on.
+    # PAY-1: unconfirmed payments lapse, so an abandoned confirm screen
+    # cannot strand a bill. Every 5 minutes against a 30-minute timeout.
+    "payments-expire-unconfirmed": {
+        "task": "payments.expire_unconfirmed_payments",
+        "schedule": crontab(minute="*/5"),
+    },
     "payments-reconcile": {
         "task": "payments.reconcile_payments",
         "schedule": crontab(minute=15),

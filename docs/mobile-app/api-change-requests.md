@@ -465,6 +465,12 @@ These matter once the bill detail screens are built:
 ## Payments
 
 #### PAY-1 · major · An unconfirmed payment strands its bill
+- **✅ Fixed** (and it was worse than reported: for pay now, the cancel deadline had already passed when the payment was created, so an abandoned one could **never** be cancelled). Now:
+  - an **unconfirmed payment can always be cancelled**; the deadline applies only after confirm;
+  - **unconfirmed payments lapse after 30 minutes**: a job every 5 minutes cancels them and releases their bills;
+  - `GET /payments/{id}` has `authorized_at` (`null` = not confirmed), `authorization_text` and `confirm_by`.
+
+  Confirmed: ✅ the `AUTHORIZED` stage becomes `DONE` only at confirm (autopay marks it from the standing authorization). ✅ `POST /payments` with one occurrence returns `batch_id: null` and exactly one payment. The keychain marker can stay as a fast path, but the server now cleans up on its own. See e6 §1.1 and §3.
 - **Endpoint:** `POST /payments`, `POST /payments/{id}/confirm`, `POST /payments/{id}/cancel`, `GET /payments/{id}`.
 - **Today:** create reserves a payment and turns the bill occurrence `SCHEDULED` before the user has authorized anything. If the app dies between create and "Confirm & Send", the bill looks scheduled and is never paid.
 - **Needed:**

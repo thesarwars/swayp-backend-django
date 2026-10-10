@@ -1,5 +1,6 @@
 """Payment serializers (E6-S2 … E6-S6)."""
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.common.enums import PaymentRail
@@ -89,6 +90,11 @@ class PaymentDetailSerializer(PaymentSerializer):
     receipt = serializers.SerializerMethodField()
     failure = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
+    # PAY-1: enough to resume an interrupted flow. Null authorized_at means
+    # "not confirmed yet"; confirm_by says when it lapses.
+    authorized_at = serializers.SerializerMethodField()
+    authorization_text = serializers.SerializerMethodField()
+    confirm_by = serializers.SerializerMethodField()
 
     class Meta(PaymentSerializer.Meta):
         fields = PaymentSerializer.Meta.fields + (
@@ -96,7 +102,22 @@ class PaymentDetailSerializer(PaymentSerializer):
             "receipt",
             "failure",
             "progress",
+            "authorized_at",
+            "authorization_text",
+            "confirm_by",
         )
+
+    @extend_schema_field(serializers.DateTimeField(allow_null=True))
+    def get_authorized_at(self, obj):
+        return self._selector().authorization(obj)["authorized_at"]
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_authorization_text(self, obj):
+        return self._selector().authorization(obj)["authorization_text"]
+
+    @extend_schema_field(serializers.DateTimeField(allow_null=True))
+    def get_confirm_by(self, obj):
+        return self._selector().authorization(obj)["confirm_by"]
 
     def _selector(self):
         from apps.payments.selectors.payment_detail_selector import (

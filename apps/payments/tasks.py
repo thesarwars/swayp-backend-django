@@ -124,3 +124,24 @@ def autopay_scheduler():
     )
 
     return report["created"]
+
+
+@shared_task(name="payments.expire_unconfirmed_payments")
+def expire_unconfirmed_payments():
+    """Cancel payments left unconfirmed past the timeout (PAY-1)."""
+    from datetime import timedelta
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from apps.payments.services.confirm_service import PaymentConfirmService
+
+    minutes = getattr(settings, "PAYMENT_CONFIRM_TIMEOUT_MINUTES", 30)
+
+    expired = PaymentConfirmService().expire_unconfirmed(
+        older_than=timezone.now() - timedelta(minutes=minutes)
+    )
+
+    logger.info("expire_unconfirmed_payments cancelled %s", expired)
+
+    return expired

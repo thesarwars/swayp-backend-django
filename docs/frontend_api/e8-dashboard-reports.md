@@ -195,10 +195,29 @@ only matching rows:
 notification the person has, so the badge does not change when the user
 switches chips.
 
-Each notification carries `type`, `title`, `message`, `read_at` and a
-`metadata` object with deep-link ids (`bill_id`, `occurrence_id`,
-`payment_id`, `fee_charge_id`). **Route from `metadata`, not by parsing the
-message.**
+Each notification carries `type`, `title`, `message`, `isRead`, `readAt`,
+`createdAt` and a `metadata` object with deep-link ids. **Route from
+`metadata`, not by parsing the message.**
+
+`type` is one of: `SYSTEM`, `PAYMENT`, `PROMOTION`, `SECURITY`, `BILL_DUE`,
+`PAYMENT_FAILED`, `PAYMENT_REVERSED`, `AUTOPAY_EXECUTED`, `PAYMENT_ARRIVED`,
+`LATE_FEE_WARNING`. The OpenAPI schema declares the enum.
+
+Every id key in `metadata` is a **uuid string, or absent**, never `""` or
+`null`:
+
+| `type` | Id keys in `metadata` |
+|---|---|
+| `PAYMENT`, `PAYMENT_FAILED`, `PAYMENT_ARRIVED`, `PAYMENT_REVERSED` | `payment_id`; plus `bill_id` and `occurrence_id` when the payment is for a bill |
+| `PAYMENT` (fee refunded) | `fee_charge_id`, `payment_id` |
+| `AUTOPAY_EXECUTED` | `bill_id`, `occurrence_id`, `payment_id` |
+| `BILL_DUE`, `LATE_FEE_WARNING` | `bill_id`, `occurrence_id` |
+| `SYSTEM` (autopay could not run) | `bill_id` |
+| `SECURITY`, `PROMOTION` | none |
+
+`metadata` can also carry display values (`vendor_name`, `amount`,
+`reference`, `reason`). Treat the id keys as the contract. The same ids
+arrive in push `data` as camelCase (`paymentId`, …).
 
 Notifications are **personal, not account-wide** — a team member sees their
 own, not the owner's. This is the one place that scopes to the user rather

@@ -272,6 +272,7 @@ Contents:
 - **App today:** updates the list optimistically, rolls back on error, handles a 404 quietly, then refetches the unread count.
 
 #### DASH-6 · minor · Notification `metadata` is untyped
+- **✅ Fixed, and a push bug found under it**: REST `metadata` keys stay snake_case, and the keys for each `type` are now documented (e8 §4). Every id is a uuid string or absent, never `""`: before, a payment with no bill sent `"bill_id": ""`. OpenAPI now declares `type` as the enum. **The bug:** push looked for camelCase keys (`paymentId`, …) that no code ever set, so every real push carried only `type` and `notificationId`, with no ids to deep-link from. It now copies the ids from the same data and renames them to camelCase (`billId`, `occurrenceId`, `paymentId`, `feeChargeId`). So push is camelCase and REST is snake_case, both documented.
 - **Endpoint:** `Notification` schema.
 - **Today:**
   - `metadata` is a free-form object and `type` is a bare string.

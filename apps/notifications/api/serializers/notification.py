@@ -11,17 +11,27 @@ class NotificationSerializer(serializers.Serializer):
     id = serializers.UUIDField()
     title = serializers.CharField()
     message = serializers.CharField()
-    type = serializers.CharField()
+    # ChoiceField so OpenAPI publishes the enum (DASH-6). Output only, so it
+    # never rejects a stored value.
+    type = serializers.ChoiceField(choices=NotificationType.choices)
     isRead = serializers.BooleanField(source="is_read")
     createdAt = serializers.DateTimeField(source="created_at")
     readAt = serializers.DateTimeField(
         source="read_at",
         allow_null=True,
     )
-    # The deep-link payload (bill_id, occurrence_id, payment_id). Without it
-    # the column is write-only and the client is back to parsing the message
-    # text, which is the exact thing it exists to prevent (E8-S3).
-    metadata = serializers.JSONField(read_only=True)
+    # The deep-link payload. Without it the column is write-only and the
+    # client is back to parsing the message text, which is the exact thing it
+    # exists to prevent (E8-S3). Id keys are uuid strings, or absent.
+    metadata = serializers.JSONField(
+        read_only=True,
+        help_text=(
+            "Deep-link ids, snake_case, each a uuid string or absent: "
+            "bill_id, occurrence_id, payment_id, fee_charge_id. Which appear "
+            "depends on type; see the e8 guide. May also carry display "
+            "values (vendor_name, amount, reference, reason)."
+        ),
+    )
 
 
 class NotificationListResponseSerializer(serializers.Serializer):

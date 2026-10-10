@@ -27,6 +27,18 @@ from apps.notifications.tasks import send_push
 logger = logging.getLogger(__name__)
 
 
+
+#: Deep-link ids copied from the notification context into the push payload,
+#: renamed to camelCase. Ids only: the payload is visible to the OS and passes
+#: through Apple's and Google's servers, so no amounts or names.
+PUSH_ID_KEYS = (
+    ("bill_id", "billId"),
+    ("occurrence_id", "occurrenceId"),
+    ("payment_id", "paymentId"),
+    ("fee_charge_id", "feeChargeId"),
+    ("vendor_id", "vendorId"),
+)
+
 class PushChannel(NotificationChannel):
 
     key = PUSH
@@ -73,9 +85,18 @@ class PushChannel(NotificationChannel):
         if notification is not None and getattr(notification, "pk", None):
             payload["notificationId"] = str(notification.pk)
 
-        for key in ("billId", "paymentId", "occurrenceId", "vendorId"):
-            if key in (dispatch.context or {}):
-                payload[key] = str(dispatch.context[key])
+        # The context uses the snake_case vocabulary every caller files
+        # (bill_id, payment_id, ...). This read camelCase keys that nothing
+        # ever set, so every real push went out with no ids and tapping it
+        # could not open anything (DASH-6). Push data is camelCase by
+        # convention, so the keys are renamed on the way out.
+        context = dispatch.context or {}
+
+        for source, target in PUSH_ID_KEYS:
+            value = context.get(source)
+
+            if value:
+                payload[target] = str(value)
 
         return payload
 

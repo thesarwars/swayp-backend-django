@@ -246,15 +246,52 @@ class PushDeliveryTests(TestCase):
             type="PAYMENT_FAILED",
             title="Payment failed",
             message="Your payment to Acme for $4,200.00 failed.",
-            context={"vendorName": "Acme", "amount": "4200.00",
-                     "paymentId": "abc"},
+            context={"vendor_name": "Acme", "amount": "4200.00",
+                     "payment_id": "abc"},
         )
 
         payload = PushChannel._payload(dispatch)
 
         self.assertEqual(payload["paymentId"], "abc")
         self.assertNotIn("amount", payload)
+        self.assertNotIn("vendor_name", payload)
         self.assertNotIn("vendorName", payload)
+
+    def test_the_ids_real_callers_file_reach_the_payload(self):
+        """DASH-6: the push used to look for camelCase keys that no caller
+        ever set, so a real payment notification carried no ids at all.
+        This builds the context the way the payment services do."""
+        from apps.notifications.channels.base import Dispatch
+        from apps.notifications.channels.push import PushChannel
+        from apps.bills.factories import BillOccurrenceFactory
+        from apps.payments.factories import PaymentFactory
+        from apps.payments.services.notification_context import (
+            payment_context,
+        )
+
+        def payload_for(payment):
+            return PushChannel._payload(
+                Dispatch(
+                    user=self.user,
+                    type="PAYMENT_FAILED",
+                    title="t",
+                    message="m",
+                    context=payment_context(payment),
+                )
+            )
+
+        occurrence = BillOccurrenceFactory(bill__user=self.user)
+        with_bill = PaymentFactory(user=self.user, bill_occurrence=occurrence)
+        payload = payload_for(with_bill)
+
+        self.assertEqual(payload["paymentId"], str(with_bill.id))
+        self.assertEqual(payload["occurrenceId"], str(occurrence.id))
+        self.assertEqual(payload["billId"], str(occurrence.bill_id))
+
+        # No bill: the keys are absent, never "" (DASH-6).
+        without_bill = PaymentFactory(user=self.user)
+        self.assertNotIn("bill_id", payment_context(without_bill))
+        self.assertNotIn("billId", payload_for(without_bill))
 
 
 class PushTaskTests(TestCase):

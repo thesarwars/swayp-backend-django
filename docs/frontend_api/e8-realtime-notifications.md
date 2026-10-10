@@ -86,6 +86,12 @@ A push payload travels through Apple's and Google's infrastructure and is
 visible to the OS and on the lock screen. Use the ids to deep-link, then fetch
 the real content over the authenticated API.
 
+Push `data` keys are **camelCase**: `notificationId`, `billId`,
+`occurrenceId`, `paymentId`, `feeChargeId`. The REST `metadata` keys are
+**snake_case**: `bill_id`, `occurrence_id`, `payment_id`, `fee_charge_id`.
+They are the same ids, renamed on the way into the push. Which ones appear
+depends on `type`; see the table in [E8 §4](e8-dashboard-reports.md).
+
 ### 1.4 Enabling it per user
 
 Push respects notification preferences like any other channel, and **defaults

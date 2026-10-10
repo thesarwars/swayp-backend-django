@@ -10,11 +10,17 @@ suffixed ids, ``vendor_name`` rather than ``vendor``.
 def payment_context(payment):
     occurrence = payment.bill_occurrence
 
-    return {
+    context = {
         "payment_id": str(payment.id),
         "reference": payment.transaction_reference,
         "amount": str(payment.total),
         "vendor_name": payment.vendor.name if payment.vendor_id else "",
-        "bill_id": str(occurrence.bill_id) if occurrence else "",
-        "occurrence_id": str(occurrence.id) if occurrence else "",
     }
+
+    # Absent rather than "" when the payment has no bill (DASH-6): an id key
+    # is either a uuid string or missing, so a client can validate it as one.
+    if occurrence:
+        context["bill_id"] = str(occurrence.bill_id)
+        context["occurrence_id"] = str(occurrence.id)
+
+    return context

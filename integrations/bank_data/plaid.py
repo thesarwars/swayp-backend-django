@@ -263,8 +263,10 @@ class PlaidBankDataProvider(BankDataProvider):
                 mask=account.get("mask") or "",
                 name=account.get("name") or "",
                 # subtype ("checking") is what the app's account types are
-                # keyed on; type is the broader "depository".
-                type=str(account.get("subtype") or account.get("type") or ""),
+                # keyed on; type is the broader "depository", which is what
+                # says whether the account can be debited at all.
+                type=str(account.get("subtype") or ""),
+                kind=str(account.get("type") or ""),
                 balance=_to_decimal(
                     account.get("balances", {}).get("current")
                 ),

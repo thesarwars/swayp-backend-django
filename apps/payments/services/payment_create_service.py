@@ -11,11 +11,13 @@ authorization text; execution waits for confirmation (E6-S3).
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.banking.models import BankAccount, BankConnectionStatus
 from apps.bills.models.bill_occurrence import BillOccurrence
+from apps.vendors.models import VendorPaymentMethod
 from apps.common.dates import (
     cutoff_datetime_et,
     estimated_arrival,
@@ -30,13 +32,20 @@ from apps.common.enums import (
 from apps.payments.models import Payment, PaymentBatch
 from apps.payments.models.reference import create_with_reference
 from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
-from apps.payments.services.rails import rail_for_bill, rails_for_bill
+from apps.payments.services.rails import (
+    method_for_bill,
+    rail_for_bill,
+    rails_for_bill,
+)
 from apps.payments.services.authorization_text import (
     for_batch,
     for_single,
     processor_for_rail,
 )
-from apps.common.error_codes import NO_FUNDING_ACCOUNT
+from apps.common.error_codes import (
+    NO_FUNDING_ACCOUNT,
+    NO_PAYEE_METHOD,
+)
 from apps.common.exceptions import NotFoundException
 
 #: Rails a client may request. CHECK is created the same way but mailed.
@@ -94,6 +103,7 @@ class PaymentCreateService:
                 {"expedited": "Only check payments can be expedited."}
             )
 
+        self._assert_payable(occurrences)
         self._assert_rails_fit(occurrences, rails, explicit=rail is not None)
 
         funding_account = self._load_funding_account(user, funding_account_id)
@@ -173,8 +183,8 @@ class PaymentCreateService:
                 status=status,
                 transaction_reference=reference,
                 payment_method=(
-                    bill.payment_method.method_type
-                    if bill.payment_method
+                    method.method_type
+                    if (method := method_for_bill(bill))
                     else rail
                 ),
                 initiated_date=initiated,
@@ -276,12 +286,48 @@ class PaymentCreateService:
                     {
                         "rail": (
                             f"{occurrence.bill.vendor.name} is paid by "
-                            f"{occurrence.bill.payment_method.method_type}; "
+                            f"{method_for_bill(occurrence.bill).method_type}; "
                             f"{rail} is not available for it. Use one of: "
                             f"{', '.join(allowed)}."
                         )
                     }
                 )
+
+    def _assert_payable(self, occurrences):
+        """Refuse a bill there is nowhere to send money for.
+
+        ``_assert_rails_fit`` below only compares a named rail against the
+        rails the bill allows, and skips a bill that allows none — so a bill
+        whose vendor has no payment method passed every check and a payment
+        was created for it. The quote had already said every rail was
+        unavailable; create disagreed, took the authorization, and the
+        payment then reached execution with an empty destination token and
+        failed there. Every bill the bank scan imports starts in exactly this
+        state, because the importer has no routing details for a vendor it
+        discovered in a transaction description.
+
+        Refused here, before anything is reserved, and named so the client can
+        send the user to the right vendor.
+        """
+        unpayable = [
+            occurrence.bill.vendor.name
+            for occurrence in occurrences
+            if method_for_bill(occurrence.bill) is None
+        ]
+
+        if unpayable:
+            names = ", ".join(sorted(set(unpayable)))
+
+            raise ValidationError(
+                {
+                    "occurrence_ids": (
+                        f"No payment details saved for {names}. Add how to "
+                        f"pay this provider — a bank account, a biller "
+                        f"reference or a mailing address — then try again."
+                    )
+                },
+                code=NO_PAYEE_METHOD,
+            )
 
     def cancellation_deadline(self, initiated_date):
         """11:59 PM Eastern on the day before the debit starts.
@@ -302,7 +348,21 @@ class PaymentCreateService:
                 id__in=occurrence_ids,
                 bill__user=user,
                 bill__deleted_at__isnull=True,
-            ).select_related("bill", "bill__vendor", "bill__payment_method")
+            )
+            .select_related("bill", "bill__vendor", "bill__payment_method")
+            # ``method_for_bill`` falls back to the vendor's primary method,
+            # which ``Vendor.primary_payment_method`` reads from this attr.
+            # Without the prefetch the quote costs a query per bill on the
+            # pay screen, and the batch pay screen quotes several at once.
+            .prefetch_related(
+                Prefetch(
+                    "bill__vendor__payment_methods",
+                    queryset=VendorPaymentMethod.objects.filter(
+                        is_primary=True
+                    ),
+                    to_attr="primary_methods",
+                )
+            )
         )
 
         found = {str(o.id) for o in occurrences}

@@ -27,6 +27,11 @@ BY_STATUS = {
 
 # Codes a raise site passes (``code=...``) so the client can branch.
 NO_FUNDING_ACCOUNT = "no_funding_account"
+#: The *payee* has no saved payment method, as opposed to the payer having
+#: no bank: there is nowhere to send the money. Every bill the bank scan
+#: imports starts in this state, so the client branches on it to offer
+#: adding the provider's details.
+NO_PAYEE_METHOD = "no_payee_method"
 IDEMPOTENCY_KEY_REUSED = "idempotency_key_reused"
 IDEMPOTENCY_IN_PROGRESS = "idempotency_in_progress"
 RECEIPT_NOT_READY = "receipt_not_ready"
@@ -35,6 +40,7 @@ CANCEL_WINDOW_CLOSED = "cancel_window_closed"
 
 SPECIFIC = {
     NO_FUNDING_ACCOUNT,
+    NO_PAYEE_METHOD,
     IDEMPOTENCY_KEY_REUSED,
     IDEMPOTENCY_IN_PROGRESS,
     RECEIPT_NOT_READY,

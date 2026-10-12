@@ -24,7 +24,7 @@ from apps.payments.models.reference import create_with_reference
 from apps.payments.selectors.live_payments import IN_FLIGHT_PAYMENT_STATUSES
 from apps.payments.services.authorization_text import processor_for_rail
 from apps.payments.services.payment_create_service import PaymentCreateService
-from apps.payments.services.rails import rail_for_bill
+from apps.payments.services.rails import method_for_bill, rail_for_bill
 from apps.vendors.services.late_fee import grace_days, has_late_fee_policy
 from apps.common.exceptions import NotFoundException
 
@@ -314,8 +314,8 @@ class PaymentResolutionService:
                 status=status,
                 transaction_reference=reference,
                 payment_method=(
-                    occurrence.bill.payment_method.method_type
-                    if occurrence.bill.payment_method
+                    method.method_type
+                    if (method := method_for_bill(occurrence.bill))
                     else rail
                 ),
                 initiated_date=initiated,

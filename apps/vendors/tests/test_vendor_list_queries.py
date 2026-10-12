@@ -17,13 +17,22 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.bills.factories import BillFactory, BillOccurrenceFactory
+from apps.common.dates import today_eastern
 from apps.vendors.factories import (
     UserFactory,
     VendorFactory,
     VendorPaymentMethodFactory,
 )
 
-D = dt.date
+#: Relative, not pinned. ``next_bill_annotations`` only reports an
+#: occurrence due today or later, so a fixture dated September 2026 stopped
+#: being "upcoming" on 1 October and these tests began asserting that a bill
+#: in the past is the next one due. Dates derived from today keep them
+#: testing the property they describe instead of expiring.
+TODAY = today_eastern()
+ANCHOR = TODAY - dt.timedelta(days=14)
+NEXT_DUE = TODAY + dt.timedelta(days=3)
+LATER_DUE = TODAY + dt.timedelta(days=60)
 
 #: One for the page count, one for the vendor page, one for the prefetched
 #: primary methods, one for the acting-account lookup (E10). The next-bill
@@ -47,10 +56,10 @@ class VendorListQueryCountTests(TestCase):
                 vendor=vendor, method_type="ACH", is_primary=True
             )
             bill = BillFactory(
-                user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+                user=self.user, vendor=vendor, anchor_date=ANCHOR
             )
             BillOccurrenceFactory(
-                bill=bill, due_date=D(2026, 9, 15), amount="120.00"
+                bill=bill, due_date=NEXT_DUE, amount="120.00"
             )
 
     def test_the_cost_does_not_grow_with_the_number_of_vendors(self):
@@ -90,16 +99,16 @@ class VendorListCorrectnessTests(TestCase):
             vendor=vendor, method_type="ACH", is_primary=True
         )
         bill = BillFactory(
-            user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+            user=self.user, vendor=vendor, anchor_date=ANCHOR
         )
         BillOccurrenceFactory(
-            bill=bill, due_date=D(2026, 9, 15), amount="777.00"
+            bill=bill, due_date=NEXT_DUE, amount="777.00"
         )
 
         row = self.row("WeWork")
 
         self.assertEqual(row["payment_rail"], "ACH")
-        self.assertEqual(row["next_due"], D(2026, 9, 15))
+        self.assertEqual(row["next_due"], NEXT_DUE)
         self.assertEqual(row["amount_period"], bill.frequency)
 
     def test_money_keeps_two_decimal_places(self):
@@ -109,10 +118,10 @@ class VendorListCorrectnessTests(TestCase):
         something reconciles to the cent."""
         vendor = VendorFactory(user=self.user, name="Exact")
         bill = BillFactory(
-            user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+            user=self.user, vendor=vendor, anchor_date=ANCHOR
         )
         BillOccurrenceFactory(
-            bill=bill, due_date=D(2026, 9, 15), amount="777.00"
+            bill=bill, due_date=NEXT_DUE, amount="777.00"
         )
 
         self.assertEqual(
@@ -136,21 +145,21 @@ class VendorListCorrectnessTests(TestCase):
 
         vendor = VendorFactory(user=self.user, name="Settled")
         bill = BillFactory(
-            user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+            user=self.user, vendor=vendor, anchor_date=ANCHOR
         )
         BillOccurrenceFactory(
             bill=bill,
-            due_date=D(2026, 9, 15),
+            due_date=NEXT_DUE,
             amount="100.00",
             status=BillOccurrenceStatus.PAID,
         )
         BillOccurrenceFactory(
-            bill=bill, due_date=D(2026, 10, 15), amount="200.00"
+            bill=bill, due_date=LATER_DUE, amount="200.00"
         )
 
         row = self.row("Settled")
 
-        self.assertEqual(row["next_due"], D(2026, 10, 15))
+        self.assertEqual(row["next_due"], LATER_DUE)
         self.assertEqual(row["recurring_amount"], Decimal("200.00"))
 
     def test_a_deleted_bill_is_not_the_next_bill(self):
@@ -158,10 +167,10 @@ class VendorListCorrectnessTests(TestCase):
 
         vendor = VendorFactory(user=self.user, name="Deleted")
         gone = BillFactory(
-            user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+            user=self.user, vendor=vendor, anchor_date=ANCHOR
         )
         BillOccurrenceFactory(
-            bill=gone, due_date=D(2026, 9, 15), amount="100.00"
+            bill=gone, due_date=NEXT_DUE, amount="100.00"
         )
         gone.deleted_at = timezone.now()
         gone.save(update_fields=["deleted_at"])
@@ -171,18 +180,18 @@ class VendorListCorrectnessTests(TestCase):
     def test_the_nearest_occurrence_wins(self):
         vendor = VendorFactory(user=self.user, name="Ordered")
         bill = BillFactory(
-            user=self.user, vendor=vendor, anchor_date=D(2026, 9, 1)
+            user=self.user, vendor=vendor, anchor_date=ANCHOR
         )
         BillOccurrenceFactory(
-            bill=bill, due_date=D(2026, 12, 1), amount="300.00"
+            bill=bill, due_date=LATER_DUE, amount="300.00"
         )
         BillOccurrenceFactory(
-            bill=bill, due_date=D(2026, 10, 1), amount="100.00"
+            bill=bill, due_date=NEXT_DUE, amount="100.00"
         )
 
         row = self.row("Ordered")
 
-        self.assertEqual(row["next_due"], D(2026, 10, 1))
+        self.assertEqual(row["next_due"], NEXT_DUE)
         self.assertEqual(row["recurring_amount"], Decimal("100.00"))
 
     def test_a_non_primary_method_is_not_the_rail(self):

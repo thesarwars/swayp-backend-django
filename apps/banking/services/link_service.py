@@ -5,6 +5,8 @@ paying customer (BRD §4) — owning the account is the verification. There is n
 separate KYC step.
 """
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
@@ -19,13 +21,35 @@ from apps.common.enums import BankAccountType
 from apps.common.exceptions import PlanLimitExceededException
 from integrations.factory import get_bank_data_provider
 
+logger = logging.getLogger(__name__)
+
 #: Banks an account may connect before it has any plan (BANK-1).
 NO_PLAN_BANK_LIMIT = 1
 
+#: Plaid's depository subtypes mapped onto the two types Swayp stores. Only
+#: an account money can be pulled from by ACH is CHECKING; the rest are
+#: SAVINGS, which ``_sync_accounts`` never auto-selects as the funding source.
+#: "cash management" is a checking account by another name (Betterment,
+#: Wealthfront); a CD, HSA or money-market account is not one to debit.
 _ACCOUNT_TYPES = {
     "checking": BankAccountType.CHECKING,
+    "cash management": BankAccountType.CHECKING,
     "savings": BankAccountType.SAVINGS,
+    "money market": BankAccountType.SAVINGS,
+    "cd": BankAccountType.SAVINGS,
+    "hsa": BankAccountType.SAVINGS,
+    "prepaid": BankAccountType.SAVINGS,
 }
+
+#: The one provider category an ACH debit can draw on. A credit card, a
+#: mortgage, an auto loan and a 401k all come back on the same Plaid item as
+#: the current account, and none of them can fund a payment. Stored, they
+#: reached the app as "checking" — ``BankAccountType`` has no term for a
+#: mortgage, so every unmapped subtype fell through to CHECKING — and the
+#: Bank Accounts screen offered the user's mortgage as a way to pay a bill.
+#: An empty category means the provider does not report one (the mock), which
+#: is treated as depository so canned data keeps working.
+_FUNDABLE_KIND = "depository"
 
 
 class BankLinkService:
@@ -149,9 +173,29 @@ class BankLinkService:
             is_default_funding_source=True
         ).exists()
 
-        for index, info in enumerate(accounts):
+        for info in accounts:
+            kind = (info.kind or _FUNDABLE_KIND).lower()
+
+            if kind != _FUNDABLE_KIND:
+                # Not an error and not worth surfacing: the item legitimately
+                # holds these, and the scan reads transactions from the item
+                # itself rather than from stored rows, so skipping them loses
+                # nothing for bill detection.
+                continue
+
+            subtype = (info.type or "").lower()
+
+            if subtype not in _ACCOUNT_TYPES:
+                # A depository account whose subtype is new to us. SAVINGS
+                # rather than CHECKING, so an unrecognised account is never
+                # auto-selected to pay from — the user can still choose it.
+                logger.info(
+                    "unmapped depository subtype %r; storing as SAVINGS",
+                    info.type,
+                )
+
             account_type = _ACCOUNT_TYPES.get(
-                (info.type or "").lower(), BankAccountType.CHECKING
+                subtype, BankAccountType.SAVINGS
             )
 
             # The first checking account becomes the funding source unless one

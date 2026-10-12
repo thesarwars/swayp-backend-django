@@ -16,6 +16,17 @@ def make(name, **kwargs):
 
 
 class DisplayOrderTests(TestCase):
+    """Each of these is about the invariant over a set it controls entirely.
+
+    Migration 0003 seeds eleven categories, so an empty table is no longer the
+    starting state: "Rent" is taken (``name`` is unique) and so are orders 1
+    to 11. Clearing them here is rolled back with the rest of the test, and it
+    keeps "an unset order goes to the end" meaning what it says rather than
+    tracking however many rows the seed happens to hold.
+    """
+
+    def setUp(self):
+        BillCategory.objects.all().delete()
 
     def test_an_unset_order_goes_to_the_end(self):
         first = make("Rent")

@@ -17,11 +17,24 @@ class LinkToken:
 
 @dataclass(frozen=True)
 class BankAccountInfo:
+    """One account on a connection.
+
+    ``type`` is the narrow subtype ("checking", "money market", "mortgage");
+    ``kind`` is the broad category it belongs to ("depository", "credit",
+    "loan", "investment"). Both are needed, and conflating them is how a
+    mortgage came to be stored as a checking account: the subtype alone has
+    no term in common with the subtypes Swayp understands, so it fell through
+    to the default. Empty ``kind`` means the provider does not distinguish —
+    treated as depository, which is what a provider that only returns
+    fundable accounts implies.
+    """
+
     account_id: str
     mask: str
     name: str
     type: str
     balance: Decimal
+    kind: str = ""
 
 
 @dataclass(frozen=True)

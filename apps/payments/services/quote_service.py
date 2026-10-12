@@ -17,7 +17,11 @@ from apps.billing.models import FEE_AMOUNTS, AllowanceKind, FeeKind
 from apps.common.dates import estimated_arrival, initiation_date
 from apps.common.enums import PaymentRail
 from apps.payments.services.payment_create_service import PaymentCreateService
-from apps.payments.services.rails import rail_for_bill, rails_for_bill
+from apps.payments.services.rails import (
+    method_for_bill,
+    rail_for_bill,
+    rails_for_bill,
+)
 
 #: Every rail, in the order the pay screen lists them.
 QUOTED_RAILS = (
@@ -89,11 +93,23 @@ class PaymentQuoteService:
         reason = None
 
         if not allowed:
-            reason = "This bill has no payment method saved."
+            # Names the provider and what to do: every bill the bank scan
+            # imports starts here, because the importer has no routing
+            # details for a vendor it found in a transaction description.
+            # The client shows this string verbatim.
+            reason = (
+                f"No payment details saved for "
+                f"{occurrence.bill.vendor.name}. Add how to pay this "
+                f"provider first."
+            )
         elif rail not in allowed:
+            # ``method_for_bill``, not ``bill.payment_method``: a bill may be
+            # paid by its vendor's primary method and name none of its own,
+            # in which case ``allowed`` is non-empty while the bill's own
+            # field is None — reading .method_type off it raised here.
             reason = (
                 f"This vendor is paid by "
-                f"{occurrence.bill.payment_method.method_type}."
+                f"{method_for_bill(occurrence.bill).method_type}."
             )
         elif rail == PaymentRail.ACH_SAMEDAY and not FeeService().same_day_available(
             now=now, send_date=initiated

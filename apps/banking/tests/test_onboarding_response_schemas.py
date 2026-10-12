@@ -44,9 +44,10 @@ class OnboardingResponseSchemaTests(TestCase):
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
         # Import files a bill with no better category under "Other".
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
 
         # Runs the scan the exchange queues, so there are bills to import.
         with self.captureOnCommitCallbacks(execute=True):

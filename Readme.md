@@ -121,6 +121,29 @@ python manage.py migrate
 
 ---
 
+## 7. Native library for QR decoding (macOS/Linux)
+
+`pyzbar` is a ctypes wrapper around the native **zbar** library and resolves
+it when the QR decoder is first used.
+
+```bash
+brew install zbar                  # macOS
+sudo apt-get install -y libzbar0   # Debian/Ubuntu
+```
+
+On macOS, Homebrew installs into a prefix that `ctypes.util.find_library` does
+not search, so the dev server needs the prefix on its library path:
+
+```bash
+export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib
+```
+
+Without zbar the rest of the API still works — the import is deferred, so only
+`POST /bills/qr/decode` and `POST /vendors/qr/decode` fail, with a message
+naming the missing library.
+
+---
+
 ## 8. Start Development Server
 
 ```bash
@@ -132,6 +155,63 @@ The API will be available at:
 ```
 http://127.0.0.1:8000/
 ```
+
+`config/settings/local.py` (the default settings module) is written so this is
+the **only** process you need:
+
+- **Celery runs inline.** `CELERY_TASK_ALWAYS_EAGER` is on, because nothing
+  consumes the queue locally. Without it a confirmed payment never leaves
+  `PROCESSING` — `execute_payment` is queued, not called — and a freshly
+  linked bank never finishes its transaction scan. No worker, no beat.
+- **Mail goes to [mailpit](https://mailpit.axllent.org)** on `localhost:1025`,
+  with the inbox at <http://localhost:8025>, rather than the SMTP host in
+  `.env`. Registration OTPs land there. `brew install mailpit && brew services
+  start mailpit`; set `LOCAL_REAL_EMAIL=1` to use the real host instead.
+- **Postgres and Redis** are expected to be running. Both are fine as native
+  services (`brew services start postgresql@18 redis`) — Docker is not needed.
+
+---
+
+## 9. Bank data: mock or real Plaid
+
+`BANK_DATA_PROVIDER` decides, and `POST /banking/link/token` reports its
+choice back to the client as `provider`, which is how the mobile app knows
+whether to open Plaid Link or its stand-in screens.
+
+```env
+BANK_DATA_PROVIDER=mock    # canned accounts and transactions, no credentials
+BANK_DATA_PROVIDER=plaid   # the real thing; needs the keys below
+```
+
+For Plaid, from the dashboard under Developers → Keys:
+
+```env
+PLAID_CLIENT_ID=...
+PLAID_SECRET=...
+PLAID_ENV=sandbox
+PLAID_REDIRECT_URI=https://...        # registered in the dashboard; iOS/web
+PLAID_ANDROID_PACKAGE_NAME=com.swayp.app   # registered too; Android
+PLAID_WEBHOOK_URL=https://.../webhooks/plaid
+```
+
+Two of these are easy to get wrong:
+
+- `PLAID_REDIRECT_URI` and `PLAID_ANDROID_PACKAGE_NAME` must be registered in
+  the Plaid dashboard **and** match the mobile app's bundle id / package name,
+  or an OAuth bank cannot hand the user back.
+- `PLAID_WEBHOOK_URL` is registered per item at link time, not in the
+  dashboard. An item linked while it is empty never reports that its history
+  is ready, and that item's scan waits forever.
+
+Production refuses to boot on `BANK_DATA_PROVIDER=plaid` with
+`PLAID_ENV=sandbox`: sandbox returns invented accounts and balances, and
+nothing in the UI distinguishes them from a real bank.
+
+Sandbox linking is driven from Plaid's own `/sandbox/public_token/create` — no
+UI needed — using institution `ins_109508` ("First Platypus Bank"). Note that
+the item carries fourteen accounts, of which only six are depository; the
+credit cards, loans and retirement accounts are deliberately not stored,
+because none of them can fund an ACH debit.
 
 ---
 

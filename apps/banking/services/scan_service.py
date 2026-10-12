@@ -248,12 +248,24 @@ class ScanService:
             if not any(keyword in normalized for keyword in keywords):
                 continue
 
-            category = BillCategory.objects.filter(
-                name__in=category_names, is_active=True
-            ).first()
+            # ``category_names`` is a preference order, not a set:
+            # ("Commercial Rent", "Rent"), ("Telecom", "Utilities"),
+            # ("SaaS", "Software") each name the specific category first.
+            # ``.first()`` applied the model's own ordering instead
+            # (display_order, name), so the preference was discarded and the
+            # answer was whichever category happened to sort earliest — a
+            # WeWork charge landed in "Rent" while "Commercial Rent" existed.
+            # One query, then resolved in the declared order.
+            matches = {
+                category.name: category
+                for category in BillCategory.objects.filter(
+                    name__in=category_names, is_active=True
+                )
+            }
 
-            if category:
-                return category
+            for name in category_names:
+                if name in matches:
+                    return matches[name]
 
         return None
 

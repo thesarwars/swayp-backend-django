@@ -475,9 +475,10 @@ class ListRowAndCategoryTests(TestCase):
         self.user = UserFactory()
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        self.other = BillCategory.objects.create(
-            name="Other", icon="https://e.com/o.png", color="#999"
-        )
+        self.other = BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/o.png", "color": "#999"},
+        )[0]
 
     def create(self, **extra):
         body = {
@@ -563,9 +564,10 @@ class VendorActivityFeedTests(TestCase):
         self.user = UserFactory(first_name="Ada", last_name="Reed")
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        self.category = BillCategory.objects.create(
-            name="Rent", icon="https://e.com/r.png", color="#111"
-        )
+        self.category = BillCategory.objects.get_or_create(
+            name="Rent",
+            defaults={"icon": "https://e.com/r.png", "color": "#111"},
+        )[0]
 
     def feed(self):
         return self.client.get("/api/v1/vendors/activity").json()["items"]

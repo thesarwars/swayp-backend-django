@@ -190,6 +190,55 @@ class DetectionTests(TestCase):
 
 
 @override_settings(BANK_DATA_PROVIDER="mock")
+class InflowTests(TestCase):
+    """Money arriving is not a bill.
+
+    Plaid signs money leaving the account positive and money arriving
+    negative. The detector clustered on amount without looking at the sign,
+    so a monthly interest credit and a recurring refund qualified on all four
+    criteria and became candidates — and ``Bill`` has a
+    ``bill_amount_positive`` check constraint, so importing the scan raised
+    IntegrityError inside an atomic block and answered 500 for the whole
+    batch. The sandbox's "INTRST PYMNT" (-4.22) is exactly this.
+    """
+
+    def test_a_recurring_inflow_is_not_a_candidate(self):
+        self.assertEqual(detect(monthly("INTRST PYMNT", "-4.22", 6, 3)), [])
+
+    def test_a_recurring_refund_is_not_a_candidate(self):
+        self.assertEqual(
+            detect(monthly("United Airlines", "-500.00", 9, 3)), []
+        )
+
+    def test_a_zero_amount_is_not_a_candidate(self):
+        """Nothing moved, so there is nothing to pay."""
+        self.assertEqual(detect(monthly("Ghost Charge", "0.00", 4, 3)), [])
+
+    def test_outflows_are_still_detected_alongside_inflows(self):
+        """The filter must drop the credit, not the whole history."""
+        transactions = [
+            *monthly("WeWork", "3200.00", 1, 3),
+            *monthly("INTRST PYMNT", "-4.22", 6, 3),
+        ]
+
+        candidates = detect(transactions)
+
+        self.assertEqual([c["vendor_name"] for c in candidates], ["WeWork"])
+
+    def test_a_refund_does_not_drag_down_a_real_charge(self):
+        """A credit from the same merchant must not join the cluster and pull
+        its median amount toward zero."""
+        transactions = [
+            *monthly("Verizon Business", "389.00", 15, 3),
+            Tx("Verizon Business", "-389.00", D(2026, 2, 20)),
+        ]
+
+        candidates = detect(transactions)
+
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["amount"], Decimal("389.00"))
+
+
 class OnboardingJourneyTests(TestCase):
 
     def setUp(self):
@@ -199,9 +248,10 @@ class OnboardingJourneyTests(TestCase):
         BillCategory.objects.create(
             name="Commercial Rent", icon="https://e.com/i.png", color="#111"
         )
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#222"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#222"},
+        )[0]
 
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
@@ -336,9 +386,10 @@ class ImportTests(TestCase):
         self.user = User.objects.create_user(
             email="import@example.com", password="Sw@yp-Test-1"
         )
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -473,15 +524,101 @@ class ImportTests(TestCase):
 
 
 @override_settings(BANK_DATA_PROVIDER="mock")
+class ImportOfAnUnpayableCandidateTests(TestCase):
+    """One bad row must not cost the whole batch.
+
+    ``import_candidates`` is atomic, and a Bill with a non-positive amount
+    violates ``bill_amount_positive`` — so a single inflow candidate raised
+    IntegrityError, rolled back every good bill in the scan and answered 500.
+    The detector no longer produces such rows, but rows detected before that
+    are still in the table, and the user's only route past them was a 500.
+    """
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="unpayable@example.com", password="Sw@yp-Test-1"
+        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(
+                "/api/v1/banking/link/exchange",
+                {"public_token": "public-mock-chase", "consent_accepted": True},
+                format="json",
+            )
+
+        self.scan = TransactionScan.objects.get()
+        # What the detector used to store for an interest credit.
+        self.inflow = BillDetectionCandidate.objects.create(
+            scan=self.scan,
+            vendor_name="INTRST PYMNT",
+            amount=Decimal("-4.22"),
+            cadence="MONTHLY",
+            due_day=6,
+            occurrences=3,
+        )
+        self.good_count = BillDetectionCandidate.objects.filter(
+            scan=self.scan, amount__gt=0
+        ).count()
+
+    def test_the_import_succeeds_and_reports_the_row(self):
+        response = self.client.post(
+            f"/api/v1/banking/scans/{self.scan.id}/import",
+            {"all": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        report = response.json()["data"]
+
+        self.assertEqual(report["imported_count"], self.good_count)
+        skipped = [
+            row for row in report["skipped"] if row["reason"] == "not_a_bill"
+        ]
+        self.assertEqual(len(skipped), 1)
+        self.assertEqual(skipped[0]["vendor_name"], "INTRST PYMNT")
+        self.assertIsNone(skipped[0]["bill_id"])
+
+    def test_the_good_candidates_are_still_imported(self):
+        """The property the 500 destroyed."""
+        self.client.post(
+            f"/api/v1/banking/scans/{self.scan.id}/import",
+            {"all": True},
+            format="json",
+        )
+
+        self.assertEqual(Bill.objects.filter(user=self.user).count(),
+                         self.good_count)
+
+    def test_no_bill_is_created_for_it(self):
+        self.client.post(
+            f"/api/v1/banking/scans/{self.scan.id}/import",
+            {"all": True},
+            format="json",
+        )
+        self.inflow.refresh_from_db()
+
+        self.assertIsNone(self.inflow.imported_bill_id)
+        self.assertFalse(
+            Bill.objects.filter(user=self.user, amount__lte=0).exists()
+        )
+
+
 class DisconnectTests(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
             email="disc@example.com", password="Sw@yp-Test-1"
         )
-        self.category = BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        self.category = BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -563,9 +700,10 @@ class OnboardingSummaryTests(TestCase):
         self.user = User.objects.create_user(
             email="summary@example.com", password="Sw@yp-Test-1"
         )
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 
@@ -636,9 +774,10 @@ class ScanRerunTests(TestCase):
         self.user = User.objects.create_user(
             email="rerun@example.com", password="Sw@yp-Test-1"
         )
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
 

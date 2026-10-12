@@ -97,9 +97,20 @@ class SkippedCandidateSerializer(serializers.Serializer):
     candidate_id = serializers.UUIDField()
     vendor_name = serializers.CharField()
     bill_id = serializers.UUIDField(
-        help_text="The bill an earlier import already created."
+        allow_null=True,
+        help_text=(
+            "The bill an earlier import already created; null when the "
+            "candidate was skipped without one being created."
+        ),
     )
-    reason = serializers.CharField(help_text="Today always already_imported.")
+    reason = serializers.CharField(
+        help_text=(
+            "already_imported — an earlier import created bill_id. "
+            "not_a_bill — the detected amount is not a positive charge "
+            "(an inflow such as a refund or interest credit), so there is "
+            "no bill to create."
+        )
+    )
 
 
 class ImportReportSerializer(serializers.Serializer):

@@ -53,3 +53,24 @@ class SeededCategoryTests(TestCase):
         )
 
         self.assertEqual(len(orders), len(set(orders)))
+
+
+class OptionalIconTests(TestCase):
+    """A category can be created without an icon, and the list then sends
+    an empty string for it."""
+
+    def test_a_category_without_an_icon(self):
+        from rest_framework.test import APIClient
+
+        from apps.bill_categories.models import BillCategory
+        from apps.vendors.factories import UserFactory
+
+        category = BillCategory.objects.create(name="Uncharted", color="#000")
+        category.full_clean()
+
+        client = APIClient()
+        client.force_authenticate(user=UserFactory())
+        rows = client.get("/api/v1/bill-categories").json()["data"]
+        row = next(r for r in rows if r["name"] == "Uncharted")
+
+        self.assertEqual(row["icon"], "")

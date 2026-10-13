@@ -51,7 +51,7 @@ Retrieve all active bill categories.
 ### Response Fields
 - `id`: UUID of the bill category
 - `name`: Category name
-- `icon`: Category icon URL
+- `icon`: Category icon URL, or `""` when the category has none. Show a fallback icon for an empty string.
 - `color`: Category color code
 - `displayOrder`: Display order of the category
 

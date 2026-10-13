@@ -6,7 +6,10 @@ from apps.common.models import BaseModel
 class BillCategory(BaseModel):
    
     name = models.CharField(max_length=100, unique=True)
-    icon = models.URLField(max_length=500)
+    # Optional: a category can exist before its artwork does. "" (not null)
+    # when unset, so the API always sends a string and clients test for
+    # empty rather than for two kinds of missing.
+    icon = models.URLField(max_length=500, blank=True, default="")
     color = models.CharField(max_length=20)
     # Unique (BILLS-9): clients identify and order categories by it — Home
     # shows the first four as badges — so a tie would let a rename reorder

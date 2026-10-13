@@ -10,8 +10,7 @@ class AuditLogAdmin(admin.ModelAdmin):
     Rows were being written and then reachable by nobody — no admin, no view,
     no endpoint. For a GLBA/CA/VT opt-in artifact, "recorded in the audit
     trail" has to mean producible on demand, so this is the retrieval surface.
-    It is read-only in both directions: a trail an operator can edit or delete
-    is not evidence of anything.
+    Fully editable, like every admin table: the admin is the raw data panel.
     """
 
     list_display = ("created_at", "user", "action", "ip")
@@ -19,21 +18,4 @@ class AuditLogAdmin(admin.ModelAdmin):
     search_fields = ("user__email", "action", "ip")
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
-    readonly_fields = (
-        "created_at",
-        "updated_at",
-        "user",
-        "action",
-        "ip",
-        "user_agent",
-        "metadata",
-    )
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    readonly_fields = ("created_at", "updated_at")

@@ -103,32 +103,44 @@ class AuthenticationAdminTests(TestCase):
 
     def test_the_otp_code_is_shown(self):
         """Kept in plain text so an operator can read it when email does
-        not arrive; visible in the list and on the row, but not editable."""
+        not arrive."""
         for view, args in (("changelist", []), ("change", [self.otp.pk])):
             url = reverse(f"admin:authentication_otp_{view}", args=args)
 
             with self.subTest(view=view):
                 self.assertIn("481516", self.client.get(url).content.decode())
 
-        self.assertIn("code", admin.site._registry[OTP].readonly_fields)
+    def test_a_superuser_can_add_change_and_delete_everything(self):
+        """The admin is the raw data panel: no table is locked."""
+        from django.test import RequestFactory
 
-    def test_a_session_can_be_revoked_but_not_forged(self):
-        """revoked_at is the one write; nothing here mints a session."""
-        token_admin = admin.site._registry[RefreshToken]
+        from apps.ai_advisor.models import AdvisorConsent
+        from apps.audit.models import AuditLog
 
-        self.assertFalse(token_admin.has_add_permission(None))
-        self.assertNotIn("revoked_at", token_admin.readonly_fields)
+        request = RequestFactory().get("/admin/")
+        request.user = self.staff
 
-    def test_codes_and_history_are_not_editable(self):
-        for model in (OTP, PasswordHistory):
+        for model in (OTP, RefreshToken, PasswordHistory, AuditLog,
+                      AdvisorConsent):
             model_admin = admin.site._registry[model]
 
             with self.subTest(model=model.__name__):
-                self.assertFalse(model_admin.has_add_permission(None))
-                self.assertFalse(model_admin.has_change_permission(None))
+                self.assertTrue(model_admin.has_add_permission(request))
+                self.assertTrue(model_admin.has_change_permission(request))
+                self.assertTrue(model_admin.has_delete_permission(request))
 
-    def test_password_history_cannot_be_deleted(self):
-        """A history an operator can clear does not prevent reuse."""
-        history_admin = admin.site._registry[PasswordHistory]
+    def test_a_user_with_password_history_can_be_deleted(self):
+        """The screen that said "your account doesn't have permission to
+        delete the following types of objects: password history"."""
+        target = User.objects.create_user(
+            email="leaving@acme.com", password="Str0ng!Passphrase1"
+        )
+        PasswordHistory.objects.create(user=target, password_hash="x")
 
-        self.assertFalse(history_admin.has_delete_permission(None))
+        response = self.client.post(
+            reverse("admin:users_user_delete", args=[target.pk]),
+            {"post": "yes"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(pk=target.pk).exists())

@@ -1,7 +1,7 @@
 """Admin for the authentication models.
 
-All three tables are security records rather than content, which shapes what
-this exposes. Two rules run through it:
+Like every admin table these are fully editable: the admin is the raw data
+panel. Three notes:
 
 **No hash is ever rendered.** ``RefreshToken.token_hash`` and
 ``PasswordHistory.password_hash`` are excluded from every form. They are
@@ -11,15 +11,12 @@ hashes on a screen are offline cracking material that leaks through a
 screenshot or a shoulder.
 
 **OTP codes are shown.** They are stored in plain text so an operator can
-read a user's code from here when email delivery fails, and they are listed
-and shown read-only. Anyone with admin access can therefore sign up or reset
+read a user's code from here when email delivery fails. Anyone with admin
+access can therefore sign up or reset
 a password as any user whose code is live: grant admin accordingly.
 
-**Nothing that grants access is editable.** An operator who could write
-``code`` could set a known OTP and verify as any user, and one who could
-clear ``PasswordHistory`` could re-enable a password a reset already refused.
-The single exception is ``RefreshToken.revoked_at``, because killing a live
-session is the reason to open that table at all.
+**A superuser can add, change or delete any row**, including writing an OTP
+code and clearing password history (which re-allows those passwords).
 """
 
 from django.contrib import admin
@@ -30,12 +27,7 @@ from apps.authentication.models import OTP, PasswordHistory, RefreshToken
 
 @admin.register(OTP)
 class OTPAdmin(admin.ModelAdmin):
-    """Read-only, except that expired rows can be cleared out.
-
-    Delete is left on deliberately: spent and expired codes accumulate and
-    removing them is housekeeping, not a loss of evidence — the audit trail is
-    in ``apps.audit``, not here.
-    """
+    """One-time codes, shown in plain text."""
 
     list_display = (
         "created_at",
@@ -61,17 +53,7 @@ class OTPAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     list_select_related = ("user",)
 
-    readonly_fields = (
-        "user",
-        "code",
-        "purpose",
-        "channel",
-        "expires_at",
-        "used_at",
-        "attempts",
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("created_at", "updated_at")
 
     @admin.display(boolean=True, description="Expired")
     def is_expired(self, obj):
@@ -81,16 +63,12 @@ class OTPAdmin(admin.ModelAdmin):
     def is_used(self, obj):
         return obj.used_at is not None
 
-    def has_add_permission(self, request):
-        return False
 
-    def has_change_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(RefreshToken)
 class RefreshTokenAdmin(admin.ModelAdmin):
-    """Issued sessions, with revocation as the one write.
+    """Issued sessions. Set revoked_at to end one.
 
     ``user_agent`` and ``ip_address`` are here because they are what makes a
     session identifiable when a user reports one they do not recognise.
@@ -121,33 +99,18 @@ class RefreshTokenAdmin(admin.ModelAdmin):
 
     exclude = ("token_hash",)
 
-    readonly_fields = (
-        "user",
-        "user_agent",
-        "ip_address",
-        "expires_at",
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("created_at", "updated_at")
 
     @admin.display(boolean=True, description="Live")
     def is_live(self, obj):
         return obj.revoked_at is None and obj.expires_at >= timezone.now()
 
-    def has_add_permission(self, request):
-        # A session is issued by verifying an OTP, never by hand — a row typed
-        # in here would carry a token_hash nobody holds the token for.
-        return False
 
 
 @admin.register(PasswordHistory)
 class PasswordHistoryAdmin(admin.ModelAdmin):
-    """Read-only in both directions, like the audit trail.
-
-    The rows exist so a reset cannot reuse an old password (E2-S4). A history
-    an operator can edit or delete does not enforce anything, so this only
-    answers "how many, and when".
-    """
+    """Previous password hashes, so a reset cannot reuse one (E2-S4).
+    Deleting rows here re-allows those passwords."""
 
     list_display = (
         "created_at",
@@ -164,17 +127,4 @@ class PasswordHistoryAdmin(admin.ModelAdmin):
 
     exclude = ("password_hash",)
 
-    readonly_fields = (
-        "user",
-        "created_at",
-        "updated_at",
-    )
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
+    readonly_fields = ("created_at", "updated_at")

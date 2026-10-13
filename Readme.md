@@ -167,6 +167,9 @@ the **only** process you need:
   with the inbox at <http://localhost:8025>, rather than the SMTP host in
   `.env`. Registration OTPs land there. `brew install mailpit && brew services
   start mailpit`; set `LOCAL_REAL_EMAIL=1` to use the real host instead.
+  **`docker compose` is the opposite**: it sets `LOCAL_REAL_EMAIL=true`, because
+  that stack has no mailpit and is what the dev server runs. Set
+  `LOCAL_REAL_EMAIL=false` in `.env` to catch mail there instead.
 - **Postgres and Redis** are expected to be running. Both are fine as native
   services (`brew services start postgresql@18 redis`) — Docker is not needed.
 

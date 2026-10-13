@@ -69,6 +69,11 @@ services:
       # with no error anywhere to say why.
       REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
       PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      # Real mail through the .env SMTP host. config.settings.local otherwise
+      # sends to a mailpit on localhost:1025, which suits runserver on a
+      # laptop but does not exist in this stack: every OTP went nowhere while
+      # the API answered "sent". LOCAL_REAL_EMAIL=false in .env to catch mail.
+      LOCAL_REAL_EMAIL: ${LOCAL_REAL_EMAIL:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -101,6 +106,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
       PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      # Real mail through the .env SMTP host. config.settings.local otherwise
+      # sends to a mailpit on localhost:1025, which suits runserver on a
+      # laptop but does not exist in this stack: every OTP went nowhere while
+      # the API answered "sent". LOCAL_REAL_EMAIL=false in .env to catch mail.
+      LOCAL_REAL_EMAIL: ${LOCAL_REAL_EMAIL:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -129,6 +139,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
       PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      # Real mail through the .env SMTP host. config.settings.local otherwise
+      # sends to a mailpit on localhost:1025, which suits runserver on a
+      # laptop but does not exist in this stack: every OTP went nowhere while
+      # the API answered "sent". LOCAL_REAL_EMAIL=false in .env to catch mail.
+      LOCAL_REAL_EMAIL: ${LOCAL_REAL_EMAIL:-true}
     depends_on:
       db:
         condition: service_healthy
@@ -157,6 +172,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       REALTIME_ENABLED: ${REALTIME_ENABLED:-true}
       PUSH_ENABLED: ${PUSH_ENABLED:-true}
+      # Real mail through the .env SMTP host. config.settings.local otherwise
+      # sends to a mailpit on localhost:1025, which suits runserver on a
+      # laptop but does not exist in this stack: every OTP went nowhere while
+      # the API answered "sent". LOCAL_REAL_EMAIL=false in .env to catch mail.
+      LOCAL_REAL_EMAIL: ${LOCAL_REAL_EMAIL:-true}
     depends_on:
       db:
         condition: service_healthy

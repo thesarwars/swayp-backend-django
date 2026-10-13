@@ -174,6 +174,23 @@ class BillImportService:
                 )
                 continue
 
+            if candidate.amount is None or candidate.amount <= 0:
+                # Belt and braces behind the detector's inflow filter: rows
+                # detected before that filter existed are still in the table,
+                # and ``bill_amount_positive`` makes such a row an
+                # IntegrityError. Inside an atomic block that would roll the
+                # whole batch back and answer 500, losing every good bill in
+                # the scan over one refund. Reported instead.
+                skipped.append(
+                    {
+                        "candidate_id": candidate.id,
+                        "vendor_name": candidate.vendor_name,
+                        "bill_id": None,
+                        "reason": "not_a_bill",
+                    }
+                )
+                continue
+
             bill = self._import_one(user, candidate, today)
 
             imported.append(
@@ -204,6 +221,10 @@ class BillImportService:
             user=user,
             vendor=vendor,
             category=category,
+            # Same reason as the API path: a bill with no method is quoted as
+            # unpayable on every rail, and every bill the onboarding scan
+            # imported was created without one.
+            payment_method=vendor.primary_payment_method,
             amount=candidate.amount,
             bill_type=BillType.FIXED,
             frequency=candidate.cadence,

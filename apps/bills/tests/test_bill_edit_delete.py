@@ -62,9 +62,10 @@ class BillEditDeleteTestCase(TestCase):
             email="editdelete@example.com",
             password="Sw@yp-Test-1",
         )
-        self.category = BillCategory.objects.create(
-            name="Rent", icon="https://e.com/i.png", color="#111",
-        )
+        self.category = BillCategory.objects.get_or_create(
+            name="Rent",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.vendor = Vendor.objects.create(
             user=self.user, name="WeWork", category=self.category,
         )

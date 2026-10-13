@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.banking.models import BillDetectionCandidate
+from apps.banking.services.scan_service import ScanService
 from apps.bill_categories.models import BillCategory
 from apps.bills.models.bill import Bill
 from apps.vendors.factories import UserFactory
@@ -23,9 +24,10 @@ class CandidateEditTests(TestCase):
         self.user = UserFactory()
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
-        BillCategory.objects.create(
-            name="Other", icon="https://e.com/i.png", color="#111"
-        )
+        BillCategory.objects.get_or_create(
+            name="Other",
+            defaults={"icon": "https://e.com/i.png", "color": "#111"},
+        )[0]
         self.utilities = BillCategory.objects.create(
             name="Utilities", icon="https://e.com/u.png", color="#222"
         )
@@ -132,3 +134,46 @@ class CandidateEditTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.candidate.refresh_from_db()
         self.assertNotEqual(self.candidate.amount, Decimal("1.00"))
+
+
+class CategoryGuessPreferenceTests(TestCase):
+    """``_CATEGORY_HINTS`` names categories in preference order.
+
+    The lookup used ``filter(name__in=...).first()``, which applies the
+    model's ordering (display_order, name) rather than the order the hint
+    declares, so the preference never took effect: once the seeded "Rent"
+    existed with a lower display_order than a "Commercial Rent" added later,
+    a WeWork charge was filed under the general category while the specific
+    one sat unused.
+    """
+
+    def setUp(self):
+        self.service = ScanService()
+
+    def test_the_specific_category_wins_over_the_general_one(self):
+        BillCategory.objects.get_or_create(
+            name="Rent",
+            defaults={"icon": "", "color": "#111", "display_order": 1},
+        )
+        specific, _ = BillCategory.objects.get_or_create(
+            name="Commercial Rent",
+            defaults={"icon": "", "color": "#222", "display_order": 90},
+        )
+
+        self.assertEqual(
+            self.service.guess_category("WeWork 123").id, specific.id
+        )
+
+    def test_the_general_category_is_used_when_it_is_the_only_one(self):
+        general, _ = BillCategory.objects.get_or_create(
+            name="Rent",
+            defaults={"icon": "", "color": "#111", "display_order": 1},
+        )
+        BillCategory.objects.filter(name="Commercial Rent").delete()
+
+        self.assertEqual(
+            self.service.guess_category("WeWork 123").id, general.id
+        )
+
+    def test_an_unmatched_vendor_gets_no_category(self):
+        self.assertIsNone(self.service.guess_category("Totally Unknown Ltd"))

@@ -23,6 +23,15 @@ GOOD = {
     "FRONTEND_URL": "https://app.getswayp.com",
     "DEFAULT_PLAN_CODE": "FOUNDING",
     "SUBSCRIPTION_BILLING_PROVIDER": "mock",
+    # Every provider guard below is keyed on these, and base.py has already
+    # read the developer's .env into os.environ by the time load() runs —
+    # patch.dict adds to that environment rather than replacing it. Left
+    # unpinned, a developer who sets BANK_DATA_PROVIDER=plaid locally makes
+    # the Plaid guard fire inside *every* test here, and each one then reports
+    # the wrong refusal. A test of a guard has to own the value the guard
+    # reads, so both are stated rather than inherited.
+    "BANK_DATA_PROVIDER": "mock",
+    "PLAID_ENV": "sandbox",
 }
 
 
@@ -101,6 +110,53 @@ class ProductionGuardTests(SimpleTestCase):
             load(DEFAULT_PLAN_CODE="ENTERPRISE")
 
         self.assertIn("FOUNDING", str(ctx.exception))
+
+    def test_selecting_plaid_without_keys_fails_at_boot(self):
+        """Rather than at a customer's first bank connection, mid-onboarding."""
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            load(BANK_DATA_PROVIDER="plaid", PLAID_CLIENT_ID=None)
+
+        self.assertIn("PLAID_CLIENT_ID", str(ctx.exception))
+
+    def test_selecting_plaid_without_a_secret_fails_at_boot(self):
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            load(
+                BANK_DATA_PROVIDER="plaid",
+                PLAID_CLIENT_ID="client-id",
+                PLAID_SECRET=None,
+            )
+
+        self.assertIn("PLAID_SECRET", str(ctx.exception))
+
+    def test_production_refuses_plaid_sandbox(self):
+        """Sandbox answers with invented accounts and invented balances, and
+        nothing in the UI distinguishes them from a real bank."""
+        with self.assertRaises(ImproperlyConfigured) as ctx:
+            load(
+                BANK_DATA_PROVIDER="plaid",
+                PLAID_CLIENT_ID="client-id",
+                PLAID_SECRET="secret",
+                PLAID_ENV="sandbox",
+            )
+
+        self.assertIn("PLAID_ENV", str(ctx.exception))
+
+    def test_plaid_with_production_keys_is_allowed(self):
+        """The negative tests above only show the guard fires; this shows it
+        has an opening, so they are not all passing for the same reason.
+
+        Asserted on the refusal rather than on ``settings.PLAID_ENV``: the
+        guard reads the environment when production.py executes, while the
+        settings attribute comes from ``base``, which importlib serves from
+        cache on reload and so still carries the value .env gave it."""
+        settings = load(
+            BANK_DATA_PROVIDER="plaid",
+            PLAID_CLIENT_ID="client-id",
+            PLAID_SECRET="secret",
+            PLAID_ENV="production",
+        )
+
+        self.assertFalse(settings.DEBUG)
 
     def test_selecting_stripe_without_keys_fails_at_boot(self):
         """Rather than at a customer's first subscribe."""

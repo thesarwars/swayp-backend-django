@@ -125,6 +125,17 @@ def detect(transactions):
     by_vendor = defaultdict(list)
 
     for transaction in transactions:
+        # An inflow is not a bill. Money leaving the account is signed
+        # positive and money arriving negative, so without this an interest
+        # credit ("INTRST PYMNT", -4.22) and a monthly refund clustered as
+        # neatly as a real subscription and became candidates — and a Bill
+        # with a negative amount violates ``bill_amount_positive``, so
+        # importing the scan raised IntegrityError and answered 500 for the
+        # whole batch. ``get_recurring`` already states this rule for Plaid's
+        # own detection; this is the same rule for raw history.
+        if transaction.amount is None or transaction.amount <= 0:
+            continue
+
         key = normalize_vendor(transaction.name)
 
         if not key:

@@ -53,6 +53,16 @@ class BillService:
                 raise ValidationError(
                     {"payment_method": ["Invalid payment method."]}
                 )
+        else:
+            # The vendor's primary method, when the client names none. The
+            # add-bill wizard has no method step and the field is optional,
+            # so without this a bill was stored with payment_method=None —
+            # and ``rails_for_bill`` returns no rails at all for such a bill,
+            # so POST /payments/quote reported every rail unavailable ("This
+            # bill has no payment method saved.") and the bill could never be
+            # paid. Nothing said so at creation time; the dead end only
+            # appeared at the pay screen.
+            payment_method = vendor.primary_payment_method
 
         bill = Bill.objects.create(
             user=user,

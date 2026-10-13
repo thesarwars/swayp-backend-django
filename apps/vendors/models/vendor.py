@@ -101,5 +101,22 @@ class Vendor(BaseModel):
             models.Index(fields=["name"]),
         ]
 
+    @property
+    def primary_payment_method(self):
+        """The method a payment to this vendor uses unless told otherwise.
+
+        ``one_primary_method_per_vendor`` makes this unambiguous — at most one
+        method per vendor may be primary — which is what lets a bill be
+        created without naming one. Reads the prefetched ``primary_methods``
+        when a selector supplied it, so a list page does not pay a query per
+        row for a value it already fetched.
+        """
+        prefetched = getattr(self, "primary_methods", None)
+
+        if prefetched is not None:
+            return prefetched[0] if prefetched else None
+
+        return self.payment_methods.filter(is_primary=True).first()
+
     def __str__(self):
         return self.name

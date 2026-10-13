@@ -246,9 +246,18 @@ class WebhookGuaranteeTests(TestCase):
         )
         self.user = self.subscription.account
 
-        self.bill = BillFactory(user=self.user, anchor_date=D(2026, 9, 1))
+        # The promise is relative to today, not pinned. A guarantee dated
+        # 2026-09-01 was in the future when this was written and in the past
+        # from October on, at which point "a future promise is not missed"
+        # was comparing today against a date five weeks gone and asserting
+        # the refund had not happened. The arrival tests below derive their
+        # dates from this one, so the relationship under test — arrival
+        # against promise — is what is fixed, rather than the calendar.
+        self.promised = timezone.localdate() + dt.timedelta(days=3)
+
+        self.bill = BillFactory(user=self.user, anchor_date=self.promised)
         occurrence = BillOccurrenceFactory(
-            bill=self.bill, due_date=D(2026, 9, 1), amount="900.00"
+            bill=self.bill, due_date=self.promised, amount="900.00"
         )
         self.payment = PaymentFactory(
             user=self.user,
@@ -256,8 +265,8 @@ class WebhookGuaranteeTests(TestCase):
             rail=PaymentRail.CHECK,
             amount="900.00",
             status=PaymentStatus.PROCESSING,
-            initiated_date=D(2026, 8, 28),
-            estimated_arrival=D(2026, 9, 1),
+            initiated_date=self.promised - dt.timedelta(days=4),
+            estimated_arrival=self.promised,
             expedited=True,
         )
         self.fee = FeeService().charge_for_payment(
@@ -287,7 +296,8 @@ class WebhookGuaranteeTests(TestCase):
         return self.post(payload)
 
     def test_a_late_arrival_reported_by_the_processor_refunds(self):
-        response = self.completed(arrived_at="2026-09-04")
+        late = self.promised + dt.timedelta(days=3)
+        response = self.completed(arrived_at=late.isoformat())
 
         self.assertEqual(response.status_code, 200)
 
@@ -295,7 +305,7 @@ class WebhookGuaranteeTests(TestCase):
         self.assertEqual(self.fee.state, FeeState.REFUNDED)
 
     def test_an_on_time_arrival_does_not_refund(self):
-        response = self.completed(arrived_at="2026-09-01")
+        response = self.completed(arrived_at=self.promised.isoformat())
 
         self.assertEqual(response.status_code, 200)
 

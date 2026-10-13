@@ -25,6 +25,7 @@ from apps.common.enums import (
 )
 from apps.notifications.services import notify
 from apps.payments.models import Payment, PaymentStageName
+from apps.payments.services.rails import method_for_bill
 from apps.payments.services.notification_context import payment_context
 from apps.payments.services.stage_service import StageService
 from integrations.factory import get_money_movement_provider
@@ -316,7 +317,9 @@ class PaymentExecutionService:
         method = None
 
         if payment.bill_occurrence_id and payment.bill_occurrence.bill:
-            method = payment.bill_occurrence.bill.payment_method
+            # The effective method, so a bill that relies on its vendor's
+            # primary one is sent somewhere rather than to "".
+            method = method_for_bill(payment.bill_occurrence.bill)
 
         if method is None:
             return ""

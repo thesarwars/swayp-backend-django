@@ -17,7 +17,6 @@ from rest_framework.test import APIClient
 
 from apps.authentication.api.serializers.otp import NO_CODE_PENDING
 from apps.authentication.models import OTP, OTPPurpose, RefreshToken
-from apps.authentication.utils.otp import OTPService
 from apps.users.models.user import User
 
 VERIFY_URL = "/api/v1/auth/verify-otp"
@@ -56,7 +55,7 @@ class MergedVerifyTests(TestCase):
         """Write a code directly — the real one is only ever emailed."""
         return OTP.objects.create(
             user=user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=purpose,
             expires_at=timezone.now() + timedelta(minutes=minutes),
         )

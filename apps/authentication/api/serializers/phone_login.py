@@ -40,10 +40,6 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
         user = User.objects.filter(phone_number=phone_number).first()
 
         if user is None:
-            # Burn a comparable amount of time so a missing user is not
-            # detectable by response latency.
-            OTPService.verify_otp("000000", OTPService.hash_otp("000000"))
-
             raise serializers.ValidationError(
                 {"detail": GENERIC_VERIFY_ERROR}
             )
@@ -69,7 +65,7 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
                 {"detail": GENERIC_VERIFY_ERROR}
             )
 
-        if not OTPService.verify_otp(attrs["otp"], otp_obj.code_hash):
+        if not OTPService.verify_otp(attrs["otp"], otp_obj.code):
             otp_obj.attempts += 1
             otp_obj.save(update_fields=["attempts"])
 

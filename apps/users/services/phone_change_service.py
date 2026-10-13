@@ -75,7 +75,7 @@ class PhoneChangeService:
         if otp_obj.is_exhausted:
             raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]})
 
-        if not OTPService.verify_otp(otp, otp_obj.code_hash):
+        if not OTPService.verify_otp(otp, otp_obj.code):
             # Saved outside any transaction, so the count survives the error
             # this raises.
             otp_obj.attempts += 1

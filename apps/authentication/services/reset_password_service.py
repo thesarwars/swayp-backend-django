@@ -93,7 +93,7 @@ class ResetPasswordService:
         if otp_obj.is_exhausted:
             raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]})
 
-        if not OTPService.verify_otp(otp, otp_obj.code_hash):
+        if not OTPService.verify_otp(otp, otp_obj.code):
             otp_obj.attempts += 1
             otp_obj.save(update_fields=["attempts"])
 

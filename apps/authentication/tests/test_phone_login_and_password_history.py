@@ -78,7 +78,7 @@ class PhoneLoginTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -97,7 +97,7 @@ class PhoneLoginTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -120,7 +120,7 @@ class PhoneLoginTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() - timedelta(minutes=1),
         )
@@ -137,7 +137,7 @@ class PhoneLoginTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -212,7 +212,7 @@ class PasswordHistoryTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.RESET_PASSWORD,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -230,7 +230,7 @@ class PasswordHistoryTests(TestCase):
         code = OTPService.generate_otp()
         otp = OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.RESET_PASSWORD,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -257,7 +257,7 @@ class PasswordHistoryTests(TestCase):
         code = OTPService.generate_otp()
         OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=OTPPurpose.RESET_PASSWORD,
             expires_at=timezone.now() + timedelta(minutes=5),
         )

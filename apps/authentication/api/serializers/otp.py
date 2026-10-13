@@ -133,7 +133,7 @@ class VerifyOTPSerializer(serializers.Serializer):
         # the user was reading the first email leaves two live rows, and the
         # code in front of them is as likely to be the older one.
         for otp_obj in live:
-            if OTPService.verify_otp(attrs["otp"], otp_obj.code_hash):
+            if OTPService.verify_otp(attrs["otp"], otp_obj.code):
                 attrs["user"] = user
                 attrs["otp_obj"] = otp_obj
 

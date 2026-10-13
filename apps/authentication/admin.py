@@ -3,15 +3,20 @@
 All three tables are security records rather than content, which shapes what
 this exposes. Two rules run through it:
 
-**No hash is ever rendered.** ``OTP.code_hash``, ``RefreshToken.token_hash``
-and ``PasswordHistory.password_hash`` are excluded from every form. They are
+**No hash is ever rendered.** ``RefreshToken.token_hash`` and
+``PasswordHistory.password_hash`` are excluded from every form. They are
 the same reason ``BankConnection.access_token`` is excluded in
 ``apps/banking/admin.py``: an operator has no use for the value, and password
 hashes on a screen are offline cracking material that leaks through a
 screenshot or a shoulder.
 
+**OTP codes are shown.** They are stored in plain text so an operator can
+read a user's code from here when email delivery fails, and they are listed
+and shown read-only. Anyone with admin access can therefore sign up or reset
+a password as any user whose code is live: grant admin accordingly.
+
 **Nothing that grants access is editable.** An operator who could write
-``code_hash`` could set a known OTP and verify as any user, and one who could
+``code`` could set a known OTP and verify as any user, and one who could
 clear ``PasswordHistory`` could re-enable a password a reset already refused.
 The single exception is ``RefreshToken.revoked_at``, because killing a live
 session is the reason to open that table at all.
@@ -35,6 +40,7 @@ class OTPAdmin(admin.ModelAdmin):
     list_display = (
         "created_at",
         "user",
+        "code",
         "purpose",
         "channel",
         "expires_at",
@@ -55,10 +61,9 @@ class OTPAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
     list_select_related = ("user",)
 
-    exclude = ("code_hash",)
-
     readonly_fields = (
         "user",
+        "code",
         "purpose",
         "channel",
         "expires_at",

@@ -19,12 +19,10 @@ from apps.authentication.models import (
     PasswordHistory,
     RefreshToken,
 )
-from apps.authentication.utils.otp import OTPService
 from apps.users.models.user import User
 
 #: field name -> the value that must never reach the page.
 SECRETS = {
-    "code_hash": "otp-hash-must-not-render",
     "token_hash": "token-hash-must-not-render",
     "password_hash": "password-hash-must-not-render",
 }
@@ -40,7 +38,7 @@ class AuthenticationAdminTests(TestCase):
 
         cls.otp = OTP.objects.create(
             user=cls.staff,
-            code_hash=SECRETS["code_hash"],
+            code="481516",
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() + timedelta(minutes=5),
         )
@@ -87,7 +85,7 @@ class AuthenticationAdminTests(TestCase):
 
     def test_no_page_renders_a_hash(self):
         """The reason every hash is excluded rather than made readonly."""
-        for obj in (self.otp, self.token, self.history):
+        for obj in (self.token, self.history):
             meta = obj._meta
 
             for view, args in (
@@ -102,6 +100,17 @@ class AuthenticationAdminTests(TestCase):
                 for secret in SECRETS.values():
                     with self.subTest(model=meta.model_name, view=view):
                         self.assertNotIn(secret, body)
+
+    def test_the_otp_code_is_shown(self):
+        """Kept in plain text so an operator can read it when email does
+        not arrive; visible in the list and on the row, but not editable."""
+        for view, args in (("changelist", []), ("change", [self.otp.pk])):
+            url = reverse(f"admin:authentication_otp_{view}", args=args)
+
+            with self.subTest(view=view):
+                self.assertIn("481516", self.client.get(url).content.decode())
+
+        self.assertIn("code", admin.site._registry[OTP].readonly_fields)
 
     def test_a_session_can_be_revoked_but_not_forged(self):
         """revoked_at is the one write; nothing here mints a session."""

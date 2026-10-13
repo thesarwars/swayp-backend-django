@@ -10,7 +10,6 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.authentication.models import OTP, OTPPurpose, RefreshToken
-from apps.authentication.utils.otp import OTPService
 
 User = get_user_model()
 PASSWORD = "Str0ng!Passphrase1"
@@ -62,7 +61,7 @@ class ResetEndsSessionsTests(TestCase):
 
     def test_a_reset_revokes_and_blacklists_every_refresh_token(self):
         OTP.objects.create(
-            user=self.user, code_hash=OTPService.hash_otp("123456"),
+            user=self.user, code="123456",
             purpose=OTPPurpose.RESET_PASSWORD,
             expires_at=timezone.now() + timedelta(minutes=5),
         )

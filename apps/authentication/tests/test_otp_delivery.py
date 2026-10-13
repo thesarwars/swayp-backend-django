@@ -116,13 +116,20 @@ class DeliveryTests(TestCase):
             )
             self.assertEqual(queued.call_count, 0)
 
-    def test_the_raw_code_is_never_stored(self):
+    def test_the_code_is_stored_as_sent(self):
         otp, queued = self.issue_capturing_dispatch(OTPPurpose.LOGIN)
 
-        code = queued.call_args.kwargs["code"]
+        self.assertEqual(otp.code, queued.call_args.kwargs["code"])
 
-        self.assertNotEqual(otp.code_hash, code)
-        self.assertNotIn(code, otp.code_hash)
+    def test_a_code_stored_as_a_hash_before_the_change_still_verifies(self):
+        from django.contrib.auth.hashers import make_password
+
+        from apps.authentication.utils.otp import OTPService
+
+        self.assertTrue(OTPService.verify_otp("123456", make_password("123456")))
+        self.assertFalse(OTPService.verify_otp("654321", make_password("123456")))
+        self.assertTrue(OTPService.verify_otp("123456", "123456"))
+        self.assertFalse(OTPService.verify_otp("123457", "123456"))
 
     def test_task_delivers_through_the_provider(self):
         result = send_otp(
@@ -171,7 +178,7 @@ class ThrottleTests(TestCase):
     def make_otp(self, age_seconds=0):
         otp = OTP.objects.create(
             user=self.user,
-            code_hash="x",
+            code="x",
             purpose=OTPPurpose.LOGIN,
             expires_at=timezone.now() + timedelta(minutes=5),
         )

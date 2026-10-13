@@ -53,7 +53,7 @@ class OTPDeliveryService:
 
         otp = OTP.objects.create(
             user=user,
-            code_hash=OTPService.hash_otp(code),
+            code=code,
             purpose=purpose,
             channel=channel,
             target=target,

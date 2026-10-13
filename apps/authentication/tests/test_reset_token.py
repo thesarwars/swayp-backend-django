@@ -15,7 +15,6 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.authentication.models import OTP, OTPPurpose, RefreshToken
-from apps.authentication.utils.otp import OTPService
 from apps.vendors.factories import UserFactory
 
 VERIFY_URL = "/api/v1/auth/verify-otp"
@@ -32,7 +31,7 @@ class ResetTokenTests(TestCase):
         self.client = APIClient()
         self.otp = OTP.objects.create(
             user=self.user,
-            code_hash=OTPService.hash_otp(CODE),
+            code=CODE,
             purpose=OTPPurpose.RESET_PASSWORD,
             expires_at=timezone.now() + timedelta(minutes=5),
         )

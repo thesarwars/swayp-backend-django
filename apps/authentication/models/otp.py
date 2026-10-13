@@ -28,7 +28,10 @@ class OTP(BaseModel):
         related_name="otps",
     )
 
-    code_hash = models.CharField(
+    # The code itself, in plain text, so an operator can read it in the
+    # admin while email delivery is being set up. Rows from before this held
+    # a hash; verify_otp still accepts those until they expire.
+    code = models.CharField(
         max_length=255,
     )
 

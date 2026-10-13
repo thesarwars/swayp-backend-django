@@ -112,12 +112,11 @@ class AuthContractTests(ContractTestCase):
         from django.utils import timezone
 
         from apps.authentication.models import OTP
-        from apps.authentication.utils.otp import OTPService
 
         user = get_user_model().objects.get(email=self.EMAIL)
         OTP.objects.filter(user=user).delete()
         OTP.objects.create(
-            user=user, code_hash=OTPService.hash_otp("123456"),
+            user=user, code="123456",
             purpose=purpose, expires_at=timezone.now() + timedelta(minutes=5),
         )
 

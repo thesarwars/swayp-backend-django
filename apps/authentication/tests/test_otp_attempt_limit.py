@@ -13,7 +13,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.authentication.models import OTP, OTPPurpose
-from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
+from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS
 from apps.vendors.factories import UserFactory
 
 CODE = "123456"
@@ -30,7 +30,7 @@ class OTPAttemptLimitTests(TestCase):
     def _otp(self, user, purpose, **extra):
         return OTP.objects.create(
             user=user,
-            code_hash=OTPService.hash_otp(CODE),
+            code=CODE,
             purpose=purpose,
             expires_at=timezone.now() + timedelta(minutes=5),
             **extra,

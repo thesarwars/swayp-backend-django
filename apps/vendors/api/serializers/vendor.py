@@ -261,6 +261,12 @@ class VendorDetailSerializer(serializers.ModelSerializer):
 
 class VendorUpdateSerializer(serializers.ModelSerializer):
 
+    # Optional on PUT too (web B10): leaving it out keeps the current one.
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=BillCategory.objects.filter(is_active=True),
+        required=False,
+    )
+
     class Meta:
 
         model = Vendor
@@ -289,9 +295,13 @@ class VendorCreateSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=150)
     # Optional (VEND-7): the add-vendor design has no category step. When
     # omitted, the vendor is filed under the default category ("Other").
+    # "" and null mean the same as omitting it: the web form sends an empty
+    # select as "", which was refused as "may not be null" (web B10).
     category = serializers.PrimaryKeyRelatedField(
         queryset=BillCategory.objects.filter(is_active=True),
         required=False,
+        allow_null=True,
+        help_text="Optional. Omitted, empty or null files it under Other.",
     )
     source = serializers.ChoiceField(choices=VendorSource.choices)
     notes = serializers.CharField(required=False, allow_blank=True)
@@ -308,6 +318,13 @@ class VendorCreateSerializer(serializers.Serializer):
     def validate(self, attrs):
         # Optional cross-field validation
         return attrs
+
+    def to_internal_value(self, data):
+        if hasattr(data, "get") and data.get("category") == "":
+            data = data.copy()
+            data["category"] = None
+
+        return super().to_internal_value(data)
 
 
 class VendorSummarySerializer(serializers.Serializer):

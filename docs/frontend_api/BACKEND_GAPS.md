@@ -161,6 +161,8 @@ This is probably intended, but the client can't tell "done" from "not applicable
 
 ### B10: `category` is "optional" on vendor create but rejected when empty (P2)
 
+✅ **Fixed.** On `POST /vendors`, an omitted, `""` or `null` category files the vendor under "Other". On `PUT`, leaving it out keeps the current one.
+
 The schema marks `category` optional on `POST /vendors`, but `""` returns `"This field may not be null."`, and the list and `PUT` treat it as required. Either make it required in the schema or apply a default ("Other").
 
 ---

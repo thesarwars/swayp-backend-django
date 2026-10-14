@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from apps.common.mixins import EnvelopeResponseMixin
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import status
 from rest_framework.generics import (
@@ -49,10 +50,9 @@ from apps.vendors.models import (
         responses={201: VendorDetailSerializer},
     ),
 )
-class VendorListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
+class VendorListCreateAPIView(EnvelopeResponseMixin, AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 
@@ -92,10 +92,9 @@ class VendorListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAP
             status=status.HTTP_201_CREATED,
         )
     
-class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
+class VendorDetailAPIView(EnvelopeResponseMixin, AccountScopedMixin, RetrieveUpdateDestroyAPIView):
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "vendor_id"
 
@@ -159,10 +158,9 @@ class VendorDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
     parameters=[VendorListQuerySerializer],
     responses={200: VendorSummarySerializer},
 )
-class VendorSummaryAPIView(AccountScopedMixin, APIView):
+class VendorSummaryAPIView(EnvelopeResponseMixin, AccountScopedMixin, APIView):
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 
@@ -189,10 +187,9 @@ class VendorSummaryAPIView(AccountScopedMixin, APIView):
     request=None,
     responses={200: VendorDetailSerializer},
 )
-class VendorRestoreAPIView(AccountScopedMixin, APIView):
+class VendorRestoreAPIView(EnvelopeResponseMixin, AccountScopedMixin, APIView):
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 

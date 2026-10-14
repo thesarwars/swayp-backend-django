@@ -89,7 +89,7 @@ class VendorListCorrectnessTests(TestCase):
         self.client.force_authenticate(user=self.user)
 
     def row(self, name):
-        rows = self.client.get(URL).data["items"]
+        rows = self.client.get(URL).data["data"]
 
         return next(r for r in rows if r["name"] == name)
 

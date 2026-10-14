@@ -1,5 +1,6 @@
 """Recent vendor activity for the account (VEND-5)."""
 
+from apps.common.mixins import EnvelopeResponseMixin
 from drf_spectacular.utils import extend_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -18,10 +19,9 @@ from apps.vendors.models import VendorActivity
         "Paginated like the vendor list ({items, pagination})."
     ),
 )
-class VendorActivityListAPIView(AccountScopedMixin, ListAPIView):
+class VendorActivityListAPIView(EnvelopeResponseMixin, AccountScopedMixin, ListAPIView):
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
     serializer_class = VendorActivitySerializer

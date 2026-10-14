@@ -175,6 +175,8 @@ The schema marks `category` optional on `POST /vendors`, but `""` returns `"This
 
 ### C1: Vendor endpoints skip the response envelope (P1)
 
+✅ **Fixed (breaking).** Every vendor endpoint answers `{success, message, data}`. On lists, `data` is the rows and `pagination` sits beside it; set-primary returns the updated method as `data`. Errors were already enveloped. Clients reading `items` or the bare object must switch to `data`. The mobile app's unwrap helper already handles it.
+
 Every other module returns `{success, message, data}`. The vendor endpoints don't:
 
 | Endpoint | Shape today |

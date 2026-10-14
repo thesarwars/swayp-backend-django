@@ -4,9 +4,10 @@ Payees, their payment methods, the biller directory and QR capture.
 
 ← [Index](README.md) · Prev: [E2](e2-authentication.md) · Next: [E4 Bills](e4-bills.md)
 
-⚠️ **This is the family that does *not* use the standard envelope.** List
-endpoints return `{ items, pagination }` and detail/create/update return a
-**bare object with no wrapper at all**. See [E1](e1-foundations.md).
+**Enveloped like everything else** (web C1): `{ success, message, data }`,
+plus `pagination` on the lists, where `data` is the array of rows. The
+samples below show what's inside `data`. These endpoints used to answer bare
+(`{ items, pagination }` or the object itself).
 
 ---
 
@@ -18,7 +19,8 @@ GET /api/v1/vendors?search=&category=&rail=&status=&page=1&pageSize=20
 
 ```json
 {
-  "items": [
+  "success": true, "message": "Success",
+  "data": [
     { "id": "0ec2bf6c-…", "name": "WeWork", "logo": "",
       "status": "ACTIVE", "category": "653f035b-…", "category_name": "Rent",
       "created_at": "2026-08-01T10:00:00Z", "updated_at": "2026-09-12T08:30:00Z",
@@ -223,7 +225,7 @@ Paginated `{ items, pagination }`. Results are seeded mock data, not a live
 directory, but the shape is final:
 
 ```json
-{ "items": [
+{ "success": true, "message": "Success", "data": [
     { "external_id": "dir-verizon", "name": "Verizon Business",
       "category": "Telecom", "category_id": "7a1d…",
       "verified": true, "speed": "Same day", "network": "NETWORK" } ],
@@ -314,7 +316,7 @@ GET /api/v1/vendors/activity?page=1&pageSize=20
 ```
 
 ```json
-{ "items": [
+{ "success": true, "message": "Success", "data": [
     { "id": "…", "action": "METHOD_ADDED", "label": "Payment method added",
       "vendor_id": "0ec2bf6c-…", "vendor_name": "WeWork",
       "actor_name": "Ada Reed", "created_at": "2026-10-10T09:12:00Z" } ],

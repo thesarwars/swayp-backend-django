@@ -135,7 +135,7 @@ class EasternEveningTests(TestCase):
 
     def test_vendor_row_still_shows_the_occurrence_as_next_due(self):
         response = self.client.get(VENDORS_URL)
-        row = response.data["items"][0]
+        row = response.data["data"][0]
 
         self.assertEqual(row["name"], "Acme")
         self.assertEqual(row["next_due"], EASTERN_DAY)

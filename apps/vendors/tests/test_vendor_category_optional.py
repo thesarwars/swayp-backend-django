@@ -29,7 +29,7 @@ class OptionalCategoryTests(TestCase):
                 }, format="json")
 
                 self.assertEqual(response.status_code, 201, response.content)
-                self.assertEqual(response.json()["category"], str(self.other.id))
+                self.assertEqual(response.json()["data"]["category"], str(self.other.id))
 
     def test_put_without_category_keeps_it(self):
         vendor = VendorFactory(user=self.user)

@@ -1,4 +1,5 @@
 from drf_spectacular.utils import OpenApiResponse, extend_schema
+from apps.common.mixins import EnvelopeResponseMixin
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -28,7 +29,7 @@ from apps.vendors.services.qr_decoder import QRDecodeService
         422: OpenApiResponse(description="Unreadable QR (code unprocessable)."),
     },
 )
-class QRDecodeAPIView(APIView):
+class QRDecodeAPIView(EnvelopeResponseMixin, APIView):
     """
     POST /vendors/qr/decode/
     Accepts:
@@ -41,8 +42,7 @@ class QRDecodeAPIView(APIView):
     image=<qr image>
     """
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 

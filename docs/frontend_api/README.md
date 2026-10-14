@@ -47,35 +47,31 @@ states.
 
 ## Read this before anything else
 
-### Response shapes: the envelope, and vendors ⚠️
+### Response shapes: one envelope everywhere
 
-Vendors are the exception; everything else is enveloped. Write one unwrap helper and use it everywhere.
+Every endpoint, vendors included, answers in one envelope:
 
 | Shape | Where |
 |---|---|
-| `{ "success", "message", "data" }` | **everything except vendors**: auth, users, bills, banking, billing, payments, dashboard, notifications, teams, AI, reports, providers, categories |
-| `{ "success", "message", "data", "pagination" }` | the paged lists among them: `bills/occurrences`, `bills/<id>/payments`, `notifications`, `payments/history`, `billing/fees`, `providers`, `reports` |
-| `{ "items": [...], "pagination": {...} }` | `vendors`, `vendors/<id>/payment-methods`, `vendors/activity`, `vendors/directory-search` |
-| a bare object, no wrapper | vendor create/detail/update/restore, `vendors/summary`, `vendors/qr/decode`, set-primary |
+| `{ "success", "message", "data" }` | every endpoint |
+| `{ "success", "message", "data", "pagination" }` | the paged lists: `vendors`, `vendors/<id>/payment-methods`, `vendors/activity`, `vendors/directory-search`, `bills/occurrences`, `bills/<id>/payments`, `notifications`, `payments/history`, `billing/fees`, `providers`, `reports` |
 
 `data` is `null`, not missing, on the few answers with nothing to return
 (e.g. `DELETE bills/<id>/details`, `GET bills/next-due` with no bills,
-`GET billing/subscription` with no plan). Errors are always
-`{ success: false, message, code, errors? }`.
+`GET billing/subscription` with no plan). On a paged list `data` is the array
+of rows. Errors are always `{ success: false, message, code, errors? }`.
+
+**Vendors used to answer bare** (`{items, pagination}` for lists, a bare
+object otherwise). They're enveloped now (web C1), so read `data` for them
+too. A client that still reads `items` or the bare object has to switch.
 
 **The OpenAPI schema at `/api/docs` describes exactly these shapes**, envelope
 included, and a contract test holds it to what the server sends
 (`apps/common/tests/test_openapi_contract.py`). A client generated from it is
 accurate.
 
-The vendor shapes (the last two rows) have **no `success` field** on success;
-errors always do. **Branch on the HTTP status, never on the body.**
-
 ```js
-const unwrap = (body) =>
-  body?.data  !== undefined ? body.data  :
-  body?.items !== undefined ? body.items :
-  body;
+const unwrap = (body) => body.data;   // every success answer
 ```
 
 ### Status codes worth handling once, globally

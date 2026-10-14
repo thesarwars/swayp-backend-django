@@ -470,7 +470,7 @@ class VendorsContractTests(ContractTestCase):
         vendor = self.check("POST", "/api/v1/vendors", body={
             "name": "WeWork", "category": str(self.category.id),
             "source": "MANUAL", "payment_method": self.NETWORK,
-        }, status=201).json()
+        }, status=201).json()["data"]
         vid = vendor["id"]
 
         self.check("GET", "/api/v1/vendors?search=we&rail=NETWORK",
@@ -482,7 +482,7 @@ class VendorsContractTests(ContractTestCase):
 
         M = V + "/payment-methods"
         method = self.check("POST", f"/api/v1/vendors/{vid}/payment-methods",
-                            path=M, body=self.CHECK, status=201).json()
+                            path=M, body=self.CHECK, status=201).json()["data"]
         mid = method["id"]
         self.check("GET", f"/api/v1/vendors/{vid}/payment-methods", path=M,
                    status=200)

@@ -1,4 +1,5 @@
 from drf_spectacular.utils import OpenApiParameter, extend_schema
+from apps.common.mixins import EnvelopeResponseMixin
 from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -19,13 +20,14 @@ from apps.vendors.services.directory_service import DirectoryService
     parameters=[
         OpenApiParameter("q", str, description="Biller name to search for"),
     ],
+    responses={200: ProviderSearchSerializer(many=True)},
 )
-class ProviderDirectorySearchAPIView(ListAPIView):
+class ProviderDirectorySearchAPIView(EnvelopeResponseMixin, ListAPIView):
     """Configured-account directory search — behind the DirectoryProvider
     interface (mock today), paginated, with the verified/network badges."""
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
+    paginated_response = True
 
     serializer_class = ProviderSearchSerializer
     permission_classes = [IsAuthenticated]

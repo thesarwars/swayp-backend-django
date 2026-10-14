@@ -425,11 +425,11 @@ class HomeReconciliationTests(HomeTestCase):
         self._vendor(name="AAA Deleted", status=VendorStatus.DELETED)
 
         home = self._home()
-        vendors_summary = self.client.get(VENDORS_SUMMARY_URL).data
+        vendors_summary = self.client.get(VENDORS_SUMMARY_URL).data["data"]
         listing = self.client.get(VENDORS_URL).data
 
         preview_ids = [row["id"] for row in home["vendors_preview"]]
-        listed_ids = {row["id"] for row in listing["items"]}
+        listed_ids = {row["id"] for row in listing["data"]}
 
         # The cap is genuinely biting, so containment is the only thing left
         # for the assertion below to be testing.

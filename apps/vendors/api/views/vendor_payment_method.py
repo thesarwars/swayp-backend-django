@@ -3,6 +3,7 @@ from drf_spectacular.utils import (
     extend_schema_view,
     inline_serializer,
 )
+from apps.common.mixins import EnvelopeResponseMixin
 from rest_framework import serializers, status
 from rest_framework.generics import (
     ListCreateAPIView,
@@ -55,7 +56,7 @@ from apps.teams.access import AccountScopedMixin
         responses={201: VendorPaymentMethodSerializer},
     ),
 )
-class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
+class VendorPaymentMethodListCreateAPIView(EnvelopeResponseMixin, AccountScopedMixin, IdempotencyMixin, ListCreateAPIView):
     """
     GET  /vendors/{vendor_id}/payment-methods/?due_date=&amount=
     POST /vendors/{vendor_id}/payment-methods/
@@ -66,8 +67,7 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
     fees and same-day limits arrive with E9.
     """
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 
@@ -155,15 +155,14 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
         responses={200: VendorPaymentMethodSerializer},
     ),
 )
-class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroyAPIView):
+class VendorPaymentMethodDetailAPIView(EnvelopeResponseMixin, AccountScopedMixin, RetrieveUpdateDestroyAPIView):
     """
     GET
     PUT/PATCH
     DELETE
     """
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
     lookup_url_kwarg = "method_id"
@@ -220,20 +219,15 @@ class VendorPaymentMethodDetailAPIView(AccountScopedMixin, RetrieveUpdateDestroy
     tags=["Vendors"],
     summary="Make a payment method the vendor's primary",
     request=None,
-    responses={
-        200: inline_serializer(
-            "SetPrimaryResponse", {"message": serializers.CharField()}
-        )
-    },
+    responses={200: VendorPaymentMethodSerializer},
 )
-class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
+class SetPrimaryPaymentMethodAPIView(EnvelopeResponseMixin, AccountScopedMixin, APIView):
     """
     POST
     /vendors/{vendor_id}/payment-methods/{method_id}/set-primary/
     """
 
-    # Bare body, no {success, message, data} (see apps/common/schema.py).
-    response_envelope = False
+    # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
 
@@ -256,9 +250,7 @@ class SetPrimaryPaymentMethodAPIView(AccountScopedMixin, APIView):
             actor=request.user,
         )
 
-        return Response(
-            {
-                "message": "Primary payment method updated."
-            },
-            status=status.HTTP_200_OK,
-        )
+        payment_method.refresh_from_db()
+
+        # The method itself as data, like every enveloped answer (web C1).
+        return Response(VendorPaymentMethodSerializer(payment_method).data)

@@ -70,12 +70,12 @@ class CreateBranchTests(VendorTestCase):
         response = self.create_vendor("Explicit", {**self.ACH, "is_primary": True})
 
         self.assertEqual(response.status_code, 201)
-        self.assertTrue(response.data["payment_methods"][0]["is_primary"])
+        self.assertTrue(response.data["data"]["payment_methods"][0]["is_primary"])
 
     def test_the_first_method_is_primary(self):
         response = self.create_vendor("First", self.ACH)
 
-        self.assertTrue(response.data["payment_methods"][0]["is_primary"])
+        self.assertTrue(response.data["data"]["payment_methods"][0]["is_primary"])
 
     def test_missing_branch_fields_are_rejected(self):
         response = self.create_vendor(
@@ -91,7 +91,7 @@ class CreateBranchTests(VendorTestCase):
                      "supports_same_day": True}
         )
 
-        method = response.data["payment_methods"][0]
+        method = response.data["data"]["payment_methods"][0]
         self.assertFalse(method["payee_verified"])
         self.assertFalse(method["supports_same_day"])
 
@@ -99,7 +99,7 @@ class CreateBranchTests(VendorTestCase):
 class SoftDeleteTests(VendorTestCase):
 
     def test_delete_is_soft_and_hides_the_vendor(self):
-        vendor_id = self.create_vendor("Gone", self.ACH).data["id"]
+        vendor_id = self.create_vendor("Gone", self.ACH).data["data"]["id"]
 
         self.assertEqual(
             self.client.delete(f"/api/v1/vendors/{vendor_id}").status_code,
@@ -109,23 +109,23 @@ class SoftDeleteTests(VendorTestCase):
             Vendor.objects.get(id=vendor_id).status, VendorStatus.DELETED
         )
         self.assertEqual(
-            self.client.get("/api/v1/vendors").data["items"], []
+            self.client.get("/api/v1/vendors").data["data"], []
         )
 
     def test_a_deleted_vendor_is_visible_under_the_status_filter(self):
-        vendor_id = self.create_vendor("Gone", self.ACH).data["id"]
+        vendor_id = self.create_vendor("Gone", self.ACH).data["data"]["id"]
         self.client.delete(f"/api/v1/vendors/{vendor_id}")
 
         response = self.client.get("/api/v1/vendors?status=DELETED")
 
-        self.assertEqual(len(response.data["items"]), 1)
+        self.assertEqual(len(response.data["data"]), 1)
 
 
 class PrimaryPromotionTests(VendorTestCase):
 
     def setUp(self):
         super().setUp()
-        self.vendor_id = self.create_vendor("WeWork", self.ACH).data["id"]
+        self.vendor_id = self.create_vendor("WeWork", self.ACH).data["data"]["id"]
         self.client.post(
             f"/api/v1/vendors/{self.vendor_id}/payment-methods",
             self.CHECK, format="json",
@@ -156,7 +156,7 @@ class PrimaryPromotionTests(VendorTestCase):
             f"/api/v1/vendors/{self.vendor_id}/payment-methods/{primary.id}"
         )
 
-        row = self.client.get("/api/v1/vendors").data["items"][0]
+        row = self.client.get("/api/v1/vendors").data["data"][0]
         self.assertEqual(row["payment_rail"], "CHECK")
 
     def test_deleting_a_non_primary_changes_nothing(self):
@@ -197,7 +197,7 @@ class SpendTests(VendorTestCase):
         self.assertTrue(all(bucket["total"] == 0 for bucket in series))
 
     def test_check_total_sums_bills_routed_over_check(self):
-        vendor_id = self.create_vendor("Checky", self.CHECK).data["id"]
+        vendor_id = self.create_vendor("Checky", self.CHECK).data["data"]["id"]
         vendor = Vendor.objects.get(id=vendor_id)
         method = vendor.payment_methods.first()
 
@@ -207,12 +207,12 @@ class SpendTests(VendorTestCase):
             frequency=BillFrequency.MONTHLY, anchor_date=D(2026, 3, 1),
         )
 
-        summary = self.client.get("/api/v1/vendors/summary").data
+        summary = self.client.get("/api/v1/vendors/summary").data["data"]
 
         self.assertEqual(str(summary["check_total"]), "1500.00")
 
     def test_check_total_ignores_deleted_bills(self):
-        vendor_id = self.create_vendor("Checky", self.CHECK).data["id"]
+        vendor_id = self.create_vendor("Checky", self.CHECK).data["data"]["id"]
         vendor = Vendor.objects.get(id=vendor_id)
         method = vendor.payment_methods.first()
 
@@ -225,14 +225,14 @@ class SpendTests(VendorTestCase):
             deleted_at=timezone.now(),
         )
 
-        summary = self.client.get("/api/v1/vendors/summary").data
+        summary = self.client.get("/api/v1/vendors/summary").data["data"]
 
         self.assertEqual(Decimal(summary["check_total"]), Decimal("0"))
 
     def test_vendor_detail_exposes_the_spend_panel(self):
-        vendor_id = self.create_vendor("Detail", self.ACH).data["id"]
+        vendor_id = self.create_vendor("Detail", self.ACH).data["data"]["id"]
 
-        data = self.client.get(f"/api/v1/vendors/{vendor_id}").data
+        data = self.client.get(f"/api/v1/vendors/{vendor_id}").data["data"]
 
         self.assertIn("total_paid", data)
         self.assertIn("monthly_spend", data)
@@ -355,10 +355,10 @@ class PaymentMethodShapeTests(TestCase):
         response = self.client.post(self.url, self.ach, format="json")
 
         self.assertEqual(response.status_code, 201)
-        self.assertTrue(response.data["is_primary"])
-        self.assertEqual(response.data["account_ref"], "****4821")
-        self.assertIn("id", response.data)
-        self.assertNotIn("provider_token", response.data)
+        self.assertTrue(response.data["data"]["is_primary"])
+        self.assertEqual(response.data["data"]["account_ref"], "****4821")
+        self.assertIn("id", response.data["data"])
+        self.assertNotIn("provider_token", response.data["data"])
 
     def test_a_second_method_does_not_steal_primary(self):
         self.client.post(self.url, self.ach, format="json")
@@ -366,10 +366,10 @@ class PaymentMethodShapeTests(TestCase):
             self.url, {**self.ach, "account_last4": "9999"}, format="json"
         )
 
-        self.assertFalse(second.data["is_primary"])
+        self.assertFalse(second.data["data"]["is_primary"])
 
     def test_patch_never_echoes_the_token(self):
-        method_id = self.client.post(self.url, self.ach, format="json").data["id"]
+        method_id = self.client.post(self.url, self.ach, format="json").data["data"]["id"]
 
         response = self.client.patch(
             f"{self.url}/{method_id}",
@@ -378,9 +378,9 @@ class PaymentMethodShapeTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn("provider_token", response.data)
-        self.assertEqual(response.data["account_holder_name"], "Acme Inc")
-        self.assertEqual(response.data["account_ref"], "****4821")
+        self.assertNotIn("provider_token", response.data["data"])
+        self.assertEqual(response.data["data"]["account_holder_name"], "Acme Inc")
+        self.assertEqual(response.data["data"]["account_ref"], "****4821")
 
 
 class VendorBodiesTests(TestCase):
@@ -406,20 +406,20 @@ class VendorBodiesTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["notes"], "net 30")
+        self.assertEqual(response.data["data"]["notes"], "net 30")
         for key in ("id", "payment_methods", "total_paid", "bills"):
-            self.assertIn(key, response.data)
+            self.assertIn(key, response.data["data"])
 
     def test_money_is_a_string_even_when_zero(self):
-        data = self.client.get(f"/api/v1/vendors/{self.vendor.id}").json()
+        data = self.client.get(f"/api/v1/vendors/{self.vendor.id}").json()["data"]
 
         self.assertEqual(data["total_paid"], "0.00")
         self.assertEqual(data["monthly_spend"][0]["total"], "0.00")
 
     def test_methods_carry_account_type_and_network_ref(self):
         method = self.client.get(f"/api/v1/vendors/{self.vendor.id}").json()[
-            "payment_methods"
-        ][0]
+            "data"
+        ]["payment_methods"][0]
 
         self.assertIn("account_type", method)
         self.assertIn("network_payee_ref", method)
@@ -445,8 +445,8 @@ class ContactFieldsTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["contact_name"], "Dana Lee")
-        detail = client.get(f"/api/v1/vendors/{vendor.id}").data
+        self.assertEqual(response.data["data"]["contact_name"], "Dana Lee")
+        detail = client.get(f"/api/v1/vendors/{vendor.id}").data["data"]
         self.assertEqual(detail["contact_email"], "ap@wework.example")
 
     def test_a_bad_email_is_refused(self):
@@ -496,12 +496,12 @@ class ListRowAndCategoryTests(TestCase):
         response = self.create()
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(str(response.data["category"]), str(self.other.id))
+        self.assertEqual(str(response.data["data"]["category"]), str(self.other.id))
 
     def test_list_rows_carry_status_and_category(self):
         self.create()
 
-        row = self.client.get("/api/v1/vendors").data["items"][0]
+        row = self.client.get("/api/v1/vendors").data["data"][0]
 
         self.assertEqual(row["status"], "ACTIVE")
         self.assertEqual(row["category_name"], "Other")
@@ -519,7 +519,7 @@ class DirectoryContractTests(TestCase):
         self.client.force_authenticate(user=UserFactory())
 
     def test_a_hit_becomes_a_network_vendor(self):
-        hits = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()
+        hits = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()["data"]
         hits = hits.get("items", hits) if isinstance(hits, dict) else hits
         self.assertTrue(hits, "the mock directory returned nothing")
         hit = hits[0]
@@ -529,8 +529,8 @@ class DirectoryContractTests(TestCase):
             BillCategory.objects.create(
                 name=hit["category"], icon="https://e.com/c.png", color="#123"
             )
-            hit = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()
-            hit = (hit.get("items", hit) if isinstance(hit, dict) else hit)[0]
+            hit = self.client.get("/api/v1/vendors/directory-search?q=verizon").json()["data"]
+            hit = hit[0]
 
         response = self.client.post(
             "/api/v1/vendors",
@@ -547,10 +547,10 @@ class DirectoryContractTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        vendor = Vendor.objects.get(id=response.data["id"])
+        vendor = Vendor.objects.get(id=response.data["data"]["id"])
         self.assertEqual(vendor.directory_payee_id, hit["external_id"])
         self.assertEqual(
-            response.data["payment_methods"][0]["network_payee_ref"],
+            response.data["data"]["payment_methods"][0]["network_payee_ref"],
             hit["external_id"],
         )
 
@@ -570,7 +570,7 @@ class VendorActivityFeedTests(TestCase):
         )[0]
 
     def feed(self):
-        return self.client.get("/api/v1/vendors/activity").json()["items"]
+        return self.client.get("/api/v1/vendors/activity").json()["data"]
 
     def test_add_edit_delete_restore_are_recorded_newest_first(self):
         vendor_id = self.client.post(
@@ -585,7 +585,7 @@ class VendorActivityFeedTests(TestCase):
                 },
             },
             format="json",
-        ).data["id"]
+        ).data["data"]["id"]
         self.client.patch(
             f"/api/v1/vendors/{vendor_id}", {"notes": "x"}, format="json"
         )

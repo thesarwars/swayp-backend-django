@@ -85,8 +85,8 @@ class SharedAccountDataTests(TestCase):
         response = self.member_client.get("/api/v1/vendors")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data["items"]), 1)
-        self.assertEqual(response.data["items"][0]["name"], "WeWork")
+        self.assertEqual(len(response.data["data"]), 1)
+        self.assertEqual(response.data["data"][0]["name"], "WeWork")
 
     def test_a_member_sees_the_accounts_banks(self):
         response = self.member_client.get("/api/v1/banking/accounts")

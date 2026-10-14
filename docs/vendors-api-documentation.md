@@ -15,18 +15,16 @@ Related: [Bills API](bills-api-documentation.md) — the bill wizard consumes
 
 ## 1. Read this first
 
-### 1.1 Three response shapes ⚠️
+### 1.1 One envelope ⚠️ changed
 
-The vendor endpoints are **not** consistent about envelopes. Handle all three.
+Every vendor endpoint answers `{ "success", "message", "data" }`, with
+`pagination` beside `data` on the lists, where `data` is the array of rows.
+Errors are `{ "success": false, "message", "code", "errors"? }`. The bodies
+below show what's inside `data`.
 
-| Shape | Where |
-|---|---|
-| `{ "items": [...], "pagination": {...} }` | list endpoints — §2, §5.1, §7 |
-| a **bare object**, no wrapper | detail, create, update, set-primary — §3, §4, §5 |
-| `{ "success": false, "message": "...", "errors": {...} }` | all errors |
-
-Success responses have **no** `success` field; failures do. Branch on the HTTP
-status, not on the body.
+These endpoints used to answer bare: `{ items, pagination }` for lists and the
+object itself otherwise. Clients reading `items` or the bare object must read
+`data` (web C1).
 
 ### 1.2 Raw bank numbers are never stored or returned
 
@@ -53,7 +51,8 @@ GET /api/v1/vendors
 
 ```json
 {
-  "items": [
+  "success": true, "message": "Success",
+  "data": [
     { "id": "ba977f47-...", "name": "Con Edison", "logo": "",
       "business_type": "", "directory_verified": false,
       "payment_rail": "NETWORK" },
@@ -194,7 +193,7 @@ Note the extra level of nesting — `errors.payment_method.<field>`, not
 GET /api/v1/vendors/<vendor_id>
 ```
 
-Returns the same bare object as §3's 201, including `payment_methods`, plus a
+Returns the same `data` as §3's 201, including `payment_methods`, plus a
 spend panel:
 
 ```json
@@ -274,7 +273,8 @@ GET /api/v1/vendors/<vendor_id>/payment-methods
 
 ```json
 {
-  "items": [
+  "success": true, "message": "Success",
+  "data": [
     { "id": "0c80588a-...", "method_type": "ACH", "is_primary": true,
       "supports_same_day": false, "provider": "STRIPE",
       "account_ref": "****8837", "account_holder_name": "WeWork Inc",
@@ -361,7 +361,7 @@ GET /api/v1/vendors/directory-search?q=veri
 ```
 
 ```json
-{ "items": [
+{ "success": true, "message": "Success", "data": [
     { "external_id": "dir-verizon", "name": "Verizon Business",
       "category": "Telecom", "category_id": "7a1d…",
       "verified": true, "speed": "Same day", "network": "NETWORK" } ],
@@ -398,7 +398,7 @@ POST /api/v1/vendors/qr/decode
 ```
 
 Accepts JSON `{"payload": "..."}` or a multipart `image` upload. Returns a
-**bare object**:
+the object as `data`:
 
 ```json
 { "vendor_name": "WeWork", "category": null, "payment_ref": "WW-88",
@@ -513,7 +513,7 @@ confirm that the id exists.
 | `GET\|PUT\|PATCH\|DELETE` | `/vendors/<id>/payment-methods/<mid>` | bare · 204 on delete |
 | `POST` | `/vendors/<id>/payment-methods/<mid>/set-primary` | `{ "message": ... }` |
 | `GET` | `/vendors/directory-search?q=` | paginated |
-| `POST` | `/vendors/qr/decode` | bare object · 422 if unreadable |
+| `POST` | `/vendors/qr/decode` | envelope · 422 if unreadable |
 
 ### Summary endpoint
 

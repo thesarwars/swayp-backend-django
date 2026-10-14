@@ -119,6 +119,16 @@ class SwaypAutoSchema(AutoSchema):
         if self._is_enveloped(schema):
             return
 
+        paged = None
+        props = self._resolve(schema).get("properties") or {}
+
+        if set(props) == {"items", "pagination"}:
+            # A DRF-paged list (spectacular publishes it as a component),
+            # enveloped by EnvelopeResponseMixin: the items become data and
+            # pagination sits beside it (web C1).
+            paged = props["pagination"]
+            schema = props["items"]
+
         if self.method in getattr(self.view, "nullable_data", ()):
             schema = {"allOf": [schema], "nullable": True}
 
@@ -129,11 +139,15 @@ class SwaypAutoSchema(AutoSchema):
         }
         required = ["success", "message", "data"]
 
+        if paged is not None:
+            properties["pagination"] = paged
+            required.append("pagination")
+
         for key, extra in getattr(self.view, "response_extra", {}).items():
             properties[key] = extra
             properties.setdefault(to_snake(key), extra)
 
-        if getattr(self.view, "paginated_response", False):
+        if paged is None and getattr(self.view, "paginated_response", False):
             properties["pagination"] = self._ref(PaginationResponseSerializer)
             required.append("pagination")
 

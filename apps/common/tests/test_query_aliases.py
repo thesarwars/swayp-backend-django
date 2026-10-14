@@ -21,7 +21,7 @@ class QueryAliasTests(TestCase):
             with self.subTest(name=name):
                 body = self.client.get(f"/api/v1/vendors?{name}=2").json()
 
-                self.assertEqual(len(body["items"]), 2)
+                self.assertEqual(len(body["data"]), 2)
                 self.assertEqual(body["pagination"]["pageSize"], 2)
 
     def test_date_range_spellings_reach_each_endpoint(self):

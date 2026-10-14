@@ -34,6 +34,7 @@ class GoogleLoginService:
         account_type=AccountType.BUSINESS,
         terms_accepted=False,
         marketing_opt_in=False,
+        signatory_confirmed=False,
     ):
         sub = claims["sub"]
         email = claims["email"].lower().strip()
@@ -68,6 +69,7 @@ class GoogleLoginService:
                 account_type=account_type,
                 terms_accepted=terms_accepted,
                 marketing_opt_in=marketing_opt_in,
+                signatory_confirmed=signatory_confirmed,
             )
         else:
             GoogleLoginService._link(user, sub)
@@ -102,7 +104,7 @@ class GoogleLoginService:
 
     @staticmethod
     def _create(*, claims, email, account_type, terms_accepted,
-                marketing_opt_in):
+                marketing_opt_in, signatory_confirmed=False):
         first = (claims.get("given_name") or "")[:150]
         last = (claims.get("family_name") or "")[:150]
         full_name = (
@@ -128,6 +130,7 @@ class GoogleLoginService:
             account_type=account_type,
             full_name=full_name,
             terms_accepted_at=now if terms_accepted else None,
+            signatory_confirmed_at=now if signatory_confirmed else None,
             marketing_opt_in=marketing_opt_in,
         )
 

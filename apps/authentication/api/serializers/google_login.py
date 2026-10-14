@@ -14,6 +14,11 @@ class GoogleLoginSerializer(serializers.Serializer):
         required=False,
     )
     terms_accepted = serializers.BooleanField(required=False, default=False)
+    # As on the register form (web §4): the person confirms they may act
+    # for the business. Recorded with a timestamp when the account is new.
+    signatory_confirmed = serializers.BooleanField(
+        required=False, default=False
+    )
     marketing_opt_in = serializers.BooleanField(required=False, default=False)
 
 

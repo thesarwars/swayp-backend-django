@@ -44,6 +44,7 @@ class GoogleLoginView(PublicAPIView):
             request=request,
             account_type=data["account_type"],
             terms_accepted=data["terms_accepted"],
+            signatory_confirmed=data["signatory_confirmed"],
             marketing_opt_in=data["marketing_opt_in"],
         )
 

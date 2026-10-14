@@ -167,6 +167,7 @@ POST auth/login/google
 { "id_token": "<from Google Sign-In>",
   "account_type": "BUSINESS",          ← only used if the account is new
   "terms_accepted": true,              ← only used if the account is new
+  "signatory_confirmed": true,         ← only used if the account is new
   "marketing_opt_in": false }          ← only used if the account is new
 ```
 

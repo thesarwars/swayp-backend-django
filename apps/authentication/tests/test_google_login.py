@@ -89,7 +89,14 @@ class GoogleLoginTests(TestCase):
         self.assertEqual(profile.account_type, AccountType.INDIVIDUAL)
         self.assertEqual(profile.full_name, "Ada Lovelace")
         self.assertIsNotNone(profile.terms_accepted_at)
+        self.assertIsNone(profile.signatory_confirmed_at)
         self.assertEqual(RefreshToken.objects.filter(user=user).count(), 1)
+
+    def test_signatory_confirmed_is_recorded(self):
+        self._post(signatory_confirmed=True)
+
+        profile = Profile.objects.get(user__email="ada@example.com")
+        self.assertIsNotNone(profile.signatory_confirmed_at)
 
     def test_a_business_signup_lands_on_the_business_step(self):
         self._post()

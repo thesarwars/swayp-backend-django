@@ -24,6 +24,24 @@ _RELATED = (
 )
 
 
+#: ?ordering= values (web §4). due_date, earliest first, stays the default.
+ORDERINGS = {
+    "due_date": ("due_date",),
+    "-due_date": ("-due_date",),
+    "amount": ("amount", "due_date"),
+    "-amount": ("-amount", "due_date"),
+    "vendor": ("bill__vendor__name", "due_date"),
+    "-vendor": ("-bill__vendor__name", "due_date"),
+}
+
+
+def _uuid(value, field):
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        raise ValidationError({field: [f"Must be a {field} id."]})
+
+
 def _date(filters, key):
     """A YYYY-MM-DD filter, or None; a malformed one is a 400, not a 500."""
     import datetime as dt
@@ -161,7 +179,20 @@ class BillOccurrenceSelector:
 
         vendor = (filters.get("vendor") or "").strip()
         if vendor:
-            queryset = queryset.filter(bill__vendor_id=vendor)
+            queryset = queryset.filter(bill__vendor_id=_uuid(vendor, "vendor"))
+
+        # One bill's due dates, for the bill page's history (web §4).
+        bill = (filters.get("bill") or "").strip()
+        if bill:
+            queryset = queryset.filter(bill_id=_uuid(bill, "bill"))
+
+        # Vendor name or bill notes contain it, case-insensitive (web §4).
+        search = (filters.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(bill__vendor__name__icontains=search)
+                | Q(bill__notes__icontains=search)
+            )
 
         date_from = _date(filters, "date_from")
         if date_from:
@@ -196,7 +227,15 @@ class BillOccurrenceSelector:
                     {"category": ["Must be category ids."]}
                 )
 
-        return queryset.select_related(*_RELATED).order_by("due_date")
+        ordering = (filters.get("ordering") or "due_date").strip()
+        if ordering not in ORDERINGS:
+            raise ValidationError({"ordering": [
+                "Must be one of " + ", ".join(ORDERINGS) + "."
+            ]})
+
+        return queryset.select_related(*_RELATED).order_by(
+            *ORDERINGS[ordering], "id"
+        )
 
     def get_occurrence(self, user, occurrence_id, today=None):
         """One row, the same shape as the list, or None (PAY-4)."""

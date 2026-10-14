@@ -43,8 +43,21 @@ from apps.teams.access import AccountScopedMixin
             ),
         ),
         OpenApiParameter("vendor", str, description="Vendor id"),
+        OpenApiParameter("bill", str, description="One bill's due dates."),
+        OpenApiParameter(
+            "search", str,
+            description="Vendor name or bill notes contain this.",
+        ),
+        OpenApiParameter(
+            "ordering", str,
+            enum=["due_date", "-due_date", "amount", "-amount", "vendor",
+                  "-vendor"],
+            description="Default due_date (earliest first).",
+        ),
         OpenApiParameter("date_from", str, description="YYYY-MM-DD"),
         OpenApiParameter("date_to", str, description="YYYY-MM-DD"),
+        OpenApiParameter("page", int, description="Page number, from 1."),
+        OpenApiParameter("page_size", int, description="Rows per page, up to 100."),
     ],
     responses={200: BillOccurrenceRowSerializer(many=True)},
 )

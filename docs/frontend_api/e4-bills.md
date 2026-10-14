@@ -41,8 +41,19 @@ date rolls over; you never refresh to "catch up".
 ## 3. The list screen
 
 ```
-GET /api/v1/bills/occurrences?status=&vendor=&category=&date_from=&date_to=&page=1
+GET /api/v1/bills/occurrences?status=&vendor=&bill=&category=&search=&date_from=&date_to=&ordering=&page=1&page_size=20
 ```
+
+| Parameter | Meaning |
+|---|---|
+| `status` | `UPCOMING`, `DUE`, `OVERDUE`, `SCHEDULED`, `PAID`; several allowed, repeated or comma-separated |
+| `vendor`, `bill`, `category` | ids; `category` allows several. `bill` gives one bill's due dates, for its page |
+| `search` | the vendor name or the bill's notes contain this |
+| `date_from`, `date_to` | `YYYY-MM-DD`, inclusive |
+| `ordering` | `due_date` (default), `-due_date`, `amount`, `-amount`, `vendor`, `-vendor` |
+| `page`, `page_size` | paging; `page_size` ≤ 100 |
+
+An unknown value or a malformed id or date returns 400 on that field.
 
 ```json
 {
@@ -54,7 +65,8 @@ GET /api/v1/bills/occurrences?status=&vendor=&category=&date_from=&date_to=&page
       "category_id": "7a1d…", "category_name": "Rent",
       "due_date": "2026-09-01", "amount": "3200.00",
       "status": "UPCOMING", "days_overdue": 0, "autopay_mode": "REMIND",
-      "payment_method": "ACH", "payment_id": null }
+      "payment_method": "ACH", "payment_id": null,
+      "payment_status": null, "can_resolve": false }
   ],
   "pagination": { "page": 1, "pageSize": 20, "totalPages": 1,
                   "totalItems": 1, "hasNext": false, "hasPrevious": false }

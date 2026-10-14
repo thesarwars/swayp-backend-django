@@ -34,3 +34,18 @@ class BlankSearchEndpointTests(TestCase):
                     "/api/v1/banking/institutions?search="):
             with self.subTest(url=url):
                 self.assertEqual(client.get(url).status_code, 200)
+
+
+class LinkTokenExpirationTests(SimpleTestCase):
+    """Web B8: expiration is ISO-8601, not Python's str(datetime)."""
+
+    def test_iso(self):
+        import datetime as dt
+
+        from integrations.bank_data.plaid import _iso
+
+        value = dt.datetime(2026, 10, 14, 10, 15, 16, tzinfo=dt.timezone.utc)
+
+        self.assertEqual(_iso(value), "2026-10-14T10:15:16Z")
+        self.assertIsNone(_iso(None))
+        self.assertEqual(_iso("2026-10-14T10:15:16Z"), "2026-10-14T10:15:16Z")

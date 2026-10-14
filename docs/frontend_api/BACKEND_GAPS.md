@@ -147,6 +147,8 @@ This is probably intended, but the client can't tell "done" from "not applicable
 
 ### B8: Timestamp format is inconsistent (P2)
 
+✅ **Fixed.** `expiration` is ISO-8601, e.g. `"2026-10-14T10:15:16Z"`.
+
 `POST /banking/link/token` returns `expiration: "2026-10-14 10:15:16+00:00"`. Every other timestamp is ISO-8601, e.g. `"2026-10-14T06:05:10.328313Z"`.
 
 ### B9: Vendor bank details can't be captured, and any processor token is accepted (P0)

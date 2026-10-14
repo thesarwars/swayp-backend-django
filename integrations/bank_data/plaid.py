@@ -82,6 +82,21 @@ _PAGE_SIZE = 500
 _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 
 
+
+def _iso(value):
+    """ISO-8601 with a Z, like every other timestamp in the API (web B8).
+    The SDK hands back a datetime, and str() of it is "2026-10-14 10:15:16
+    +00:00", which strict ISO parsers refuse."""
+    if not value:
+        return None
+
+    if isinstance(value, str):
+        return value
+
+    text = value.isoformat()
+
+    return text[:-6] + "Z" if text.endswith("+00:00") else text
+
 class PlaidBankDataProvider(BankDataProvider):
 
     name = "plaid"
@@ -219,7 +234,7 @@ class PlaidBankDataProvider(BankDataProvider):
 
         return LinkToken(
             token=response["link_token"],
-            expiration=str(response.get("expiration") or "") or None,
+            expiration=_iso(response.get("expiration")),
         )
 
     def exchange_public_token(self, *, public_token: str) -> ExchangeResult:

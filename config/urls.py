@@ -14,6 +14,11 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 
+def _media(request, path):
+    # MEDIA_ROOT read per request rather than captured at import.
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
+
+
 urlpatterns = [
     # The root is otherwise a 404, which reads as "the service is down" to
     # anyone opening the base URL. Send them to the docs instead. Temporary
@@ -58,11 +63,7 @@ urlpatterns = [
     # every deployment as is; nginx can take over with a location /media/
     # alias for speed (docs/deployment.md). Paths are random per upload,
     # so a URL cannot be guessed.
-    re_path(
-        r"^media/(?P<path>.*)$",
-        serve,
-        {"document_root": settings.MEDIA_ROOT},
-    ),
+    re_path(r"^media/(?P<path>.*)$", _media),
     # Versionless: a processor-registered URL must never move with an
     # API version (E6-S8).
     path("webhooks", include("apps.webhooks.api.urls")),

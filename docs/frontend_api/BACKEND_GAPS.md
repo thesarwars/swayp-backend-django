@@ -65,6 +65,11 @@ Every origin gets this answer. Bearer tokens limit the damage. But if `SessionAu
 
 ### S3: Harden before production (P2)
 
+**Deploy decisions, not code.**
+- **HSTS:** production sends it by default (SEC-2); `docs/deployment.md` §5 gives the nginx line for dev.
+- **Docs and admin URLs:** hiding `/api/docs`, `/api/schema` and `/admin/` is a per-environment choice for whoever runs the server.
+- **Mock webhook:** it refuses unsigned calls, and `MONEY_MOVEMENT_PROVIDER=stripe` makes it unusable for real money.
+
 - `/` redirects to a public Swagger UI at `/api/docs`. `/api/schema/` is public, and Django admin is at the default `/admin/`.
 - The mock processor webhook is deployed at `/webhooks/mock` and `/api/v1/webhooks/mock`. It checks signatures, but it should be disabled in production settings.
 - There is no `Strict-Transport-Security` header, and the `Server` header reveals `nginx/1.24.0 (Ubuntu)`.
@@ -76,6 +81,8 @@ Every origin gets this answer. Bearer tokens limit the damage. But if `SessionAu
 `RegisterRequest.password` has `minLength: 1`. `POST /auth/register {"email": "not-an-email", "password": "Ab1@"}` returned an error only for `email`, so a 4-character password passes field validation. The frontend notes say this is intentional ("no length minimum"). For a finance product, require at least 12 characters and document the rule in the schema.
 
 ### S5: The web app has to keep a 30-day refresh token in localStorage (P2)
+
+**Deferred.** An httpOnly-cookie refresh option is a sizeable auth change, with CSRF to handle. Until then, refresh tokens rotate and a reset or password change ends every session.
 
 Auth is bearer-only. The web client therefore stores a rotating 30-day refresh token where any XSS can read it, and it can't guard routes on the server. Consider an httpOnly, `SameSite` cookie option for refreshing tokens on the web.
 
@@ -131,6 +138,12 @@ For the same account:
 `/dashboard/profile-summary` returned "Good Night" at 06:10 UTC, which was midday for the tester (UTC+6). That matches US Eastern time. Use the user's time zone (store it on the profile, or accept a `tz` param), or let the client compute the greeting.
 
 ### B6: Notification preferences contradict the docs (P1)
+
+✅ **The data was right; the docs were stale.** Push is delivered now, so `supported: true, enabled: true` is correct. The two flags work together:
+- **Channel `enabled`:** whether the channel delivers anything on this deployment.
+- **Per-type flags:** what the user wants.
+
+A message goes out only when both are on. That's why email can say `enabled: false` while each type says `email: true`: email is switched off for the release.
 
 - `GET /notifications/preferences` reports the push channel as `supported: true, enabled: true`.
 - The `PATCH` docs say SMS and push "cannot be switched on" in this release.
@@ -222,6 +235,12 @@ Vendor *errors* are wrapped, so clients have to special-case only the successful
 
 ### C4: Lists use three pagination styles (P2)
 
+✅ **Documented.**
+- **Page-numbered** (`page` + `page_size`, `pagination` beside `data`): every list except the two below.
+- **Cursor:** `billing/invoices` (`limit` + `starting_after` → `next_cursor`), because Stripe pages by cursor.
+- **`notifications`:** takes either. When `before` is sent, the cursor wins and `page` is ignored; `nextCursor`/`next_cursor` is always given.
+- **Unpaged:** `GET /bills`, by design.
+
 - Most lists: `page` + `pageSize`, answered with a `pagination` object.
 - `/billing/invoices`: a cursor (`limit` + `starting_after` → `next_cursor`).
 - `/notifications`: both page pagination **and** a cursor (`before` → `nextCursor`).
@@ -297,6 +316,24 @@ As a result, the web app matches English message text with regexes (`/not verifi
 
 ## 4. Missing endpoints
 
+✅ **Built:**
+- public `GET /billing/plans` and `GET /billing/config`, with the fee schedule as `data.fees`
+- `POST /users/password`
+- `POST`/`DELETE /users/profile/picture`, the person's own photo
+- `bill`, `search` and `ordering` on `bills/occurrences`
+- `signatory_confirmed` on Google sign-up
+- `GET /options`, whose default lists still need checking against the design
+
+**Product calls first:**
+- **Accounts and sign-in:** changing email and closing an account; Accountant accounts; Microsoft sign-in and Windows Hello; SMS
+- **Features:** approvals and ERP; bill documents and OCR; vendor CSV import; analytics and search
+- **Plans and sales:** the 4-tier, yearly catalogue; contact sales
+
+**Smaller design decisions:**
+- **Changing a bill's vendor.**
+- **Review before save:** a `dry_run` flag on bill create.
+- **Vendor `business_type`/`logo`:** whether to make them writable.
+
 | Need | Today | Suggestion |
 |---|---|---|
 | Plans on the public pricing page | `GET /billing/plans` returns 401 without a token | Allow anonymous `GET /billing/plans`, or add a public `/plans` |
@@ -327,12 +364,43 @@ As a result, the web app matches English message text with regexes (`/not verifi
 
 - **E1: Stripe isn't configured on dev (P1).** `GET /billing/config` returns `{collects_money: false, publishable_key: ""}`, the subscription's `client_secret` is `""`, and `GET /billing/payment-method` returns `null`. Add Stripe test keys so the setup → SetupIntent → subscription flow can be tested end to end.
 - **E2: The biller directory has only stub entries (P2).** Without `q` it returns nothing, and `q=comcast` returns `dir-comcast` "Comcast Business" with `category_id: null`. `GET /providers` is empty. Seed realistic billers with category IDs, and allow browsing without `q`.
+**E1: you need to act.** Add Stripe **test** keys to the dev `.env`: `SUBSCRIPTION_BILLING_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_BILLING_WEBHOOK_SECRET`. **E2 and E3 are data work** for the dev database: biller directory seeds, and removing the "test" and duplicate "Phone" categories in the admin.
+
 - **E3: Category seed data needs cleanup (P2).** There's a "test" category whose icon is the site root URL (`https://swayp.jumatechs.xyz/`) and whose color is `black`. Both "Telephone" and "Phone" exist, most icons are empty, and `display_order` 11 is missing.
 - **Working:** Plaid sandbox (`link-sandbox-…`, 24 months of history), the notifications WebSocket (`/ws/notifications/?ticket=` returns 101, or 403 without a ticket), and ABA routing validation.
 
 ---
 
 ## 6. OpenAPI documentation
+
+✅ **Fixed in code:**
+- **Descriptions:** no more leaked docstrings.
+- **Vendors:** tagged and summarised; `due_date` and `amount` declared.
+- **Webhooks:** listed once, with no bearer auth.
+- **Security:** one scheme.
+- **Reports:** the export note is corrected.
+- **Paging and filters:** declared on `bills/occurrences`.
+- **Types:** enums for report `rail`/`status`, `amount_period` and `capabilities`.
+- **Status codes:** 402/403 on teams, 429 on forgot-password.
+- **Dashboard text:** the trailing slash is gone.
+- **Staff routes:** removed from the schema.
+
+The lifecycle answers are below and in e6, e9 and e3.
+
+**Answers:**
+- **Payment lifecycle:**
+  - **`confirm_by`:** an unconfirmed payment lapses 30 minutes after create (`expire_unconfirmed_payments` sweeps every 5 minutes), and its bill is released.
+  - **When money moves:** an ACH payment is `PROCESSING` once sent; the `DEBITING` stage then `ROUTING` show the progress.
+  - **`authorization_text`:** stored verbatim as what the user agreed to. It isn't compared byte for byte, but send what you showed.
+  - **Confirming twice:** returns the same payment with `replayed: true`.
+- **Subscribe order:**
+  - **The card:** `payment_method_id` comes from a SetupIntent confirmed with the processor SDK. It isn't needed during a trial (Standard: 14 days, no card).
+  - **`client_secret`:** confirms the first invoice when the bank asks for 3-D Secure.
+  - **A second `POST /billing/subscription`:** 400 `already_subscribed`.
+  - **A card added later:** goes to `POST /billing/payment-method`.
+- **Biller IDs:** `network_payee_ref` takes a directory hit's `external_id`. `GET /providers` is the category catalogue; `vendors/directory-search` finds network billers to pay.
+- **403 for a MEMBER writing vendors:** isn't enforced today. Vendor writes require only sign-in.
+- **`pageSize`:** max 100 everywhere.
 
 - **Leaked internal docstrings.** 16 operation descriptions are internal code comments. For example, `POST /banking/scans` and `GET /bills/occurrences/upcoming` read "Gives a view `self.account(request)`. A mixin rather than a helper import…". Affected:
   - banking: accounts, connections, scans, scan candidates
@@ -376,6 +444,16 @@ As a result, the web app matches English message text with regexes (`/not verifi
 ---
 
 ## 7. Questions for the backend team
+
+**Answers:**
+1. **The payment status routes:** staff only (`IsAdminUser`). Customers get 403, and the routes aren't in the client schema.
+2. **`SessionAuthentication`:** it isn't enabled on the API, which is bearer only; the Django admin uses its own session. CORS is an allow-list now regardless.
+3. **The display name:** profile `full_name`, then first plus last name. Never the email (B4).
+4. **Casing:** snake_case; the camelCase copies are removed on 15 Nov 2026 (C2). **Pagination:** page-numbered, except where C4 lists otherwise.
+5. **Stripe test keys:** whenever you add them to the dev `.env` (E1).
+6. **Onboarding:** yes, it says so now with `not_applicable` and `reason` (B7).
+7. **Team invites:** the invite is accepted with `POST /teams/invite/accept {token}` by a signed-in user. A new user registers and verifies first, then accepts. Invitees work on the inviting account, so its plan and onboarding apply, not theirs.
+8. **Trial and card:** the Standard trial needs no card; onboarding's payment step reports `reason: trial`.
 
 1. Who is allowed to call `PATCH /payments/{id}/successful|processing|failed`?
 2. Is `SessionAuthentication` enabled on the API?

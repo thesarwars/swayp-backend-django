@@ -16,6 +16,17 @@ class OnboardingStepSerializer(serializers.Serializer):
     # Only on the bank step.
     skipped = serializers.BooleanField(required=False)
     skippable = serializers.BooleanField(required=False)
+    not_applicable = serializers.BooleanField(
+        help_text="Complete because it does not apply, not because it was "
+        "done; reason says why."
+    )
+    reason = serializers.ChoiceField(
+        choices=["individual_account", "no_payment_collected", "trial"],
+        allow_null=True,
+        help_text="individual_account: no business step; "
+        "no_payment_collected: this deployment collects no card; trial: "
+        "no card needed until the trial ends.",
+    )
 
 
 class OnboardingStateSerializer(serializers.Serializer):

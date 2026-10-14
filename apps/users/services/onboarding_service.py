@@ -136,6 +136,13 @@ class OnboardingService:
             },
         ]
 
+        reasons = self._not_applicable(account)
+
+        for step in steps:
+            reason = reasons.get(step["key"])
+            step["not_applicable"] = reason is not None
+            step["reason"] = reason
+
         # A skipped step is not outstanding — it is settled, just not done.
         outstanding = [
             s for s in steps
@@ -148,6 +155,29 @@ class OnboardingService:
             "complete": not outstanding,
             "steps": steps,
         }
+
+    def _not_applicable(self, account):
+        """Steps complete because they do not apply, with why (web B7): a
+        client could not tell "done" from "nothing to do here"."""
+        reasons = {}
+        profile = self.profiles.get_or_create_profile(account)
+
+        if profile.account_type != AccountType.BUSINESS:
+            reasons["business"] = "individual_account"
+
+        subscription = self.subscriptions.current(account)
+
+        if subscription is not None:
+            from apps.billing.services.provider_service import (
+                BillingProviderService,
+            )
+
+            if not BillingProviderService().collects_money:
+                reasons["payment"] = "no_payment_collected"
+            elif subscription.is_trialing():
+                reasons["payment"] = "trial"
+
+        return reasons
 
     def skip_bank(self, account):
         profile = self.profiles.get_or_create_profile(account)

@@ -140,6 +140,14 @@ For the same account:
 
 ### B7: Onboarding marks steps complete without any data (P2)
 
+✅ **Fixed.** Every step carries `not_applicable` and `reason`. `reason` is `individual_account` on the business step for an individual; on the payment step it is `no_payment_collected` when the deployment collects no card, or `trial` during a trial. It is `null` on a step that was actually done.
+
+**Completion rules:**
+- **business:** `business_name` is set (individuals: not applicable).
+- **plan:** a live subscription exists.
+- **payment:** the processor holds a subscription. A trial or a no-money deployment counts as done.
+- **bank:** a bank was ever linked, or the step was skipped.
+
 - Step 3 (`payment`) is `complete: true` while `GET /billing/payment-method` returns `null`. Dev has `collects_money: false`.
 - Step 1 (`business`) is `complete: true` with every business field `null` (INDIVIDUAL account).
 

@@ -49,3 +49,14 @@ class LinkTokenExpirationTests(SimpleTestCase):
         self.assertEqual(_iso(value), "2026-10-14T10:15:16Z")
         self.assertIsNone(_iso(None))
         self.assertEqual(_iso("2026-10-14T10:15:16Z"), "2026-10-14T10:15:16Z")
+
+
+class LogoUriTests(SimpleTestCase):
+    """Web C7: a Plaid logo is usable as an <img src> as sent."""
+
+    def test_logo(self):
+        from integrations.bank_data.plaid import _logo_uri
+
+        self.assertEqual(_logo_uri("iVBORw0K"), "data:image/png;base64,iVBORw0K")
+        self.assertEqual(_logo_uri("https://x/y.png"), "https://x/y.png")
+        self.assertIsNone(_logo_uri(None))

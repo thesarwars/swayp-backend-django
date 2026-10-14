@@ -83,6 +83,18 @@ _WEBHOOK_MAX_AGE_SECONDS = 5 * 60
 
 
 
+def _logo_uri(logo):
+    """Plaid sends a logo as bare base64 PNG; an <img src> needs a data URI
+    (web C7). A URL or an existing data URI passes through."""
+    if not logo:
+        return None
+
+    if logo.startswith(("data:", "http://", "https://")):
+        return logo
+
+    return f"data:image/png;base64,{logo}"
+
+
 def _iso(value):
     """ISO-8601 with a Z, like every other timestamp in the API (web B8).
     The SDK hands back a datetime, and str() of it is "2026-10-14 10:15:16
@@ -547,7 +559,7 @@ class PlaidBankDataProvider(BankDataProvider):
             Institution(
                 institution_id=row["institution_id"],
                 name=row["name"],
-                logo=row.get("logo"),
+                logo=_logo_uri(row.get("logo")),
             )
             for row in response["institutions"]
         )

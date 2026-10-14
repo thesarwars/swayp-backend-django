@@ -233,6 +233,8 @@ The API sends no `Access-Control-Expose-Headers`, so browser code can't read:
 
 ### C7: Institution logos are bare base64 (P2)
 
+✅ **Fixed.** `logo` is a `data:image/png;base64,…` URI you can put straight into `<img src>`, or `null`. The size is the same: Plaid offers no logo URLs.
+
 `GET /banking/institutions?search=chase` returns each `logo` as raw base64 PNG, about 8.5 KB for one search. Return a URL, or at least a `data:image/png;base64,` URI.
 
 ### C8: Error `code` values are too generic (P1)

@@ -196,6 +196,8 @@ Vendor *errors* are wrapped, so clients have to special-case only the successful
 
 ### C3: Query parameters use inconsistent names (P1)
 
+✅ **Fixed.** Every spelling works on every list: `page_size`/`pageSize`; `date_from`/`from_date`/`fromDate`; `date_to`/`to_date`/`toDate`; `category`/`category_id`/`categoryId`. The first of each is the preferred one. A middleware fills in the other spellings, so each endpoint finds the one it reads (see the integration guide §5).
+
 - **Page size:** only `pageSize` works. `page_size` is silently ignored, even though responses echo `page_size`.
 - **Date ranges:** `fromDate`/`toDate` (payments/history), `date_from`/`date_to` (reports, bills/occurrences), `from_date`/`to_date` (billing/fees).
 - **Category:** `category` (vendors, occurrences) vs `categoryId` (payments/history, providers).

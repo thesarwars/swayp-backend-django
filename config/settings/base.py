@@ -163,6 +163,9 @@ MIDDLEWARE = [
 
     # Outermost of ours: rewrites any non-JSON error under /api/ (API-4).
     "apps.common.middleware.JsonApiErrorMiddleware",
+
+    # One query parameter, several spellings: fills in the rest (web C3).
+    "apps.common.middleware.QueryAliasMiddleware",
 ]
 
 # 7 days while the app is in development: a 15-minute token expires part-way

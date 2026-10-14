@@ -350,6 +350,16 @@ they are removed. Query parameters take either spelling: `pageSize` or
 `page_size`, `isRead` or `is_read`. If a request sends both, the camelCase one
 wins.
 
+Three parameters used to have different names on different lists. **Every
+spelling now works on every list:**
+
+| Use | Also accepted |
+|---|---|
+| `page_size` | `pageSize` |
+| `date_from` | `from_date`, `fromDate` |
+| `date_to` | `to_date`, `toDate` |
+| `category` | `category_id`, `categoryId` |
+
 ## 6. Errors
 
 ```json

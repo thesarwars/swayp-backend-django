@@ -71,3 +71,46 @@ class StripTrailingSlashMiddleware:
                 request.path = request.path.rstrip("/")
 
         return self.get_response(request)
+
+
+#: Spellings of one query parameter across the API (web C3). Endpoints grew
+#: different names for the same thing: payments/history reads fromDate,
+#: reports and bills/occurrences date_from, billing/fees from_date;
+#: providers and payment history categoryId, the rest category. Whichever
+#: spelling a request uses, every spelling in its group is filled in, so each
+#: endpoint finds the name it reads. The documented, preferred one is first.
+QUERY_ALIASES = (
+    ("page_size", "pageSize"),
+    ("date_from", "from_date", "fromDate"),
+    ("date_to", "to_date", "toDate"),
+    ("category", "category_id", "categoryId"),
+)
+
+
+class QueryAliasMiddleware:
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path.startswith(API_PREFIX) and request.GET:
+            query = None
+
+            for group in QUERY_ALIASES:
+                sent = next((name for name in group if name in request.GET), None)
+
+                if sent is None:
+                    continue
+
+                values = request.GET.getlist(sent)
+
+                for name in group:
+                    if name not in request.GET:
+                        if query is None:
+                            query = request.GET.copy()
+                        query.setlist(name, values)
+
+            if query is not None:
+                request.GET = query
+
+        return self.get_response(request)

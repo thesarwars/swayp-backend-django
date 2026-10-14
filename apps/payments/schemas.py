@@ -54,6 +54,9 @@ create_payment_schema = extend_schema(
 
 
 payment_success_schema = extend_schema(
+    # Staff and processor only (IsAdminUser), so not part of the client
+    # API the schema describes (web S1).
+    exclude=True,
     deprecated=True,
     request=None,
     tags=["Payments"],
@@ -71,6 +74,9 @@ payment_success_schema = extend_schema(
 
 
 payment_processing_schema = extend_schema(
+    # Staff and processor only (IsAdminUser), so not part of the client
+    # API the schema describes (web S1).
+    exclude=True,
     deprecated=True,
     request=None,
     tags=["Payments"],
@@ -85,6 +91,9 @@ payment_processing_schema = extend_schema(
 )
 
 payment_failed_schema = extend_schema(
+    # Staff and processor only (IsAdminUser), so not part of the client
+    # API the schema describes (web S1).
+    exclude=True,
     deprecated=True,
     request=None,
     tags=["Payments"],

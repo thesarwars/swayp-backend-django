@@ -39,6 +39,8 @@
 
 ### S1: Clients can reach payment status changes (P0)
 
+✅ **Already safe; now hidden.** All three routes are `IsAdminUser`: a customer gets **403** before any lookup, for their own payment and for unknown IDs. A 404 means the token belongs to a staff account. They're now excluded from the client schema, and a test pins the 403.
+
 `PATCH /api/v1/payments/{id}/successful`, `/processing` and `/failed` are part of the public client API. Only `/failed` is documented as "Staff only."
 
 - With a normal owner token, all three return `404 "Payment not found."` for an unknown ID instead of `403`, so no permission check runs before the object lookup.
@@ -68,6 +70,8 @@ Every origin gets this answer. Bearer tokens limit the damage. But if `SessionAu
 - There is no `Strict-Transport-Security` header, and the `Server` header reveals `nginx/1.24.0 (Ubuntu)`.
 
 ### S4: The password policy has no minimum length (P1)
+
+**Won't change (product decision).** No length minimum. The rules stay as documented: character classes, and no reuse of the previous password.
 
 `RegisterRequest.password` has `minLength: 1`. `POST /auth/register {"email": "not-an-email", "password": "Ab1@"}` returned an error only for `email`, so a 4-character password passes field validation. The frontend notes say this is intentional ("no length minimum"). For a finance product, require at least 12 characters and document the rule in the schema.
 

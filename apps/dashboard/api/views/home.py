@@ -23,7 +23,7 @@ from apps.teams.access import AccountScopedMixin
         "right-rail pay panel in one round-trip. `pay_panel.tabs` counts "
         "occurrences while `stats.total_bills` counts bills, and "
         "`pay_panel.items` is the preloaded page of the active tab — switch "
-        "tabs with GET bills/occurrences/?status=, which returns the same "
+        "tabs with GET bills/occurrences?status=, which returns the same "
         "rows paginated."
     ),
     parameters=[HomeQuerySerializer],

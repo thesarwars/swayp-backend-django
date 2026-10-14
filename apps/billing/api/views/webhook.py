@@ -81,7 +81,8 @@ def verify_stripe_signature(*, raw_body, signature_header, secret):
     return json.loads(str(event))
 
 
-@extend_schema(exclude=True)
+@extend_schema(
+    auth=[],exclude=True)
 class StripeBillingWebhookAPIView(APIView):
 
     authentication_classes = []

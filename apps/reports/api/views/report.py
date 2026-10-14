@@ -36,8 +36,9 @@ from apps.vendors.models.vendor import Vendor
         "history filters on — not the estimated arrival, which the processor "
         "rewrites at settlement. Cancelled payments never appear: the money "
         "provably never left. Totals cover the WHOLE filtered set, not the "
-        "page. `export=` is refused with 405 until the format is decided "
-        "(PRD §10-Q4)."
+        "page. `export=csv` or `export=pdf` downloads the whole filtered "
+        "set as a file (Content-Disposition names it); any other value is "
+        "a 400."
     ),
     parameters=[ReportQuerySerializer],
     responses={

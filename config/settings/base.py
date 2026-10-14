@@ -68,22 +68,10 @@ SPECTACULAR_SETTINGS = {
         "persistAuthorization": True,
     },
 
-    "SECURITY": [
-        {
-            "BearerAuth": [],
-        }
-    ],
-
-
-    "APPEND_COMPONENTS": {
-        "securitySchemes": {
-            "BearerAuth": {
-                "type": "http",
-                "scheme": "bearer",
-                "bearerFormat": "JWT",
-            }
-        }
-    },
+    "PREPROCESSING_HOOKS": ["apps.common.schema.drop_duplicate_routes"],
+    # One security scheme, jwtAuth, which drf-spectacular derives from the
+    # simplejwt authentication class. A second hand-written BearerAuth
+    # duplicated it (web §6).
 }
 
 DJANGO_APPS = [

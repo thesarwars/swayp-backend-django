@@ -30,6 +30,10 @@ from apps.authentication.services.reset_password_service import (
     request=ForgotPasswordSerializer,
     responses={
         200: MaskedEmailSerializer,
+        429: OpenApiResponse(
+            description="Asked too soon or too often for this address: wait "
+            "Retry-After seconds (code otp_throttled)."
+        ),
     },
     examples=[
         OpenApiExample(

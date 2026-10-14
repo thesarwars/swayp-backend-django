@@ -1,6 +1,6 @@
 """Team and entity endpoints (E10-S1 … E10-S3)."""
 
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import status
 
 from apps.common.base_views import BaseAPIView
@@ -99,7 +99,11 @@ class MyRoleAPIView(TeamContextMixin, BaseAPIView):
         "when the plan's seat limit is reached."
     ),
     request=InviteSerializer,
-    responses={201: TeamMemberSerializer},
+    responses={
+        201: TeamMemberSerializer,
+        402: OpenApiResponse(description="Seat limit reached (code plan_limit, limit SEATS)."),
+        403: OpenApiResponse(description="Role may not manage the team (code role_forbidden)."),
+    },
 )
 class TeamInviteAPIView(TeamContextMixin, BaseAPIView):
 
@@ -232,7 +236,11 @@ class EntityListAPIView(TeamContextMixin, BaseAPIView):
         summary="Add an entity",
         description="Enterprise only (402 otherwise). 403 without manage_entities.",
         request=EntityWriteSerializer,
-        responses={201: EntitySerializer},
+        responses={
+            201: EntitySerializer,
+            402: OpenApiResponse(description="Entities are Enterprise only (code plan_limit)."),
+            403: OpenApiResponse(description="Role may not manage entities."),
+        },
     )
     def post(self, request):
         account = self.account_for(request)

@@ -3,6 +3,8 @@
 from rest_framework import serializers
 from rest_framework.settings import api_settings
 
+from apps.common.enums import PaymentRail, PaymentStatus
+
 from apps.common.dates import today_eastern
 from apps.common.exceptions import (
     BadRequestException,
@@ -154,8 +156,8 @@ class ReportRowSerializer(serializers.Serializer):
     fee = serializers.DecimalField(max_digits=18, decimal_places=2)
     total = serializers.DecimalField(max_digits=18, decimal_places=2)
     currency = serializers.CharField()
-    rail = serializers.CharField()
-    status = serializers.CharField()
+    rail = serializers.ChoiceField(choices=PaymentRail.choices)
+    status = serializers.ChoiceField(choices=PaymentStatus.choices)
     initiated_date = serializers.DateField(allow_null=True)
     estimated_arrival = serializers.DateField(allow_null=True)
 

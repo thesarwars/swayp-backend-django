@@ -1,8 +1,10 @@
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
+    OpenApiParameter,
     extend_schema,
     extend_schema_view,
-    inline_serializer,
 )
+
 from apps.common.mixins import EnvelopeResponseMixin
 from rest_framework import serializers, status
 from rest_framework.generics import (
@@ -45,6 +47,24 @@ from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
 
 
+@extend_schema(tags=["Vendors"])
+@extend_schema_view(
+    get=extend_schema(
+        summary="A vendor's payment methods",
+        parameters=[
+            OpenApiParameter(
+                "due_date", OpenApiTypes.DATE, required=False,
+                description="Fills each method's schedule block: when a "
+                "payment must start to land by this date.",
+            ),
+            OpenApiParameter(
+                "amount", OpenApiTypes.DECIMAL, required=False,
+                description="Accepted for later per-payment checks; does "
+                "not change the schedule yet.",
+            ),
+        ],
+    ),
+)
 @extend_schema_view(
     post=extend_schema(
         summary="Add a payment method",
@@ -145,6 +165,16 @@ class VendorPaymentMethodListCreateAPIView(EnvelopeResponseMixin, AccountScopedM
         )
 
 
+@extend_schema(tags=["Vendors"])
+@extend_schema_view(
+    get=extend_schema(summary="A payment method"),
+    put=extend_schema(summary="Replace a payment method"),
+    patch=extend_schema(summary="Update a payment method"),
+    delete=extend_schema(
+        summary="Remove a payment method",
+        description="Removing the primary promotes another, if any.",
+    ),
+)
 @extend_schema_view(
     put=extend_schema(
         request=VendorPaymentMethodCreateSerializer,

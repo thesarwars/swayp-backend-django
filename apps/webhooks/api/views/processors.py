@@ -10,19 +10,19 @@ from apps.payments.services.webhook_service import SignatureError
 from apps.webhooks.base import WebhookAPIView
 
 
-@extend_schema(tags=["Webhooks"], summary="Stripe callback", request=None, responses={200: None})
+@extend_schema(tags=["Webhooks"], summary="Stripe callback", request=None, auth=[], responses={200: None})
 class StripeWebhookAPIView(WebhookAPIView):
     processor = "STRIPE"
     signature_header = "HTTP_STRIPE_SIGNATURE"
 
 
-@extend_schema(tags=["Webhooks"], summary="Lob callback", request=None, responses={200: None})
+@extend_schema(tags=["Webhooks"], summary="Lob callback", request=None, auth=[], responses={200: None})
 class LobWebhookAPIView(WebhookAPIView):
     processor = "LOB"
     signature_header = "HTTP_LOB_SIGNATURE"
 
 
-@extend_schema(tags=["Webhooks"], summary="Plaid callback", request=None, responses={200: None})
+@extend_schema(tags=["Webhooks"], summary="Plaid callback", request=None, auth=[], responses={200: None})
 class PlaidWebhookAPIView(WebhookAPIView):
     """Plaid fits none of the shared assumptions, so it overrides all three.
 
@@ -100,7 +100,7 @@ class PlaidWebhookAPIView(WebhookAPIView):
         return PlaidWebhookService().handle(payload)
 
 
-@extend_schema(tags=["Webhooks"], summary="Mock processor callback", request=None, responses={200: None})
+@extend_schema(tags=["Webhooks"], summary="Mock processor callback", request=None, auth=[], responses={200: None})
 class MockWebhookAPIView(WebhookAPIView):
     processor = "MOCK"
     signature_header = "HTTP_X_SWAYP_SIGNATURE"

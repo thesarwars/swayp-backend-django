@@ -2,7 +2,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.teams.models import Entity, TeamMember, TeamRole
-from apps.teams.permissions import capabilities_for
+from apps.teams.permissions import ALL_CAPABILITIES, capabilities_for
 
 
 class TeamMemberSerializer(serializers.ModelSerializer):
@@ -41,7 +41,9 @@ class TeamMemberSerializer(serializers.ModelSerializer):
 
         return display_name(member.user) or None
 
-    @extend_schema_field(serializers.ListField(child=serializers.CharField()))
+    @extend_schema_field(serializers.ListField(
+        child=serializers.ChoiceField(choices=ALL_CAPABILITIES)
+    ))
     def get_capabilities(self, member):
         return capabilities_for(member.role)
 
@@ -92,6 +94,6 @@ class MyRoleSerializer(serializers.Serializer):
     is_owner = serializers.BooleanField()
     role = serializers.ChoiceField(choices=TeamRole.choices)
     capabilities = serializers.ListField(
-        child=serializers.CharField(),
-        help_text="e.g. manage_billing, send_money: what this role may do.",
+        child=serializers.ChoiceField(choices=ALL_CAPABILITIES),
+        help_text="What this role may do.",
     )

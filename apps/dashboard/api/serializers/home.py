@@ -11,7 +11,7 @@ renderer for both.
 
 from rest_framework import serializers
 
-from apps.common.enums import VendorPaymentMethodType
+from apps.common.enums import BillFrequency, VendorPaymentMethodType
 
 from apps.bills.serializers.bill_occurrence_row_serializer import (
     BillOccurrenceRowSerializer,
@@ -100,10 +100,11 @@ class HomeVendorPreviewSerializer(serializers.Serializer):
         allow_null=True,
         help_text="Amount of that next bill, per cycle; null if none.",
     )
-    amount_period = serializers.CharField(
+    amount_period = serializers.ChoiceField(
+        choices=BillFrequency.choices,
         source="next_frequency",
         allow_null=True,
-        help_text="That bill's cadence (MONTHLY, QUARTERLY, ...); null if none.",
+        help_text="That bill's cadence; null if none.",
     )
 
 

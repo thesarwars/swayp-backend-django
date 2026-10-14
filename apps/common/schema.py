@@ -42,6 +42,16 @@ ERROR_DESCRIPTIONS = {
 
 class SwaypAutoSchema(AutoSchema):
 
+    def get_description(self):
+        """Only what a view declares with extend_schema(description=...).
+
+        spectacular falls back to the class and method docstrings, which in
+        this codebase are notes for maintainers ("Gives a view
+        self.account(request). A mixin rather than a helper import…"), and
+        16 operations published them as their documentation (web §6).
+        """
+        return ""
+
     def _map_basic_serializer(self, serializer, direction):
         """In a response, every field the serializer outputs is present.
 
@@ -220,6 +230,11 @@ class SwaypAutoSchema(AutoSchema):
     def _requires_auth(self):
         from rest_framework.permissions import AllowAny
 
+        # Declared auth=[] (webhooks verify provider signatures; public
+        # endpoints) means no token, so no 401 either.
+        if not self.get_auth():
+            return False
+
         permissions = self.view.get_permissions()
 
         return not (
@@ -231,3 +246,14 @@ class SwaypAutoSchema(AutoSchema):
 
     def _ref(self, serializer_class):
         return self.resolve_serializer(serializer_class(), "response").ref
+
+
+
+def drop_duplicate_routes(endpoints, **kwargs):
+    """Preprocessing hook (web §6): the processor webhooks are mounted twice,
+    at /webhooks/* (the URL registered with each processor) and again under
+    /api/v1/webhooks/*. The schema lists each once, at the registered URL."""
+    return [
+        endpoint for endpoint in endpoints
+        if not endpoint[0].startswith("/api/v1/webhooks")
+    ]

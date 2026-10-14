@@ -34,6 +34,7 @@ from apps.vendors.models import (
 )
 
 
+@extend_schema(tags=["Vendors"])
 @extend_schema_view(
     get=extend_schema(
         summary="Vendors",
@@ -92,6 +93,19 @@ class VendorListCreateAPIView(EnvelopeResponseMixin, AccountScopedMixin, Idempot
             status=status.HTTP_201_CREATED,
         )
     
+@extend_schema(tags=["Vendors"])
+@extend_schema_view(
+    get=extend_schema(summary="A vendor, with its methods, spend and bills"),
+    put=extend_schema(summary="Replace a vendor's details"),
+    patch=extend_schema(summary="Update a vendor"),
+    delete=extend_schema(
+        summary="Delete a vendor",
+        description=(
+            "Soft delete: it leaves every list and can be restored "
+            "(POST vendors/{id}/restore). Payment history keeps it."
+        ),
+    ),
+)
 class VendorDetailAPIView(EnvelopeResponseMixin, AccountScopedMixin, RetrieveUpdateDestroyAPIView):
 
     # {success, message, data} like every module (web C1).

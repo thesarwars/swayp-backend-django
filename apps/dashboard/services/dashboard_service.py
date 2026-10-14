@@ -19,6 +19,7 @@ class DashboardService:
         self,
         *,
         user,
+        tz=None,
     ):
         user = self.selector.get_user(
             user.id,
@@ -37,7 +38,7 @@ class DashboardService:
                 "profile_picture",
                 None,
             ),
-            "greeting": self._get_greeting(),
+            "greeting": self._get_greeting(tz=tz),
             "unread_notification_count": (
                 self.selector.get_unread_notification_count(
                     user
@@ -46,12 +47,19 @@ class DashboardService:
         }
 
     @staticmethod
-    def _get_greeting(now=None):
+    def _get_greeting(now=None, tz=None):
         # timezone.localtime() follows TIME_ZONE, which is UTC, so a US user
         # was greeted 4-5 hours ahead of their own clock — 8 AM ET read "Good
         # Afternoon". `now` is injectable so the bands are testable without a
-        # clock-freezing dependency.
-        hour = now_eastern(now).hour
+        # clock-freezing dependency. ``tz`` is the viewer's own IANA zone
+        # (web B5): without it, someone outside US Eastern was told "Good
+        # Night" at midday. Eastern stays the default.
+        if tz is not None:
+            from django.utils import timezone
+
+            hour = (now or timezone.now()).astimezone(tz).hour
+        else:
+            hour = now_eastern(now).hour
 
         if 5 <= hour < 12:
             return "Good Morning"

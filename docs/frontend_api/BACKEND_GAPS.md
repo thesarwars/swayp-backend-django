@@ -126,6 +126,8 @@ For the same account:
 
 ### B5: The greeting uses the server's time zone (P2)
 
+✅ **Fixed.** `GET /dashboard/profile-summary?tz=Asia/Dhaka` takes the viewer's IANA zone. On the web, send `Intl.DateTimeFormat().resolvedOptions().timeZone`. Without `tz`, the greeting uses US Eastern; an unknown zone returns 400 on `tz`.
+
 `/dashboard/profile-summary` returned "Good Night" at 06:10 UTC, which was midday for the tester (UTC+6). That matches US Eastern time. Use the user's time zone (store it on the profile, or accept a `tz` param), or let the client compute the greeting.
 
 ### B6: Notification preferences contradict the docs (P1)

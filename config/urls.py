@@ -1,7 +1,9 @@
 
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path,include
+from django.urls import path, include, re_path
+from django.views.static import serve
 from django.views.generic import RedirectView
 
 from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
@@ -52,6 +54,15 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/v1", include("api.v1.urls")),
+    # Uploaded files (profile pictures). Served by Django so they work on
+    # every deployment as is; nginx can take over with a location /media/
+    # alias for speed (docs/deployment.md). Paths are random per upload,
+    # so a URL cannot be guessed.
+    re_path(
+        r"^media/(?P<path>.*)$",
+        serve,
+        {"document_root": settings.MEDIA_ROOT},
+    ),
     # Versionless: a processor-registered URL must never move with an
     # API version (E6-S8).
     path("webhooks", include("apps.webhooks.api.urls")),

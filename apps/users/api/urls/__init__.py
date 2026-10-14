@@ -10,9 +10,15 @@ from apps.users.api.views.phone_change import (
 )
 from apps.users.api.views.password import ChangePasswordAPIView
 from apps.users.api.views.profile import ProfileAPIView
+from apps.users.api.views.profile_picture import ProfilePictureAPIView
 
 urlpatterns = [
     path("/profile", ProfileAPIView.as_view(), name="user-profile"),
+    path(
+        "/profile/picture",
+        ProfilePictureAPIView.as_view(),
+        name="user-profile-picture",
+    ),
     path(
         "/password",
         ChangePasswordAPIView.as_view(),

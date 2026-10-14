@@ -183,6 +183,20 @@ server {
 from it (`SECURE_PROXY_SSL_HEADER`); without it Django sees plain HTTP behind
 the proxy and redirects to HTTPS forever.
 
+### Uploaded files (`/media/`)
+
+Profile pictures live under `MEDIA_ROOT`. In compose that's the `media_data`
+volume. Django serves `/media/` itself, so it works with no extra setup. For
+speed, nginx can serve it directly instead; add this inside the `listen 443`
+block, with the path being wherever the volume is mounted on the host:
+
+```nginx
+location /media/ {
+    alias /var/lib/docker/volumes/<project>_media_data/_data/;
+    add_header X-Content-Type-Options nosniff;
+}
+```
+
 ### HSTS
 
 Production sends `Strict-Transport-Security: max-age=31536000` for the API

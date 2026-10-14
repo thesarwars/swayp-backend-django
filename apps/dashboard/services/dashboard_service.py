@@ -8,6 +8,7 @@ from apps.dashboard.selectors.dashboard_selector import (
 
 
 from apps.users.services.display_name import display_name
+from apps.users.services.profile_picture_service import picture_url
 
 
 class DashboardService:
@@ -20,6 +21,7 @@ class DashboardService:
         *,
         user,
         tz=None,
+        request=None,
     ):
         user = self.selector.get_user(
             user.id,
@@ -33,11 +35,7 @@ class DashboardService:
         return {
             "id": user.id,
             "full_name": display_name(user),
-            "profile_picture": getattr(
-                user,
-                "profile_picture",
-                None,
-            ),
+            "profile_picture": picture_url(user, request),
             "greeting": self._get_greeting(tz=tz),
             "unread_notification_count": (
                 self.selector.get_unread_notification_count(

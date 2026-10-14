@@ -9,6 +9,18 @@ from django.db.models.functions import Lower
 from apps.common.models import BaseModel
 
 
+
+def _picture_path(user, filename):
+    """profile_pictures/<user id>/<random>.<ext>: unguessable, so a URL
+    cannot be enumerated, and a replacement gets a new URL that no cache
+    still holds the old picture under."""
+    import uuid
+    from pathlib import Path
+
+    extension = Path(filename).suffix.lower() or ".jpg"
+
+    return f"profile_pictures/{user.pk}/{uuid.uuid4().hex}{extension}"
+
 class UserManager(BaseUserManager):
 
     @classmethod
@@ -120,6 +132,14 @@ class User(
     google_sub = models.CharField(
         max_length=255,
         unique=True,
+        null=True,
+        blank=True,
+    )
+
+    # The person's own photo (web §4), not the business's: shown in the
+    # header and on the team list. Served from MEDIA_URL.
+    profile_picture = models.ImageField(
+        upload_to=_picture_path,
         null=True,
         blank=True,
     )

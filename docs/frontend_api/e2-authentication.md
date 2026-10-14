@@ -448,6 +448,19 @@ body as `GET users/profile`.
 
 ---
 
+### Profile picture
+
+```
+POST   users/profile/picture   multipart/form-data: profile_picture=<file>
+DELETE users/profile/picture
+→ { "data": { "profile_picture": "https://<api host>/media/profile_pictures/…" } }
+```
+
+- The picture is the **person's own**, not the account's: a teammate's upload changes only their picture.
+- JPEG, PNG or WebP, up to 5 MB. Anything else returns 400 on `profile_picture`.
+- A new upload replaces the old one, at a new URL.
+- `dashboard/profile-summary` returns the same absolute URL, or `null`.
+
 ### Changing the password while signed in
 
 ```

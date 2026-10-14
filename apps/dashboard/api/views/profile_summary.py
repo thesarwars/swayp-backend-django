@@ -56,6 +56,7 @@ class ProfileSummaryAPIView(BaseAPIView):
         result = self.service.get_profile_summary(
             user=request.user,
             tz=_zone(request.query_params.get("tz")),
+            request=request,
         )
 
         serializer = ProfileSummarySerializer(

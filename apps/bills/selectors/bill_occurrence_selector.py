@@ -24,6 +24,21 @@ _RELATED = (
 )
 
 
+def _date(filters, key):
+    """A YYYY-MM-DD filter, or None; a malformed one is a 400, not a 500."""
+    import datetime as dt
+
+    raw = (filters.get(key) or "").strip()
+
+    if not raw:
+        return None
+
+    try:
+        return dt.date.fromisoformat(raw)
+    except ValueError:
+        raise ValidationError({key: ["Use YYYY-MM-DD."]})
+
+
 def _multi(filters, key):
     """Every value of ``key``: repeated params, comma-separated, or both."""
     if hasattr(filters, "getlist"):
@@ -148,22 +163,24 @@ class BillOccurrenceSelector:
         if vendor:
             queryset = queryset.filter(bill__vendor_id=vendor)
 
-        date_from = (filters.get("date_from") or "").strip()
+        date_from = _date(filters, "date_from")
         if date_from:
             queryset = queryset.filter(due_date__gte=date_from)
 
-        date_to = (filters.get("date_to") or "").strip()
+        date_to = _date(filters, "date_to")
         if date_to:
             queryset = queryset.filter(due_date__lte=date_to)
 
         # Repeatable or comma-separated: ?status=OVERDUE&status=DUE or
-        # ?status=OVERDUE,DUE (BILLS-8). Unknown values are ignored, as a
-        # single unknown status always was.
-        statuses = [
-            value.upper()
-            for value in _multi(filters, "status")
-            if value.upper() in BillOccurrenceStatus.values
-        ]
+        # ?status=OVERDUE,DUE (BILLS-8). An unknown value is a 400; it used to
+        # be dropped, so ?status=BOGUS listed everything (web B3).
+        statuses = [value.upper() for value in _multi(filters, "status")]
+        unknown = [s for s in statuses if s not in BillOccurrenceStatus.values]
+        if unknown:
+            raise ValidationError({"status": [
+                "Must be one of "
+                + ", ".join(BillOccurrenceStatus.values) + "."
+            ]})
         if statuses:
             queryset = queryset.filter(computed_status__in=statuses)
 

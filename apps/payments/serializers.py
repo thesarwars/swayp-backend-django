@@ -2,6 +2,7 @@ from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 
 from apps.common.casing import snake_case_aliases
+from apps.common.enums import PaymentStatus
 
 from apps.common.serializers import PaginationQuerySerializer
 
@@ -130,7 +131,9 @@ class PaymentHistoryResponseSerializer(
 class PaymentHistoryQuerySerializer(
     PaginationQuerySerializer
 ):
-    status = serializers.CharField(
+    # A choice, so ?status=BOGUS is a 400 rather than an empty page (web B3).
+    status = serializers.ChoiceField(
+        choices=PaymentStatus.choices,
         required=False,
     )
 

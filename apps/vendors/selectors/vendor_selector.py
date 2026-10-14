@@ -1,3 +1,4 @@
+import uuid
 from datetime import date
 from decimal import Decimal
 
@@ -12,6 +13,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce, TruncMonth
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 
 from apps.common.dates import today_eastern
 from apps.common.enums import (
@@ -41,10 +43,16 @@ class VendorSelector:
         """
         filters = filters or {}
 
+        # An unknown filter value is a 400, not a dropped filter: ?rail=BOGUS
+        # used to answer every vendor, as if no filter had been sent (web B3).
         status = (filters.get("status") or "").strip().upper()
 
-        if status not in _VALID_STATUSES:
+        if not status:
             status = VendorStatus.ACTIVE
+        elif status not in _VALID_STATUSES:
+            raise ValidationError(
+                {"status": [f"Must be one of {', '.join(sorted(_VALID_STATUSES))}."]}
+            )
 
         queryset = Vendor.objects.filter(user=user, status=status)
 
@@ -54,10 +62,17 @@ class VendorSelector:
 
         category = (filters.get("category") or "").strip()
         if category:
-            queryset = queryset.filter(category_id=category)
+            try:
+                queryset = queryset.filter(category_id=uuid.UUID(category))
+            except ValueError:
+                raise ValidationError({"category": ["Must be a category id."]})
 
         rail = (filters.get("rail") or "").strip().upper()
-        if rail in _VALID_RAILS:
+        if rail and rail not in _VALID_RAILS:
+            raise ValidationError(
+                {"rail": [f"Must be one of {', '.join(sorted(_VALID_RAILS))}."]}
+            )
+        if rail:
             # Both conditions must hold on the *same* payment method, so they
             # stay inside one filter() call.
             queryset = queryset.filter(

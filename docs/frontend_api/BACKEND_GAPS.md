@@ -103,6 +103,8 @@ Auth is bearer-only. The web client therefore stores a rotating 30-day refresh t
 
 ### B3: Invalid filter values are ignored instead of rejected (P1)
 
+✅ **Fixed.** These now return `400 validation_failed` naming the field: an unknown `rail`, `status` or non-UUID `category` on `/vendors` and `/vendors/summary`; an unknown `status`, even inside a comma list, or a malformed `date_from`/`date_to` on `/bills/occurrences`; and an unknown `status` on `/payments/history`.
+
 - `GET /vendors?rail=BOGUS` drops the filter and returns **every** vendor.
 - `GET /bills/occurrences?status=BOGUS` and `GET /payments/history?status=BOGUS` return 200.
 - `GET /dashboard/home?tab=BOGUS` and `GET /reports?date_from=bad` correctly return 400. Every choice filter should validate the same way.

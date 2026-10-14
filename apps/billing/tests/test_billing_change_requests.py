@@ -217,7 +217,17 @@ class BillingConfigTests(BillingTestCase):
         ):
             data = self.client.get("/api/v1/billing/config").json()["data"]
 
-        self.assertEqual(data, {"collects_money": False, "publishable_key": ""})
+        self.assertEqual(data["collects_money"], False)
+        self.assertEqual(data["publishable_key"], "")
+        self.assertEqual(data["fees"], {
+            "ach_standard": "0.00", "ach_same_day": "4.99",
+            "network": "0.00", "check_standard": "0.00",
+            "check_overage": "2.99", "check_expedited": "8.99",
+        })
+
+    def test_config_is_public(self):
+        self.assertEqual(
+            APIClient().get("/api/v1/billing/config").status_code, 200)
 
 
 class FeeListTests(BillingTestCase):

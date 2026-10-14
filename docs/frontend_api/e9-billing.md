@@ -359,6 +359,16 @@ removal, connect or disconnect.**
 
 ## 8. Fees
 
+**Read the prices from `GET /billing/config` → `data.fees`; never hard-code
+them.** That endpoint is public. The free-check count per plan is
+`free_checks_per_month` on `GET /billing/plans`.
+
+```json
+"fees": { "ach_standard": "0.00", "ach_same_day": "4.99", "network": "0.00",
+          "check_standard": "0.00", "check_overage": "2.99",
+          "check_expedited": "8.99" }
+```
+
 | Rail | Requested with | Fee | Guaranteed? |
 |---|---|---|---|
 | Standard ACH | `rail: "ACH_STANDARD"` | free | — |

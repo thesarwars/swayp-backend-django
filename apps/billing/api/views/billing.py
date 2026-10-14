@@ -508,20 +508,41 @@ class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
         "Whether this deployment collects money, and the processor's "
         "publishable key for the card form. Creates nothing; call it before "
         "showing checkout instead of payment-method/setup, which opens a "
-        "SetupIntent every time."
+        "SetupIntent every time. Also the per-payment fee schedule, so no "
+        "client hard-codes a price. Public: no token needed."
     ),
+    auth=[],
     responses={200: BillingConfigSerializer},
 )
 class BillingConfigAPIView(BaseAPIView):
 
+    # Public, like the plans: the pricing page shows the fees too, and a
+    # publishable key is public by design.
+    permission_classes = [AllowAny]
+
     def get(self, request):
+        from decimal import Decimal
+
+        from apps.billing.models.fee_charge import FEE_AMOUNTS, FeeKind
+
         provider = BillingProviderService()
+        free = Decimal("0.00")
 
         return ApiResponse.success(
-            data={
+            data=BillingConfigSerializer({
                 "collects_money": provider.collects_money,
                 "publishable_key": provider.publishable_key,
-            },
+                # From the same table the charges use, so the price shown
+                # and the price charged cannot differ (web §4).
+                "fees": {
+                    "ach_standard": free,
+                    "ach_same_day": FEE_AMOUNTS[FeeKind.SAME_DAY_ACH],
+                    "network": free,
+                    "check_standard": free,
+                    "check_overage": FEE_AMOUNTS[FeeKind.CHECK_OVERAGE],
+                    "check_expedited": FEE_AMOUNTS[FeeKind.EXPEDITED_CHECK],
+                },
+            }).data,
             message="Billing configuration fetched successfully.",
         )
 

@@ -284,6 +284,25 @@ class ReplaceCardSerializer(serializers.Serializer):
     )
 
 
+class FeeScheduleSerializer(serializers.Serializer):
+    """Per-payment fees (BRD 6.2), so no client hard-codes a price."""
+
+    ach_standard = serializers.DecimalField(max_digits=8, decimal_places=2)
+    ach_same_day = serializers.DecimalField(max_digits=8, decimal_places=2)
+    network = serializers.DecimalField(max_digits=8, decimal_places=2)
+    check_standard = serializers.DecimalField(
+        max_digits=8, decimal_places=2,
+        help_text="Within the plan's free checks a month (see plans).",
+    )
+    check_overage = serializers.DecimalField(
+        max_digits=8, decimal_places=2,
+        help_text="Each check beyond the plan's free checks.",
+    )
+    check_expedited = serializers.DecimalField(
+        max_digits=8, decimal_places=2, help_text="Always, on every plan."
+    )
+
+
 class BillingConfigSerializer(serializers.Serializer):
     collects_money = serializers.BooleanField(
         help_text="False on the mock deployment: no card is ever collected."
@@ -291,6 +310,7 @@ class BillingConfigSerializer(serializers.Serializer):
     publishable_key = serializers.CharField(
         allow_blank=True, help_text="For the processor's client SDK; \"\" when none."
     )
+    fees = FeeScheduleSerializer()
 
 
 class InvoiceHistoryQuerySerializer(serializers.Serializer):

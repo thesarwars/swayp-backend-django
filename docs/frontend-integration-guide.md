@@ -341,8 +341,11 @@ so `payment_rail` stays populated.
 notification list and socket events, push `data`, payment history, the
 profile summary, bill categories' `displayOrder`, and `pagination`. Those
 now carry **both** spellings, e.g. `unreadCount` and `unread_count`. Read the
-snake_case one. The camelCase copies stay until both apps have moved, then
-they are removed. Query parameters take either spelling: `pageSize` or
+snake_case one. **The camelCase copies are removed on 15 November 2026.**
+Until then, every answer that still carries them sends
+`Deprecation: @1792022400` and `Sunset: Sun, 15 Nov 2026 00:00:00 GMT`, both
+readable from browser code, so you can find what's left to move. Socket
+events and push `data` lose their camelCase keys on the same date. Query parameters take either spelling: `pageSize` or
 `page_size`, `isRead` or `is_read`. If a request sends both, the camelCase one
 wins.
 

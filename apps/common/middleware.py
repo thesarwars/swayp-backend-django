@@ -114,3 +114,27 @@ class QueryAliasMiddleware:
                 request.GET = query
 
         return self.get_response(request)
+
+
+class CamelCaseDeprecationMiddleware:
+    """Deprecation and Sunset headers on every API answer that still
+    carries camelCase copies (web C2), so a client sees what to move before
+    15 Nov 2026 instead of finding out when the keys vanish."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from apps.common.casing import (
+            has_camel_case_keys,
+            mark_camel_case_deprecated,
+        )
+
+        response = self.get_response(request)
+
+        if request.path.startswith(API_PREFIX) and has_camel_case_keys(
+            getattr(response, "data", None)
+        ):
+            mark_camel_case_deprecated(response)
+
+        return response

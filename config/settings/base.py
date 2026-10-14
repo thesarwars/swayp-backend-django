@@ -166,6 +166,9 @@ MIDDLEWARE = [
 
     # One query parameter, several spellings: fills in the rest (web C3).
     "apps.common.middleware.QueryAliasMiddleware",
+
+    # Deprecation/Sunset on answers still carrying camelCase (web C2).
+    "apps.common.middleware.CamelCaseDeprecationMiddleware",
 ]
 
 # 7 days while the app is in development: a 15-minute token expires part-way
@@ -353,7 +356,13 @@ CORS_ALLOW_CREDENTIALS = True
 # Headers browser code may read (web C5): the OTP countdown needs
 # Retry-After on a 429, and a CSV or PDF download takes its file name from
 # Content-Disposition. Without this the browser hides both.
-CORS_EXPOSE_HEADERS = ["Retry-After", "Content-Disposition"]
+CORS_EXPOSE_HEADERS = [
+    "Retry-After",
+    "Content-Disposition",
+    # The camelCase sunset notice (web C2).
+    "Deprecation",
+    "Sunset",
+]
 
 # Django checks the Origin header against this list on every unsafe request
 # that arrives over HTTPS. A deployed domain missing from it fails admin

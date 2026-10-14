@@ -192,6 +192,8 @@ Vendor *errors* are wrapped, so clients have to special-case only the successful
 
 ### C2: Every key is sent twice, in camelCase and snake_case (P1)
 
+✅ **Removal date set: 15 November 2026.** snake_case is canonical. Until then the camelCase copies stay, so the mobile app can finish moving, and every answer that still carries them sends `Deprecation: @1792022400` and `Sunset: Sun, 15 Nov 2026 00:00:00 GMT` (exposed to browsers). Read the snake_case keys now.
+
 - Every `pagination` object: `pageSize`/`page_size`, `totalPages`/`total_pages`, `totalItems`/`total_items`, `hasNext`/`has_next`, `hasPrevious`/`has_previous`
 - `GET /notifications`: `nextCursor`/`next_cursor`, `unreadCount`/`unread_count`
 - `GET /dashboard/profile-summary`: `fullName`/`full_name`, `profilePicture`/`profile_picture`, `unreadNotificationCount`/`unread_notification_count`

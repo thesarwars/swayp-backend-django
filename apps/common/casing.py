@@ -77,3 +77,34 @@ class SnakeCaseInputMixin:
                     data[name] = data[snake]
 
         return super().to_internal_value(data)
+
+
+#: When the camelCase copies go (web C2). Announced on every answer that
+#: still carries them, with the RFC 9745 Deprecation header and the RFC 8594
+#: Sunset header, so clients can find what to move before it breaks.
+CAMEL_CASE_DEPRECATED_AT = 1792022400   # 2026-10-14T00:00:00Z
+CAMEL_CASE_SUNSET = "Sun, 15 Nov 2026 00:00:00 GMT"
+
+
+def has_camel_case_keys(body):
+    """Does a response body still carry camelCase copies? Checks the top
+    level, pagination, and the first row of data (rows share a shape)."""
+    def camel(mapping):
+        return isinstance(mapping, dict) and any(
+            to_snake(key) != key for key in mapping
+        )
+
+    if not isinstance(body, dict):
+        return False
+
+    data = body.get("data")
+    first = data[0] if isinstance(data, list) and data else data
+
+    return camel(body) or camel(body.get("pagination")) or camel(first)
+
+
+def mark_camel_case_deprecated(response):
+    response["Deprecation"] = f"@{CAMEL_CASE_DEPRECATED_AT}"
+    response["Sunset"] = CAMEL_CASE_SUNSET
+
+    return response

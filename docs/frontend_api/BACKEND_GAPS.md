@@ -85,6 +85,8 @@ Auth is bearer-only. The web client therefore stores a rotating 30-day refresh t
 
 ### B1: `GET /banking/institutions` returns 500 without a search term (P1)
 
+✅ **Fixed.** A missing or blank `search` returns `200` with `data: []` and doesn't call Plaid.
+
 | Request | Response |
 |---|---|
 | `GET /api/v1/banking/institutions` | `500 {"success":false,"message":"Internal server error.","code":"server_error"}` |

@@ -26,7 +26,9 @@ def custom_exception_handler(exc, context):
             )
         else:
             built = ApiResponse.error(
-                message=_flatten_detail(response.data["detail"]),
+                message=_not_found_text(
+                    _flatten_detail(response.data["detail"])
+                ),
                 status_code=response.status_code,
             )
 
@@ -111,6 +113,22 @@ def _leaf_codes(exc):
     walk(codes)
 
     return leaves
+
+
+def _not_found_text(message):
+    """Django's get_object_or_404 says "No Vendor matches the given query.",
+    framework wording that every other module phrases as "Vendor not
+    found." (web C6). VendorPaymentMethod -> "Vendor payment method"."""
+    import re
+
+    match = re.fullmatch(r"No (\w+) matches the given query\.", message)
+
+    if not match:
+        return message
+
+    words = re.sub(r"(?<!^)(?=[A-Z])", " ", match.group(1)).lower()
+
+    return f"{words[0].upper()}{words[1:]} not found."
 
 
 def _flatten_detail(detail):

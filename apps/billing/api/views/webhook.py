@@ -22,6 +22,8 @@ from rest_framework.views import APIView
 
 from apps.billing.models import Subscription, SubscriptionStatus
 from apps.billing.services.provider_service import swayp_status
+from apps.common.error_codes import INVALID_SIGNATURE
+from apps.common.responses import ApiResponse
 
 logger = logging.getLogger(__name__)
 
@@ -99,9 +101,8 @@ class StripeBillingWebhookAPIView(APIView):
         except SignatureError as error:
             logger.warning("rejected Stripe billing webhook: %s", error)
 
-            return Response(
-                {"detail": str(error)},
-                status=status.HTTP_400_BAD_REQUEST,
+            return ApiResponse.error(
+                message=str(error), code=INVALID_SIGNATURE
             )
 
         event_type = event.get("type", "")

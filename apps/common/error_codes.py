@@ -37,6 +37,9 @@ IDEMPOTENCY_IN_PROGRESS = "idempotency_in_progress"
 RECEIPT_NOT_READY = "receipt_not_ready"
 NOT_CANCELLABLE = "not_cancellable"
 CANCEL_WINDOW_CLOSED = "cancel_window_closed"
+# Webhooks (web C6): for the provider's delivery log, not for an app.
+INVALID_SIGNATURE = "invalid_signature"
+MALFORMED_PAYLOAD = "malformed_payload"
 
 SPECIFIC = {
     NO_FUNDING_ACCOUNT,
@@ -46,6 +49,8 @@ SPECIFIC = {
     RECEIPT_NOT_READY,
     NOT_CANCELLABLE,
     CANCEL_WINDOW_CLOSED,
+    INVALID_SIGNATURE,
+    MALFORMED_PAYLOAD,
     # Already the default_code of their exceptions.
     "plan_limit",
     "role_forbidden",

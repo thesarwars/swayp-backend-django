@@ -19,6 +19,8 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.error_codes import INVALID_SIGNATURE, MALFORMED_PAYLOAD
+from apps.common.responses import ApiResponse
 from apps.payments.services.webhook_service import (
     SignatureError,
     WebhookService,
@@ -87,25 +89,22 @@ class WebhookAPIView(APIView):
                 "rejected %s webhook: %s", self.processor, error
             )
             # No event row is written for an unverified payload.
-            return Response(
-                {"detail": str(error)},
-                status=status.HTTP_400_BAD_REQUEST,
+            return ApiResponse.error(
+                message=str(error), code=INVALID_SIGNATURE
             )
 
         try:
             payload = json.loads(raw or b"{}")
         except ValueError:
-            return Response(
-                {"detail": "Malformed JSON payload."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return ApiResponse.error(
+                message="Malformed JSON payload.", code=MALFORMED_PAYLOAD
             )
 
         event_id = self.event_id(payload)
 
         if not event_id:
-            return Response(
-                {"detail": "Payload has no event id."},
-                status=status.HTTP_400_BAD_REQUEST,
+            return ApiResponse.error(
+                message="Payload has no event id.", code=MALFORMED_PAYLOAD
             )
 
         return Response({"received": True, "result": self.handle(payload)})

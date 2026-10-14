@@ -226,6 +226,8 @@ The API sends no `Access-Control-Expose-Headers`, so browser code can't read:
 
 ### C6: Some errors bypass the envelope or leak framework text (P2)
 
+✅ **Fixed.** Webhook refusals use the envelope, with `code` `invalid_signature` or `malformed_payload`. Django's "No X matches the given query." is rewritten everywhere as "X not found." (e.g. "Vendor not found.").
+
 - Webhooks return `{"detail": "Missing signature header."}`.
 - An unknown vendor returns `"No Vendor matches the given query."`, which is Django's default text. Other modules say e.g. `"Bill not found."`.
 

@@ -39,6 +39,7 @@ from apps.vendors.selectors.vendor_selector import (
     VendorSelector,
 
 )
+from apps.common.exceptions import NotFoundException
 from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
 
@@ -71,6 +72,16 @@ class VendorPaymentMethodListCreateAPIView(AccountScopedMixin, IdempotencyMixin,
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # 404 for a vendor that is not the caller's or not active, as
+        # GET /vendors/{id} answers; an empty 200 read as "no methods yet"
+        # (web B2).
+        if not Vendor.objects.filter(
+            id=self.kwargs["vendor_id"],
+            user=self.account(self.request),
+            status=VendorStatus.ACTIVE,
+        ).exists():
+            raise NotFoundException("Vendor not found.")
+
         return VendorSelector.payment_methods(
             user=self.account(self.request),
             vendor_id=self.kwargs["vendor_id"],

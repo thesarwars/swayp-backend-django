@@ -97,6 +97,8 @@ Auth is bearer-only. The web client therefore stores a rotating 30-day refresh t
 
 ### B2: Payment methods of an unknown vendor return 200 (P2)
 
+✅ **Fixed.** An unknown, foreign or deleted vendor returns `404 "Vendor not found."` here too.
+
 `GET /vendors/{unknown}/payment-methods` returns `200 {"items": [], …}`, but `GET /vendors/{unknown}` returns 404. Both should return 404.
 
 ### B3: Invalid filter values are ignored instead of rejected (P1)

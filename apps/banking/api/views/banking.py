@@ -69,14 +69,6 @@ class InstitutionSearchAPIView(AccountScopedMixin, BaseAPIView):
     def get(self, request):
         query = (request.query_params.get("search") or "").strip()
 
-        if not query:
-            # Plaid refuses an empty query, and that surfaced as a 500 (web
-            # B1). A picker opens before anyone types, so an empty search is
-            # an empty list, not an error.
-            return ApiResponse.success(
-                data=[], message="Type a bank name to search."
-            )
-
         try:
             institutions = self.service.search_institutions(query=query)
         except NotImplementedError as exc:

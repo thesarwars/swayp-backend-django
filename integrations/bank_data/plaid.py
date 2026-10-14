@@ -489,6 +489,12 @@ class PlaidBankDataProvider(BankDataProvider):
         return response["processor_token"]
 
     def search_institutions(self, *, query: str):
+        # Plaid refuses an empty query, and the error surfaced as a 500 (web
+        # B1). The picker opens before anyone types; with nothing to search
+        # for, there is nothing to show yet.
+        if not (query or "").strip():
+            return ()
+
         from plaid.model.country_code import CountryCode
         from plaid.model.institutions_search_request import (
             InstitutionsSearchRequest,

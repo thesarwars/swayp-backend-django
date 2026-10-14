@@ -331,13 +331,26 @@ SERVER_EMAIL = env("SERVER_EMAIL", default="noreply@getswayp.com")
 # frontend route, so the backend cannot derive this from its own host.
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:3000")
 
-# CORS. Permissive here because local dev serves the frontend from a
-# different port and blocking it would just be friction; production.py
-# replaces this with an explicit allow-list and refuses to boot without
-# one. corsheaders is already in INSTALLED_APPS and MIDDLEWARE, and was
-# doing nothing at all until this existed.
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS: an allow-list everywhere (web S2). This used to be allow-all, and
+# production.py set its list without switching allow-all off, so every
+# environment, production included, answered any website with credentials
+# allowed. corsheaders consults allow-all before the list.
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://getswayp.com",
+        "https://www.getswayp.com",
+    ],
+)
 CORS_ALLOW_CREDENTIALS = True
+
+# Headers browser code may read (web C5): the OTP countdown needs
+# Retry-After on a 429, and a CSV or PDF download takes its file name from
+# Content-Disposition. Without this the browser hides both.
+CORS_EXPOSE_HEADERS = ["Retry-After", "Content-Disposition"]
 
 # Django checks the Origin header against this list on every unsafe request
 # that arrives over HTTPS. A deployed domain missing from it fails admin

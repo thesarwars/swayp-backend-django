@@ -231,6 +231,20 @@ class TransportSecurityTests(SimpleTestCase):
         self.assertEqual(settings.SECURE_HSTS_SECONDS, 0)
         self.assertFalse(settings.SECURE_HSTS_INCLUDE_SUBDOMAINS)
 
+    def test_cors_is_an_allow_list_not_allow_all(self):
+        """Web S2: production set a list but inherited allow-all, which
+        corsheaders checks first, so every origin got credentials."""
+        settings = load()
+
+        self.assertFalse(settings.CORS_ALLOW_ALL_ORIGINS)
+        self.assertTrue(settings.CORS_ALLOWED_ORIGINS)
+
+    def test_browsers_can_read_retry_after_and_file_names(self):
+        settings = load()
+
+        self.assertIn("Retry-After", settings.CORS_EXPOSE_HEADERS)
+        self.assertIn("Content-Disposition", settings.CORS_EXPOSE_HEADERS)
+
     def test_csrf_trusted_origins_cover_cors(self):
         """Derived rather than configured twice, so they cannot drift."""
         settings = load()

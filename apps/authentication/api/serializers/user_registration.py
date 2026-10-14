@@ -115,31 +115,12 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
     def validate_password(self, value):
+        from apps.authentication.utils.passwords import password_problem
 
-        # if len(value) < 12:
-        #     raise serializers.ValidationError(
-        #         "Password must contain at least 12 characters."
-        #     )
+        problem = password_problem(value)
 
-        if not re.search(r"[A-Z]", value):
-            raise serializers.ValidationError(
-                "Password must contain one uppercase letter."
-            )
-
-        if not re.search(r"[a-z]", value):
-            raise serializers.ValidationError(
-                "Password must contain one lowercase letter."
-            )
-
-        if not re.search(r"[0-9]", value):
-            raise serializers.ValidationError(
-                "Password must contain one digit."
-            )
-
-        if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", value):
-            raise serializers.ValidationError(
-                "Password must contain one special character."
-            )
+        if problem:
+            raise serializers.ValidationError(problem)
 
         return value
 

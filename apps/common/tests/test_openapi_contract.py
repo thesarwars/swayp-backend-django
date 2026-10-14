@@ -178,6 +178,14 @@ class UserContractTests(ContractTestCase):
         self.check("GET", "/api/v1/users/onboarding", status=200)
         self.check("POST", "/api/v1/users/onboarding/skip-bank", status=200)
 
+    def test_change_password(self):
+        self.user.set_password("Str0ng!Passphrase1")
+        self.user.save()
+
+        self.check("POST", "/api/v1/users/password", body={
+            "current_password": "Str0ng!Passphrase1",
+            "new_password": "An0ther!Passphrase2"}, status=200)
+
 
 class DashboardContractTests(ContractTestCase):
 

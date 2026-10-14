@@ -8,10 +8,16 @@ from apps.users.api.views.phone_change import (
     PhoneChangeRequestAPIView,
     PhoneChangeVerifyAPIView,
 )
+from apps.users.api.views.password import ChangePasswordAPIView
 from apps.users.api.views.profile import ProfileAPIView
 
 urlpatterns = [
     path("/profile", ProfileAPIView.as_view(), name="user-profile"),
+    path(
+        "/password",
+        ChangePasswordAPIView.as_view(),
+        name="user-change-password",
+    ),
     path(
         "/profile/phone",
         PhoneChangeRequestAPIView.as_view(),

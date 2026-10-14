@@ -448,6 +448,17 @@ body as `GET users/profile`.
 
 ---
 
+### Changing the password while signed in
+
+```
+POST users/password   { "current_password": "…", "new_password": "…" }
+→ { "data": { "access": "…", "refresh": "…" } }
+```
+
+- A wrong `current_password` returns 400 with `code: invalid_credentials`.
+- `new_password` follows the registration rules and may not repeat the previous password.
+- **Every other session is signed out.** The answer is a fresh token pair for this device; store it, because the old refresh token is now spent.
+
 ## 6. The onboarding wizard
 
 ```

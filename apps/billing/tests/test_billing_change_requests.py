@@ -456,3 +456,29 @@ class PlanDisplayTests(BillingTestCase):
         self.assertIn(
             "Up to 4 team members", self._plans()["FOUNDING"]["features"]
         )
+
+
+class PublicPlansTests(TestCase):
+    """Web §4: the pricing page reads the plans without signing in."""
+
+    def test_anonymous(self):
+        response = APIClient().get("/api/v1/billing/plans")
+
+        self.assertEqual(response.status_code, 200)
+        rows = response.json()["data"]
+        self.assertTrue(rows)
+        standard = next(r for r in rows if r["code"] == "STANDARD")
+        self.assertTrue(standard["trial_eligible"])
+
+    def test_a_token_still_personalises_it(self):
+        user = UserFactory()
+        SubscriptionService().subscribe(account=user, plan_code="STANDARD")
+        Subscription.objects.filter(account=user).update(
+            status=SubscriptionStatus.CANCELLED)
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        rows = client.get("/api/v1/billing/plans").json()["data"]
+        standard = next(r for r in rows if r["code"] == "STANDARD")
+
+        self.assertFalse(standard["trial_eligible"])

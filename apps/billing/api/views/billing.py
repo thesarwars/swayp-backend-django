@@ -3,6 +3,7 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
 
 from apps.billing.api.serializers.billing import (
     AddOnSerializer,
@@ -38,26 +39,36 @@ from apps.teams.permissions import MANAGE_BILLING
 @extend_schema(
     tags=["Billing"],
     summary="List plans",
+    auth=[],
     description=(
-        "The three tiers and what each includes, plus what this account "
-        "would get by subscribing now: trial_eligible, lock_available and "
-        "founding_spots_remaining."
+        "The tiers and what each includes, plus what subscribing now "
+        "would get: trial_eligible, lock_available and "
+        "founding_spots_remaining. Public: no token needed (for the pricing "
+        "page). With a token, trial_eligible is this account's; without "
+        "one it is true, as for a new account."
     ),
     responses={200: PlanOfferSerializer(many=True)},
 )
 class PlanListAPIView(AccountScopedMixin, BaseAPIView):
 
+    # Public (web §4): the marketing pricing page shows the plans before
+    # anyone signs up. A token still personalises trial_eligible; without
+    # one it is true, which is what a new account would get.
+    permission_classes = [AllowAny]
+
     def get(self, request):
         plans = Plan.objects.filter(is_active=True).order_by("monthly_price")
         service = SubscriptionService()
+        signed_in = request.user and request.user.is_authenticated
 
         return ApiResponse.success(
             data=PlanOfferSerializer(
                 plans,
                 many=True,
                 context={
-                    "trial_eligible": service.trial_eligible(
-                        self.account(request)
+                    "trial_eligible": (
+                        service.trial_eligible(self.account(request))
+                        if signed_in else True
                     ),
                     "spots_remaining": service.founding_spots_remaining(),
                 },

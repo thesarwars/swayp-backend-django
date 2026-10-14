@@ -93,6 +93,10 @@ Other errors don't have codes yet.
 
 ## 4. Pricing screen
 
+**No token needed.** `GET /billing/plans` is public, so the marketing pricing
+page can call it. With a token, `trial_eligible` is the account's own; without
+one it's `true`, as it would be for a new account.
+
 ```
 GET /api/v1/billing/plans
 ```

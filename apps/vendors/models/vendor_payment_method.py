@@ -3,6 +3,10 @@ from django.db import models
 from django.db.models import Q
 from apps.common.enums import BankAccountType, VendorPaymentMethodType
 from apps.common.models import BaseModel
+
+#: Who issued an ACH provider_token (web B9). STRIPE is the ACH processor
+#: (PRD D-1); MOCK is accepted only while the mock processor is configured.
+ACH_PROVIDERS = (("STRIPE", "Stripe"), ("MOCK", "Mock"))
 from .vendor import Vendor
 
 
@@ -23,7 +27,9 @@ class VendorPaymentMethod(BaseModel):
     # ACH
     # -------------------
 
-    provider = models.CharField(max_length=20,blank=True)
+    provider = models.CharField(
+        max_length=20, blank=True, choices=ACH_PROVIDERS,
+    )
     provider_token = models.CharField(max_length=100,blank=True)
     account_last4 = models.CharField(max_length=4,blank=True)
     account_type = models.CharField(max_length=20,choices=BankAccountType.choices,blank=True)

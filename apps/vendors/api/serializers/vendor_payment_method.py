@@ -118,19 +118,40 @@ class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):
             "supports_same_day",
         )
 
-    # Raw routing/account numbers never reach the backend — the client
-    # tokenizes them in the money-movement provider's browser SDK and sends
-    # {provider_token, account_last4}. Which provider that is stays out of this
-    # file on purpose (E1-S4): it is settings, not contract.
-    # Changing an account is therefore just sending a fresh token. What the
-    # server must refuse is a masked echo (e.g. "****4821") being stored as a
-    # real value (E1-S6 / BRD §3.4). On PATCH, an omitted field stays
+    # Raw routing/account numbers never reach the backend (BRD §3.4): the
+    # client tokenizes them in the money-movement provider's SDK and sends
+    # {provider, provider_token, account_last4}. The token must be one that
+    # provider could have issued (web B9); any string used to pass, so a
+    # placeholder was stored as a bank account. A masked echo ("****4821")
+    # is refused as a real value (E1-S6). On PATCH, an omitted field stays
     # unchanged (it never enters validated_data).
     def validate_provider_token(self, value):
         return reject_masked_value(value)
 
     def validate_account_last4(self, value):
         return reject_masked_value(value)
+
+    def _validate_ach(self, attrs):
+        from apps.vendors.services.ach_token import token_problem
+
+        errors = {}
+
+        for field in (
+            "provider", "provider_token", "account_last4", "account_holder_name",
+        ):
+            if not attrs.get(field):
+                errors[field] = "This field is required."
+
+        problem = token_problem(
+            attrs.get("provider"), attrs.get("provider_token")
+        )
+
+        if problem:
+            field, message = problem
+            errors.setdefault(field, message)
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
     def validate(self, attrs):
 
@@ -147,22 +168,7 @@ class VendorPaymentMethodCreateSerializer(serializers.ModelSerializer):
 
         elif method == VendorPaymentMethodType.ACH:
 
-            required = [
-                "provider",
-                "provider_token",
-                "account_last4",
-                "account_holder_name",
-            ]
-
-            errors = {}
-
-            for field in required:
-
-                if not attrs.get(field):
-                    errors[field] = "This field is required."
-
-            if errors:
-                raise serializers.ValidationError(errors)
+            self._validate_ach(attrs)
 
         elif method == VendorPaymentMethodType.CHECK:
 

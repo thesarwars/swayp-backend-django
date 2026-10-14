@@ -108,13 +108,28 @@ determines which fields are required.
 ```
 
 **ACH** — requires `provider`, `provider_token`, `account_last4`,
-`account_holder_name`. Tokenize client-side first; never send raw numbers:
+`account_holder_name`. Tokenize client-side first; never send raw numbers.
+
+**`provider` is `STRIPE` or `MOCK`**, and the token must be one that provider
+could have issued: a Stripe bank token starts `btok_`, `ba_`, `pm_` or `src_`.
+Anything else is a 400 on `provider_token`. `MOCK` takes any token, but only
+on a server running the mock processor, as dev does; it's a 400 on `provider`
+where real money moves.
+
+**Getting a token today:** no tokenizing processor is live yet. ACH moves to
+Stripe Treasury, which is waiting on Stripe's private-preview access (see
+`docs/stripe-treasury-integration-plan.md`). Until then, send
+`"provider": "MOCK"` with any token on dev. Swayp will **never** accept raw
+routing or account numbers, even encrypted (BRD §3.4), so don't build a form
+that posts them here.
+
+Example:
 
 ```json
 { "name": "WeWork", "category": "<category_id>", "source": "MANUAL",
   "notes": "HQ floor 3",
   "payment_method": { "method_type": "ACH", "provider": "STRIPE",
-    "provider_token": "pm_stripe_7c11", "account_last4": "8837",
+    "provider_token": "pm_1N7c11", "account_last4": "8837",
     "account_type": "CHECKING", "account_holder_name": "WeWork Inc",
     "aba_bank_name": "Chase Bank" } }
 ```

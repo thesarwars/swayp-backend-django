@@ -42,7 +42,7 @@ class VendorTestCase(TestCase):
 
     ACH = {
         "method_type": "ACH", "provider": "STRIPE",
-        "provider_token": "tok", "account_last4": "8837",
+        "provider_token": "btok_8837", "account_last4": "8837",
         "account_holder_name": "WeWork Inc",
     }
     CHECK = {
@@ -347,7 +347,7 @@ class PaymentMethodShapeTests(TestCase):
         self.url = f"/api/v1/vendors/{self.vendor.id}/payment-methods"
         self.ach = {
             "method_type": "ACH", "provider": "STRIPE",
-            "provider_token": "pm_stripe_abc", "account_last4": "4821",
+            "provider_token": "pm_1Nstripeabc", "account_last4": "4821",
             "account_holder_name": "Acme LLC",
         }
 

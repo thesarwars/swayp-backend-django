@@ -153,6 +153,10 @@ This is probably intended, but the client can't tell "done" from "not applicable
 
 ### B9: Vendor bank details can't be captured, and any processor token is accepted (P0)
 
+✅ **Token half fixed. Raw numbers deliberately refused.**
+- **Fixed:** `provider` is an enum (`STRIPE`, `MOCK`), and a token must have its provider's shape (Stripe: `btok_`/`ba_`/`pm_`/`src_`). The placeholder the web app sends is now a 400. `MOCK` tokens work only on a server running the mock processor. Required fields per method type are documented in e3 §3.
+- **Not done, by rule:** accepting raw routing and account numbers, even encrypted, breaks BRD §3.4 (REQUIRED: "never inside Swayp's own database"). A real tokenizer arrives with Stripe Treasury, which is pending Stripe's access. Until then, use `MOCK` on dev.
+
 - `VendorPaymentMethodCreateRequest`, used by `POST /vendors` and `POST /vendors/{id}/payment-methods`, has no routing or account number fields. It has only `account_last4`, a free-string `provider` (max 20 characters, no enum) and `provider_token`.
 - Nothing documents how a client obtains a `provider_token`, and there's no per-`method_type` list of required fields (NETWORK vs ACH vs CHECK).
 - A payload with `provider_token: "yerter23424124asdasdad"` (the placeholder the web app sends today) passed field validation. In the same request, only `name`, `category`, `source` and `state` were rejected.

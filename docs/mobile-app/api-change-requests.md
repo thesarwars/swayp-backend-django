@@ -60,6 +60,7 @@ Contents:
 - **App today:** nothing the app can do. Nobody without server-log or database access can test these flows end to end on a phone.
 
 #### AUTH-3 · major · Auth errors carry no machine-readable code
+✅ Fixed (with web C8): stable codes on every auth refusal: `invalid_credentials`, `account_not_verified`, `account_inactive`, `account_locked`, `otp_invalid`, `otp_expired`, `otp_not_pending`, `otp_attempts_exceeded`, `reset_token_invalid`, `email_taken`, `phone_taken`. An unverified login now answers `account_not_verified` instead of "Invalid email or password".
 - **Endpoint:** every `/auth/*` error, in particular `login`, `verify-otp` and `resend-otp`.
 - **Today:** errors carry English text only. The lockout is not a 429 with `Retry-After`.
 - **Needed:** a `code` such as `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_LOCKED`, `OTP_INVALID`, `OTP_EXPIRED` or `OTP_ALREADY_USED`. Lockouts should answer 429 with `Retry-After`.

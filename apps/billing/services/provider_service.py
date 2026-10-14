@@ -26,6 +26,7 @@ from integrations.subscription_billing.base import (
     BillingProviderError,
     CardDeclined,
 )
+from apps.common.error_codes import CARD_DECLINED
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +171,9 @@ class BillingProviderService:
             # error on what they submitted — not a 402, which the client
             # renders as "upgrade your plan" and would be actively misleading
             # when the plan is fine and the card is not.
-            raise ValidationError({"payment_method_id": str(error)})
+            raise ValidationError(
+                {"payment_method_id": str(error)}, code=CARD_DECLINED
+            )
         except BillingProviderError as error:
             logger.error("could not start subscription: %s", error)
 
@@ -260,7 +263,8 @@ class BillingProviderService:
 
         except CardDeclined as error:
             raise ValidationError(
-                {"payment_method_id": [str(error) or "The card was declined."]}
+                {"payment_method_id": [str(error) or "The card was declined."]},
+                code=CARD_DECLINED,
             ) from error
 
         return card

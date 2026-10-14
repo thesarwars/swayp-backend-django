@@ -5,6 +5,7 @@ from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from apps.users.models import AccountType
+from apps.common.error_codes import EMAIL_TAKEN, PHONE_TAKEN
 
 User = get_user_model()
 
@@ -97,7 +98,7 @@ class RegisterSerializer(serializers.Serializer):
 
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
-                "Email already exists."
+                "Email already exists.", code=EMAIL_TAKEN
             )
 
         return value
@@ -108,7 +109,7 @@ class RegisterSerializer(serializers.Serializer):
 
         if User.objects.filter(phone_number=value).exists():
             raise serializers.ValidationError(
-                "Phone number already exists."
+                "Phone number already exists.", code=PHONE_TAKEN
             )
 
         return value

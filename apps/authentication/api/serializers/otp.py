@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.authentication.models import OTP, OTPChannel, OTPPurpose
 from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
+from apps.common.error_codes import OTP_ATTEMPTS_EXCEEDED, OTP_EXPIRED, OTP_INVALID, OTP_NOT_PENDING
 
 User = get_user_model()
 
@@ -108,25 +109,30 @@ class VerifyOTPSerializer(serializers.Serializer):
         if not pending:
             if purposes == [OTPPurpose.RESET_PASSWORD]:
                 raise serializers.ValidationError(
-                    {"otp": "No reset code is pending. Request a new one."}
+                    {"otp": "No reset code is pending. Request a new one."},
+                    code=OTP_NOT_PENDING,
                 )
 
             # An unknown address lands here too, with the same words as an
             # account that has no code (SEC-3).
-            raise serializers.ValidationError({"otp": NO_CODE_PENDING})
+            raise serializers.ValidationError(
+                {"otp": NO_CODE_PENDING}, code=OTP_NOT_PENDING
+            )
 
         now = timezone.now()
         live = [otp for otp in pending if otp.expires_at >= now]
 
         if not live:
             raise serializers.ValidationError(
-                {"otp": "OTP expired. Request a new one."}
+                {"otp": "OTP expired. Request a new one."}, code=OTP_EXPIRED
             )
 
         live = [otp for otp in live if not otp.is_exhausted]
 
         if not live:
-            raise serializers.ValidationError({"otp": TOO_MANY_ATTEMPTS})
+            raise serializers.ValidationError(
+                {"otp": TOO_MANY_ATTEMPTS}, code=OTP_ATTEMPTS_EXCEEDED
+            )
 
         # Matched by hash rather than by "whichever is newest". With one
         # verifiable purpose the two rarely differ, but a resend issued while
@@ -146,7 +152,9 @@ class VerifyOTPSerializer(serializers.Serializer):
         newest.attempts += 1
         newest.save(update_fields=["attempts"])
 
-        raise serializers.ValidationError({"otp": "Invalid OTP."})
+        raise serializers.ValidationError(
+            {"otp": "Invalid OTP."}, code=OTP_INVALID
+        )
 
 
 class VerifyOTPResponseSerializer(serializers.Serializer):

@@ -375,6 +375,18 @@ copy and gets reworded; `code` is a contract and is only ever added to.
 |---|---|---|
 | `validation_failed` | 400 | Read `errors` per field |
 | `no_funding_account` | 400 | No bank to pay from: show "Connect a bank account", not a toast |
+| `invalid_credentials` | 400 | Login: wrong email or password |
+| `account_not_verified` | 400 | Login: the signup code was never entered. Offer to resend it (`purpose: REGISTRATION`) |
+| `account_inactive` | 400 | Login: the account was switched off |
+| `account_locked` | 400 | Login: too many wrong passwords. The message says how many minutes |
+| `otp_invalid` | 400 | Wrong code (phone login: wrong number or code) |
+| `otp_expired` | 400 | The code expired: offer "Send a new code" |
+| `otp_not_pending` | 400 | No code waiting for this address, used already or never sent: offer "Send a new code" |
+| `otp_attempts_exceeded` | 400 | Too many wrong tries on this code: offer "Send a new code" |
+| `reset_token_invalid` | 400 | The reset token is bad or expired: start the reset again |
+| `email_taken`, `phone_taken` | 400 | Register: already in use |
+| `already_subscribed` | 400 | Subscribe: change the plan instead |
+| `card_declined` | 400 | Card refused: ask for another card |
 | `not_authenticated` | 401 | No token: sign in |
 | `token_not_valid` | 401 | Expired or bad token: refresh, then retry |
 | `plan_limit` | 402 | Upgrade prompt; `limit` says which ceiling (Billing §1.2) |

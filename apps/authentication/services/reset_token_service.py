@@ -19,6 +19,7 @@ from django.contrib.auth import get_user_model
 from django.core import signing
 from django.utils.crypto import constant_time_compare, salted_hmac
 from rest_framework.exceptions import ValidationError
+from apps.common.error_codes import RESET_TOKEN_INVALID
 
 User = get_user_model()
 
@@ -56,7 +57,9 @@ class ResetTokenService:
             payload = signing.loads(token, salt=SALT, max_age=_max_age())
         except signing.BadSignature:
             # SignatureExpired is a subclass, so expiry lands here too.
-            raise ValidationError({"reset_token": [INVALID]})
+            raise ValidationError(
+                {"reset_token": [INVALID]}, code=RESET_TOKEN_INVALID
+            )
 
         user = User.objects.filter(pk=payload.get("u")).first()
 
@@ -67,6 +70,8 @@ class ResetTokenService:
                 payload.get("f", ""), _fingerprint(user)
             )
         ):
-            raise ValidationError({"reset_token": [INVALID]})
+            raise ValidationError(
+                {"reset_token": [INVALID]}, code=RESET_TOKEN_INVALID
+            )
 
         return user

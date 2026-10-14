@@ -37,6 +37,20 @@ IDEMPOTENCY_IN_PROGRESS = "idempotency_in_progress"
 RECEIPT_NOT_READY = "receipt_not_ready"
 NOT_CANCELLABLE = "not_cancellable"
 CANCEL_WINDOW_CLOSED = "cancel_window_closed"
+# Sign-in, verification and billing refusals (web C8, AUTH-3).
+INVALID_CREDENTIALS = "invalid_credentials"
+ACCOUNT_LOCKED = "account_locked"
+ACCOUNT_INACTIVE = "account_inactive"
+ACCOUNT_NOT_VERIFIED = "account_not_verified"
+OTP_INVALID = "otp_invalid"
+OTP_EXPIRED = "otp_expired"
+OTP_NOT_PENDING = "otp_not_pending"
+OTP_ATTEMPTS_EXCEEDED = "otp_attempts_exceeded"
+RESET_TOKEN_INVALID = "reset_token_invalid"
+EMAIL_TAKEN = "email_taken"
+PHONE_TAKEN = "phone_taken"
+ALREADY_SUBSCRIBED = "already_subscribed"
+CARD_DECLINED = "card_declined"
 # Webhooks (web C6): for the provider's delivery log, not for an app.
 INVALID_SIGNATURE = "invalid_signature"
 MALFORMED_PAYLOAD = "malformed_payload"
@@ -51,6 +65,19 @@ SPECIFIC = {
     CANCEL_WINDOW_CLOSED,
     INVALID_SIGNATURE,
     MALFORMED_PAYLOAD,
+    INVALID_CREDENTIALS,
+    ACCOUNT_LOCKED,
+    ACCOUNT_INACTIVE,
+    ACCOUNT_NOT_VERIFIED,
+    OTP_INVALID,
+    OTP_EXPIRED,
+    OTP_NOT_PENDING,
+    OTP_ATTEMPTS_EXCEEDED,
+    RESET_TOKEN_INVALID,
+    EMAIL_TAKEN,
+    PHONE_TAKEN,
+    ALREADY_SUBSCRIBED,
+    CARD_DECLINED,
     # Already the default_code of their exceptions.
     "plan_limit",
     "role_forbidden",

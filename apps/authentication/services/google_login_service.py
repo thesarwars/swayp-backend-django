@@ -10,6 +10,7 @@ from apps.users.models import (
     IndividualProfile,
     Profile,
 )
+from apps.common.error_codes import ACCOUNT_INACTIVE
 
 User = get_user_model()
 
@@ -79,7 +80,9 @@ class GoogleLoginService:
     def _link(user, sub):
         if user.is_verified and not user.is_active:
             # Verified once and switched off since: deactivated, not pending.
-            raise ValidationError({"detail": "Account is inactive."})
+            raise ValidationError(
+                {"detail": "Account is inactive."}, code=ACCOUNT_INACTIVE
+            )
 
         fields = []
 

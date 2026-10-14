@@ -239,6 +239,16 @@ The API sends no `Access-Control-Expose-Headers`, so browser code can't read:
 
 ### C8: Error `code` values are too generic (P1)
 
+✅ **Fixed.** Each refusal has its own code, alongside the same message and status as before:
+- **Login:** `invalid_credentials`, `account_not_verified`, `account_inactive`, `account_locked`
+- **Codes:** `otp_invalid`, `otp_expired`, `otp_not_pending`, `otp_attempts_exceeded`, `reset_token_invalid`
+- **Register:** `email_taken`, `phone_taken`
+- **Billing:** `already_subscribed`, `card_declined`
+
+The full table is in the integration guide §6.
+
+**Bug found on the way:** an unverified user with the right password was told "Invalid email or password". Django's `authenticate()` refuses inactive users, and a signup stays inactive until its code is entered. Login now answers `account_not_verified`.
+
 Every refusal tested comes back as `code: validation_failed`, including "Invalid email or password." The schema names only `otp_throttled`, `not_authenticated`, `token_not_valid`, `plan_limit`, `forbidden` and `role_forbidden`. These cases have no stable code:
 
 - unverified account and lockout on login

@@ -12,6 +12,7 @@ from rest_framework import serializers
 
 from apps.authentication.models import OTP, OTPChannel, OTPPurpose
 from apps.authentication.utils.otp import OTPService
+from apps.common.error_codes import ACCOUNT_INACTIVE, OTP_INVALID
 
 User = get_user_model()
 
@@ -41,7 +42,7 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
 
         if user is None:
             raise serializers.ValidationError(
-                {"detail": GENERIC_VERIFY_ERROR}
+                {"detail": GENERIC_VERIFY_ERROR}, code=OTP_INVALID
             )
 
         otp_obj = (
@@ -62,7 +63,7 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
             or otp_obj.is_exhausted
         ):
             raise serializers.ValidationError(
-                {"detail": GENERIC_VERIFY_ERROR}
+                {"detail": GENERIC_VERIFY_ERROR}, code=OTP_INVALID
             )
 
         if not OTPService.verify_otp(attrs["otp"], otp_obj.code):
@@ -70,12 +71,12 @@ class PhoneLoginVerifySerializer(serializers.Serializer):
             otp_obj.save(update_fields=["attempts"])
 
             raise serializers.ValidationError(
-                {"detail": GENERIC_VERIFY_ERROR}
+                {"detail": GENERIC_VERIFY_ERROR}, code=OTP_INVALID
             )
 
         if not user.is_active:
             raise serializers.ValidationError(
-                {"detail": "Account is inactive."}
+                {"detail": "Account is inactive."}, code=ACCOUNT_INACTIVE
             )
 
         attrs["user"] = user

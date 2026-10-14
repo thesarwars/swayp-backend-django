@@ -10,6 +10,7 @@ from apps.authentication.services.reset_token_service import (
     ResetTokenService,
 )
 from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
+from apps.common.error_codes import OTP_ATTEMPTS_EXCEEDED, OTP_EXPIRED, OTP_INVALID, OTP_NOT_PENDING
 
 #: Also the answer for an email with no account, so this endpoint cannot be
 #: used to find out who is registered.
@@ -85,18 +86,18 @@ class ResetPasswordService:
         )
 
         if otp_obj is None:
-            raise ValidationError({"otp": [NO_CODE]})
+            raise ValidationError({"otp": [NO_CODE]}, code=OTP_NOT_PENDING)
 
         if otp_obj.expires_at < timezone.now():
-            raise ValidationError({"otp": ["OTP expired. Request a new one."]})
+            raise ValidationError({"otp": ["OTP expired. Request a new one."]}, code=OTP_EXPIRED)
 
         if otp_obj.is_exhausted:
-            raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]})
+            raise ValidationError({"otp": [TOO_MANY_ATTEMPTS]}, code=OTP_ATTEMPTS_EXCEEDED)
 
         if not OTPService.verify_otp(otp, otp_obj.code):
             otp_obj.attempts += 1
             otp_obj.save(update_fields=["attempts"])
 
-            raise ValidationError({"otp": ["Invalid OTP."]})
+            raise ValidationError({"otp": ["Invalid OTP."]}, code=OTP_INVALID)
 
         return otp_obj

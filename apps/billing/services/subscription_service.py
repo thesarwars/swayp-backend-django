@@ -12,6 +12,7 @@ from apps.billing.models import (
     Subscription,
     SubscriptionStatus,
 )
+from apps.common.error_codes import ALREADY_SUBSCRIBED
 
 #: Founding is price-locked for the first 500 customers (BRD §6.2). Beyond
 #: that the plan is still sellable, just at the list price of the day.
@@ -105,7 +106,8 @@ class SubscriptionService:
                         "This account already has an active subscription. "
                         "Change the plan instead."
                     )
-                }
+                },
+                code=ALREADY_SUBSCRIBED,
             )
 
         plan = self.get_plan(plan_code)

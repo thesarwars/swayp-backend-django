@@ -37,9 +37,9 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         if member.user is None:
             return None
 
-        full = f"{member.user.first_name} {member.user.last_name}".strip()
+        from apps.users.services.display_name import display_name
 
-        return full or None
+        return display_name(member.user) or None
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_capabilities(self, member):

@@ -7,6 +7,7 @@ from apps.notifications.selectors.notification_selector import (
     NotificationSelector,
 )
 from apps.vendors.selectors.vendor_selector import VendorSelector
+from apps.users.services.display_name import first_name
 
 RECENT_BILLS_LIMIT = 5
 VENDORS_PREVIEW_LIMIT = 3
@@ -20,6 +21,7 @@ TAB_ORDER = (
 )
 
 
+
 class HomeService:
     """The home aggregate (E8-S1) — composition only, no arithmetic.
 
@@ -30,6 +32,16 @@ class HomeService:
 
     def __init__(self):
         self.occurrences = BillOccurrenceSelector()
+
+    @staticmethod
+    def _greeting_name(person):
+        # One explicit read, so the home query budget does not depend on
+        # whether this request already cached person.profile.
+        from apps.users.models import Profile
+
+        profile = Profile.objects.filter(user=person).first() or False
+
+        return first_name(person, profile)
 
     def build(self, *, user, tab=None, viewer=None):
         """``user`` is the account whose bills are shown; ``viewer`` is the
@@ -50,7 +62,9 @@ class HomeService:
             # greeted by something. request.user is already loaded by
             # authentication; re-fetching it the way get_profile_summary does
             # would buy a 404 branch on the landing screen and nothing else.
-            "greeting": {"name": user.first_name or user.get_full_name()},
+            # The viewer, not the account: a teammate is greeted by their own
+            # name (web B4), from the same source as every other screen.
+            "greeting": {"name": self._greeting_name(viewer or user)},
             # The home bell (DASH-4), so the screen needs no second request.
             "unread_notification_count": NotificationSelector().unread_count(
                 user=viewer or user

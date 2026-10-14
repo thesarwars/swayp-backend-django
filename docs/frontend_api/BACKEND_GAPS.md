@@ -111,6 +111,8 @@ Auth is bearer-only. The web client therefore stores a rotating 30-day refresh t
 
 ### B4: The user's display name differs per endpoint (P1)
 
+✅ **Fixed.** Every endpoint uses one helper: the profile's `full_name`, then first plus last name, then `""`. It never uses the email; `teams/members` returns `null` instead. `greeting.name` is the first word of that name, for the **viewer** rather than the account owner. A profile created without a name no longer stores the email, and migration `users/0007` clears the ones that did.
+
 For the same account:
 
 | Endpoint → field | Value |

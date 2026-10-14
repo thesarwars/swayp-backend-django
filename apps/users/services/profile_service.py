@@ -17,6 +17,7 @@ from django.db import transaction
 from apps.users.models.business_profile import BusinessProfile
 from apps.users.models.individual_profile import IndividualProfile
 from apps.users.models.profile import AccountType, Profile
+from apps.users.services.display_name import display_name
 
 #: Fields the account may change about itself. Deliberately excludes email and
 #: phone: both are login identifiers and both are verified by OTP, so changing
@@ -38,6 +39,7 @@ BUSINESS_FIELDS = (
 INDIVIDUAL_FIELDS = ("billing_address",)
 
 
+
 class ProfileService:
 
     def get_or_create_profile(self, user):
@@ -45,10 +47,8 @@ class ProfileService:
             user=user,
             defaults={
                 "account_type": AccountType.INDIVIDUAL,
-                "full_name": (
-                    f"{user.first_name} {user.last_name}".strip()
-                    or user.email
-                ),
+                # Never the email: an address is not a name (web B4).
+                "full_name": f"{user.first_name} {user.last_name}".strip(),
             },
         )
 
@@ -89,7 +89,7 @@ class ProfileService:
             "email": user.email,
             "phone_number": user.phone_number,
             "is_verified": user.is_verified,
-            "full_name": profile.full_name,
+            "full_name": display_name(user, profile),
             "address": profile.address or "",
             "billing_address": branch.billing_address or "",
             # Present but null for an individual, rather than absent: a client

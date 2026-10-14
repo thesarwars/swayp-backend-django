@@ -56,7 +56,9 @@ VENDORS_SUMMARY_URL = "/api/v1/vendors/summary"
 #: The membership lookup is a single indexed read, memoised per request, so
 #: it is a constant and not a per-row cost — which is what
 #: test_home_query_count_is_independent_of_row_count actually guards.
-EXPECTED_QUERIES = 8
+# 9 since the greeting reads the profile, where the display name lives
+# (web B4), rather than first_name on the already-loaded user.
+EXPECTED_QUERIES = 9
 
 #: A regression tripwire for AC3, not a production p95 — the suite runs on
 #: in-memory SQLite. The budget is the epic's 500 ms so the number stays

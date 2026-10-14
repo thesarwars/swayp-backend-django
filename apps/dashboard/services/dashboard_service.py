@@ -7,6 +7,9 @@ from apps.dashboard.selectors.dashboard_selector import (
 )
 
 
+from apps.users.services.display_name import display_name
+
+
 class DashboardService:
 
     def __init__(self):
@@ -28,7 +31,7 @@ class DashboardService:
 
         return {
             "id": user.id,
-            "full_name": user.get_full_name(),
+            "full_name": display_name(user),
             "profile_picture": getattr(
                 user,
                 "profile_picture",

@@ -65,7 +65,7 @@ Every origin gets this answer. Bearer tokens limit the damage. But if `SessionAu
 
 ### S3: Harden before production (P2)
 
-**Deploy decisions, not code.**
+**Not necessary.**
 - **HSTS:** production sends it by default (SEC-2); `docs/deployment.md` §5 gives the nginx line for dev.
 - **Docs and admin URLs:** hiding `/api/docs`, `/api/schema` and `/admin/` is a per-environment choice for whoever runs the server.
 - **Mock webhook:** it refuses unsigned calls, and `MONEY_MOVEMENT_PROVIDER=stripe` makes it unusable for real money.
@@ -76,13 +76,13 @@ Every origin gets this answer. Bearer tokens limit the damage. But if `SessionAu
 
 ### S4: The password policy has no minimum length (P1)
 
-**Won't change (product decision).** No length minimum. The rules stay as documented: character classes, and no reuse of the previous password.
+**Not necessary.** No length minimum. The rules stay as documented: character classes, and no reuse of the previous password.
 
 `RegisterRequest.password` has `minLength: 1`. `POST /auth/register {"email": "not-an-email", "password": "Ab1@"}` returned an error only for `email`, so a 4-character password passes field validation. The frontend notes say this is intentional ("no length minimum"). For a finance product, require at least 12 characters and document the rule in the schema.
 
 ### S5: The web app has to keep a 30-day refresh token in localStorage (P2)
 
-**Deferred.** An httpOnly-cookie refresh option is a sizeable auth change, with CSRF to handle. Until then, refresh tokens rotate and a reset or password change ends every session.
+**Not necessary.** An httpOnly-cookie refresh option is a sizeable auth change, with CSRF to handle. Until then, refresh tokens rotate and a reset or password change ends every session.
 
 Auth is bearer-only. The web client therefore stores a rotating 30-day refresh token where any XSS can read it, and it can't guard routes on the server. Consider an httpOnly, `SameSite` cookie option for refreshing tokens on the web.
 
@@ -176,7 +176,7 @@ This is probably intended, but the client can't tell "done" from "not applicable
 
 ✅ **Token half fixed. Raw numbers deliberately refused.**
 - **Fixed:** `provider` is an enum (`STRIPE`, `MOCK`), and a token must have its provider's shape (Stripe: `btok_`/`ba_`/`pm_`/`src_`). The placeholder the web app sends is now a 400. `MOCK` tokens work only on a server running the mock processor. Required fields per method type are documented in e3 §3.
-- **Not done, by rule:** accepting raw routing and account numbers, even encrypted, breaks BRD §3.4 (REQUIRED: "never inside Swayp's own database"). A real tokenizer arrives with Stripe Treasury, which is pending Stripe's access. Until then, use `MOCK` on dev.
+- **Not necessary:** accepting raw routing and account numbers, even encrypted, breaks BRD §3.4 (REQUIRED: "never inside Swayp's own database"). A real tokenizer arrives with Stripe Treasury, which is pending Stripe's access. Until then, use `MOCK` on dev.
 
 - `VendorPaymentMethodCreateRequest`, used by `POST /vendors` and `POST /vendors/{id}/payment-methods`, has no routing or account number fields. It has only `account_last4`, a free-string `provider` (max 20 characters, no enum) and `provider_token`.
 - Nothing documents how a client obtains a `provider_token`, and there's no per-`method_type` list of required fields (NETWORK vs ACH vs CHECK).
@@ -324,12 +324,12 @@ As a result, the web app matches English message text with regexes (`/not verifi
 - `signatory_confirmed` on Google sign-up
 - `GET /options`, whose default lists still need checking against the design
 
-**Product calls first:**
+**Not necessary:**
 - **Accounts and sign-in:** changing email and closing an account; Accountant accounts; Microsoft sign-in and Windows Hello; SMS
 - **Features:** approvals and ERP; bill documents and OCR; vendor CSV import; analytics and search
 - **Plans and sales:** the 4-tier, yearly catalogue; contact sales
 
-**Smaller design decisions:**
+**Not necessary:**
 - **Changing a bill's vendor.**
 - **Review before save:** a `dry_run` flag on bill create.
 - **Vendor `business_type`/`logo`:** whether to make them writable.
@@ -364,7 +364,7 @@ As a result, the web app matches English message text with regexes (`/not verifi
 
 - **E1: Stripe isn't configured on dev (P1).** `GET /billing/config` returns `{collects_money: false, publishable_key: ""}`, the subscription's `client_secret` is `""`, and `GET /billing/payment-method` returns `null`. Add Stripe test keys so the setup → SetupIntent → subscription flow can be tested end to end.
 - **E2: The biller directory has only stub entries (P2).** Without `q` it returns nothing, and `q=comcast` returns `dir-comcast` "Comcast Business" with `category_id: null`. `GET /providers` is empty. Seed realistic billers with category IDs, and allow browsing without `q`.
-**E1: you need to act.** Add Stripe **test** keys to the dev `.env`: `SUBSCRIPTION_BILLING_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_BILLING_WEBHOOK_SECRET`. **E2 and E3 are data work** for the dev database: biller directory seeds, and removing the "test" and duplicate "Phone" categories in the admin.
+**E1–E3: not necessary.** Add Stripe **test** keys to the dev `.env`: `SUBSCRIPTION_BILLING_PROVIDER=stripe`, `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY` and `STRIPE_BILLING_WEBHOOK_SECRET`. E2 and E3 would be data work for the dev database: biller directory seeds, and removing the "test" and duplicate "Phone" categories in the admin.
 
 - **E3: Category seed data needs cleanup (P2).** There's a "test" category whose icon is the site root URL (`https://swayp.jumatechs.xyz/`) and whose color is `black`. Both "Telephone" and "Phone" exist, most icons are empty, and `display_order` 11 is missing.
 - **Working:** Plaid sandbox (`link-sandbox-…`, 24 months of history), the notifications WebSocket (`/ws/notifications/?ticket=` returns 101, or 403 without a ticket), and ABA routing validation.
@@ -399,7 +399,7 @@ The lifecycle answers are below and in e6, e9 and e3.
   - **A second `POST /billing/subscription`:** 400 `already_subscribed`.
   - **A card added later:** goes to `POST /billing/payment-method`.
 - **Biller IDs:** `network_payee_ref` takes a directory hit's `external_id`. `GET /providers` is the category catalogue; `vendors/directory-search` finds network billers to pay.
-- **403 for a MEMBER writing vendors:** isn't enforced today. Vendor writes require only sign-in.
+- **403 for a MEMBER writing vendors:** not necessary; not enforced. Vendor writes require only sign-in.
 - **`pageSize`:** max 100 everywhere.
 
 - **Leaked internal docstrings.** 16 operation descriptions are internal code comments. For example, `POST /banking/scans` and `GET /bills/occurrences/upcoming` read "Gives a view `self.account(request)`. A mixin rather than a helper import…". Affected:

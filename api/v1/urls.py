@@ -1,5 +1,7 @@
 from django.urls import include, path
 
+from apps.users.api.views.options import FormOptionsAPIView
+
 from apps.webhooks.api.urls import (
     versioned_urlpatterns as versioned_webhook_urls,
 )
@@ -9,6 +11,8 @@ urlpatterns = [
         "/auth",
         include("apps.authentication.api.urls"),
     ),
+    # Choice lists for the sign-up and settings forms (web §4).
+    path("/options", FormOptionsAPIView.as_view(), name="form-options"),
 
     path(
         "/bill-categories",

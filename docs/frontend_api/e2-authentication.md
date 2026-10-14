@@ -76,6 +76,13 @@ the customer has chosen a plan makes no sense.
 one special character. **There is no length minimum** — `Ab1@` is accepted.
 `confirm_password` is not a field; compare the two boxes on the client.
 
+### Choice lists
+
+`GET /api/v1/options` is public and returns `industries`, `business_sizes`
+and `business_types`, each as `[{value, label}]`. Offer those, send `value`
+and show `label`. The fields still accept free text, so nothing already sent
+is refused.
+
 ### Verify
 
 ```

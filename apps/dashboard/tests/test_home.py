@@ -801,6 +801,9 @@ class HomePayloadShapeTests(HomeTestCase):
         "payment_method",
         "days_overdue",
         "payment_id",
+        # Web C9: a failed payment shows on the row.
+        "payment_status",
+        "can_resolve",
     }
 
     def test_the_payload_has_exactly_the_epics_five_sections(self):

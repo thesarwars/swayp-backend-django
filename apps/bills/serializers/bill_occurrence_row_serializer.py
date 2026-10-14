@@ -13,6 +13,7 @@ from apps.common.dates import today_eastern
 from apps.common.enums import (
     AutopayMode,
     BillOccurrenceStatus,
+    PaymentStatus,
     VendorPaymentMethodType,
 )
 
@@ -43,6 +44,8 @@ class BillOccurrenceRowSerializer(serializers.ModelSerializer):
         source="bill.autopay_mode", read_only=True
     )
     status = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    can_resolve = serializers.SerializerMethodField()
 
     class Meta:
         model = BillOccurrence
@@ -57,16 +60,41 @@ class BillOccurrenceRowSerializer(serializers.ModelSerializer):
             "due_date",
             "amount",
             "status",
+            "payment_status",
+            "can_resolve",
             "days_overdue",
             "autopay_mode",
             "payment_method",
             "payment_id",
         )
 
-    @extend_schema_field(serializers.ChoiceField(choices=BillOccurrenceStatus.choices))
     @extend_schema_field(
-        serializers.ChoiceField(choices=BillOccurrenceStatus.choices)
+        serializers.ChoiceField(
+            choices=PaymentStatus.choices,
+            allow_null=True,
+            help_text="The newest payment's status, failed ones included; "
+            "null when nothing was ever paid.",
+        )
     )
+    def get_payment_status(self, obj):
+        return getattr(obj, "latest_payment_status", None)
+
+    @extend_schema_field(
+        serializers.BooleanField(
+            help_text="The newest payment failed and the bill is still "
+            "unpaid: offer POST payments/{payment_id}/resolve."
+        )
+    )
+    def get_can_resolve(self, obj):
+        return getattr(obj, "latest_payment_status", None) in (
+            PaymentStatus.FAILED,
+            PaymentStatus.RETURNED,
+        ) and self.get_status(obj) not in (
+            BillOccurrenceStatus.PAID,
+            BillOccurrenceStatus.SCHEDULED,
+        )
+
+    @extend_schema_field(serializers.ChoiceField(choices=BillOccurrenceStatus.choices))
     def get_status(self, obj):
         return getattr(obj, "computed_status", obj.status)
 
@@ -94,12 +122,16 @@ class BillOccurrenceRowSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.UUIDField(allow_null=True))
     def get_payment_id(self, obj):
-        """The payment standing behind a SCHEDULED or PAID row (BILLS-8).
-
-        Null on other rows, and on a row marked paid outside Swayp, which
-        has no payment. Read from the annotation; a queryset without it
+        """The payment behind the row (BILLS-8): the one standing behind a
+        SCHEDULED or PAID row, or the failed one on a row that can be
+        resolved, which is the id POST payments/{id}/resolve needs (web
+        C9). Null otherwise, and on a row marked paid outside Swayp, which
+        has no payment. Read from the annotations; a queryset without them
         answers null rather than querying per row.
         """
+        if self.get_can_resolve(obj):
+            return getattr(obj, "latest_payment_id", None)
+
         if self.get_status(obj) not in (
             BillOccurrenceStatus.SCHEDULED,
             BillOccurrenceStatus.PAID,

@@ -66,9 +66,17 @@ class BillQRService:
         if category_id is None and vendor is not None:
             category_id = vendor.category_id
 
+        from apps.vendors.services.directory_match import directory_match
+
+        method = vendor.primary_payment_method if vendor else None
+
         return {
             "vendor_id": vendor.id if vendor else None,
             "category_id": category_id,
+            # As vendors/qr/decode answers (web C9): the matched vendor's
+            # primary method type, and a biller-directory entry by name.
+            "payment_method": method.method_type if method else None,
+            "directory_match": directory_match(prefill.get("vendor_name")),
         }
 
     def _as_bill_prefill(self, result):

@@ -63,8 +63,17 @@ def annotate_row(queryset, today=None):
         .values("id")[:1]
     )
 
+    # The newest payment of any status (web C9): a failed one is not
+    # "active", but the row still has to say it failed so the list can show
+    # "Payment failed — Resolve" without a request per row.
+    latest = Payment.objects.filter(
+        bill_occurrence=OuterRef("pk")
+    ).order_by("-created_at")
+
     return annotate_status(queryset, today).annotate(
-        active_payment_id=Subquery(payment)
+        active_payment_id=Subquery(payment),
+        latest_payment_status=Subquery(latest.values("status")[:1]),
+        latest_payment_id=Subquery(latest.values("id")[:1]),
     )
 
 

@@ -82,8 +82,17 @@ class BillCreateSerializer(serializers.Serializer):
 
 
 class BillListSerializer(serializers.ModelSerializer):
+    # vendor and category are NAMES here, while create and update take ids
+    # under the same keys. Kept for existing clients; read the explicit
+    # *_id / *_name pairs (web C9).
     vendor = serializers.CharField(source="vendor.name")
     category = serializers.CharField(source="category.name")
+    vendor_id = serializers.UUIDField(read_only=True)
+    vendor_name = serializers.CharField(source="vendor.name", read_only=True)
+    category_id = serializers.UUIDField(read_only=True)
+    category_name = serializers.CharField(
+        source="category.name", read_only=True
+    )
     payment_method = serializers.SerializerMethodField()
 
     class Meta:
@@ -92,6 +101,10 @@ class BillListSerializer(serializers.ModelSerializer):
             "id",
             "vendor",
             "category",
+            "vendor_id",
+            "vendor_name",
+            "category_id",
+            "category_name",
             "amount",
             "frequency",
             "anchor_date",

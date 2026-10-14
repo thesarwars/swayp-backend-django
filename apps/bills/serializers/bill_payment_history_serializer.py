@@ -6,6 +6,8 @@ against the same occurrence — shows as its own row.
 
 from rest_framework import serializers
 
+from apps.common.enums import PaymentStatus
+
 from apps.payments.models import Payment
 
 
@@ -17,7 +19,9 @@ class BillPaymentHistorySerializer(serializers.ModelSerializer):
     occurrence_id = serializers.UUIDField(
         source="bill_occurrence.id", read_only=True
     )
-    payment_status = serializers.CharField(source="status", read_only=True)
+    payment_status = serializers.ChoiceField(
+        source="status", choices=PaymentStatus.choices, read_only=True
+    )
 
     class Meta:
         model = Payment

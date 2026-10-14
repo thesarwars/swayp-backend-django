@@ -3,7 +3,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from apps.common.enums import PaymentRail
+from apps.common.enums import PaymentRail, VendorPaymentMethodType
 from apps.payments.models import Payment, PaymentStage
 from apps.payments.services.resolution_service import ACTIONS
 
@@ -71,13 +71,47 @@ class PaymentSerializer(serializers.ModelSerializer):
         allow_null=True,
         default=None,
     )
-    payment_method_id = serializers.UUIDField(
-        source="bill_occurrence.bill.payment_method_id",
-        read_only=True,
-        allow_null=True,
-        default=None,
-        help_text="The bill's saved method, which the money is sent to.",
+    # The method the money actually goes to: the bill's own, else its
+    # vendor's primary, as the payment engine resolves it. It read the
+    # bill's own only, so an imported bill paid through the vendor's
+    # primary showed none.
+    payment_method_id = serializers.SerializerMethodField()
+    payment_method_type = serializers.SerializerMethodField()
+    payment_account_ref = serializers.SerializerMethodField()
+
+    def _method(self, obj):
+        from apps.payments.services.rails import method_for_bill
+
+        occurrence = obj.bill_occurrence
+
+        return method_for_bill(occurrence.bill) if occurrence else None
+
+    @extend_schema_field(serializers.UUIDField(allow_null=True))
+    def get_payment_method_id(self, obj):
+        method = self._method(obj)
+
+        return method.id if method else None
+
+    @extend_schema_field(
+        serializers.ChoiceField(
+            choices=VendorPaymentMethodType.choices, allow_null=True
+        )
     )
+    def get_payment_method_type(self, obj):
+        from apps.payments.services.rails import describe_method
+
+        return describe_method(self._method(obj))["type"]
+
+    @extend_schema_field(
+        serializers.CharField(
+            allow_null=True,
+            help_text='Masked destination, e.g. "****4821"; null for checks.',
+        )
+    )
+    def get_payment_account_ref(self, obj):
+        from apps.payments.services.rails import describe_method
+
+        return describe_method(self._method(obj))["account_ref"]
 
     class Meta:
         model = Payment
@@ -99,6 +133,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             "bill_id",
             "bill_occurrence",
             "payment_method_id",
+            "payment_method_type",
+            "payment_account_ref",
             "batch",
             "initiated_date",
             "estimated_arrival",
@@ -165,6 +201,11 @@ class PaymentDetailSerializer(PaymentSerializer):
                 },
                 "reference": {"type": "string"},
                 "paid_on": {"type": "string", "format": "date-time"},
+                "payment_method_type": {
+                    "type": "string", "nullable": True,
+                    "enum": ["NETWORK", "ACH", "CHECK", None],
+                },
+                "account_ref": {"type": "string", "nullable": True},
             },
         }
     )

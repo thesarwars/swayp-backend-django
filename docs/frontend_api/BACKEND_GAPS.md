@@ -261,6 +261,15 @@ As a result, the web app matches English message text with regexes (`/not verifi
 
 ### C9: Records lack fields the UI needs (P2)
 
+✅ **Fixed.**
+- **Occurrence rows:** new `payment_status` (the newest payment's status, failed ones included) and `can_resolve`. On a resolvable row, `payment_id` is the failed payment, so it can go straight to `POST payments/{id}/resolve`.
+- **Bill detail:** new `oldest_open_occurrence` `{id, due_date, amount, status, days_overdue}`, past due dates included.
+- **Payments and receipts:** `payment_method_type` and `payment_account_ref` (`"****4821"`), and the receipt gains `payment_method_type` and `account_ref`. They come from the method the money actually goes to: the bill's own, else the vendor's primary. `payment_method_id` follows the same rule; it used to read the bill's own only.
+- **Bill detail `account_ref`:** follows the same rule as payments.
+- **`bills/qr/decode`:** adds `payment_method` and `directory_match`, shared with the vendor QR.
+- **`GET /bills`:** adds `vendor_id`, `vendor_name`, `category_id` and `category_name`. `vendor` and `category` stay names for existing clients.
+- **Typing:** `BillPaymentHistory.payment_status` is the enum, and `failure_detail` is documented as free-form processor detail.
+
 - `BillOccurrenceRow` has only `payment_id`, and its status enum (`UPCOMING`, `DUE`, `OVERDUE`, `SCHEDULED`, `PAID`) can't express "failed" or "processing." Showing a failed payment in the bills list takes one extra call per row. Add `payment_status` (and `can_resolve`).
 - `BillDetail.next_occurrence.status` can only be `DUE` or `UPCOMING`, so a bill page can't show "11 days overdue." Expose the oldest open occurrence instead.
 - `Payment` and the receipt have only `payment_method_id`, so the "Sent to ACH ••••4821" line can't be built. Add the method type and `account_ref`.

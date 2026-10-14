@@ -26,7 +26,12 @@ class PaymentFailureSerializer(serializers.Serializer):
     failure_reason = serializers.CharField(
         allow_blank=True, help_text="Code, e.g. NSF, ACH_RETURN."
     )
-    failure_detail = serializers.DictField()
+    failure_detail = serializers.DictField(
+        help_text=(
+            "The processor's own detail, for support: free-form and varies "
+            "by processor. Show title and explanation, not this."
+        )
+    )
     due_date = serializers.DateField(allow_null=True)
     days_overdue = serializers.IntegerField()
     late_fee = LateFeeSerializer(

@@ -2,6 +2,9 @@
 
 from rest_framework import serializers
 
+from apps.common.enums import VendorPaymentMethodType
+from apps.vendors.api.serializers.qr import DirectoryMatchSerializer
+
 
 class BillQRPrefillSerializer(serializers.Serializer):
     vendor_id = serializers.UUIDField(
@@ -24,6 +27,14 @@ class BillQRPrefillSerializer(serializers.Serializer):
     )
     due_date = serializers.DateField(allow_null=True)
     payment_ref = serializers.CharField(allow_null=True)
+    payment_method = serializers.ChoiceField(
+        choices=VendorPaymentMethodType.choices,
+        allow_null=True,
+        help_text="The matched vendor's primary method type; null if none.",
+    )
+    directory_match = DirectoryMatchSerializer(
+        allow_null=True, help_text="A biller-directory entry by that name."
+    )
     provenance = serializers.DictField(
         child=serializers.CharField(),
         help_text="For each field read from the QR, where it came from.",

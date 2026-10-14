@@ -33,6 +33,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
     payment_method_id = serializers.UUIDField(read_only=True, allow_null=True)
     account_ref = serializers.SerializerMethodField()
     next_occurrence = serializers.SerializerMethodField()
+    oldest_open_occurrence = serializers.SerializerMethodField()
     last_paid_at = serializers.SerializerMethodField()
 
     payment_method = serializers.SerializerMethodField()
@@ -63,6 +64,7 @@ class BillDetailSerializer(serializers.ModelSerializer):
 
             "next_due",
             "next_occurrence",
+            "oldest_open_occurrence",
             "last_paid_at",
             "overdue_amount",
             "days_overdue",
@@ -98,8 +100,12 @@ class BillDetailSerializer(serializers.ModelSerializer):
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_account_ref(self, obj):
-        """The masked account, as on GET vendors/<id>/payment-methods."""
-        method = obj.payment_method
+        """The masked account, as on GET vendors/<id>/payment-methods: of
+        the method the bill is actually paid by (its own, else the vendor's
+        primary), as the payment engine resolves it."""
+        from apps.payments.services.rails import method_for_bill
+
+        method = method_for_bill(obj)
 
         if method is None or not method.account_last4:
             return None
@@ -142,6 +148,51 @@ class BillDetailSerializer(serializers.ModelSerializer):
                 if occurrence.due_date == today
                 else BillOccurrenceStatus.UPCOMING
             ),
+        }
+
+    @extend_schema_field(
+        {
+            "type": "object",
+            "nullable": True,
+            "description": (
+                "The earliest unpaid due date, past ones included, so the "
+                "page can say \"11 days overdue\" (web C9). next_occurrence "
+                "only looks forward. Null when nothing is open."
+            ),
+            "properties": {
+                "id": {"type": "string", "format": "uuid"},
+                "due_date": {"type": "string", "format": "date"},
+                "amount": {"type": "string", "format": "decimal"},
+                "status": {
+                    "type": "string", "enum": ["OVERDUE", "DUE", "UPCOMING"],
+                },
+                "days_overdue": {"type": "integer"},
+            },
+        }
+    )
+    def get_oldest_open_occurrence(self, obj):
+        today = today_eastern()
+
+        occurrence = (
+            open_occurrences(obj.occurrences).order_by("due_date").first()
+        )
+
+        if occurrence is None:
+            return None
+
+        if occurrence.due_date < today:
+            status = BillOccurrenceStatus.OVERDUE
+        elif occurrence.due_date == today:
+            status = BillOccurrenceStatus.DUE
+        else:
+            status = BillOccurrenceStatus.UPCOMING
+
+        return {
+            "id": occurrence.id,
+            "due_date": occurrence.due_date,
+            "amount": _money(occurrence.amount),
+            "status": status,
+            "days_overdue": max((today - occurrence.due_date).days, 0),
         }
 
     @extend_schema_field(serializers.DateTimeField(allow_null=True))

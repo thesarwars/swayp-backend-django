@@ -7,11 +7,11 @@ from rest_framework.views import APIView
 
 from apps.common.responses import ApiResponse
 
-from apps.providers.models import Provider
 from apps.vendors.api.serializers.qr import (
     QRDecodeSerializer,
     VendorQRDecodeResponseSerializer,
 )
+from apps.vendors.services.directory_match import directory_match
 from apps.vendors.services.qr_decoder import QRDecodeService
 
 
@@ -77,39 +77,11 @@ class QRDecodeAPIView(APIView):
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             )
 
-        directory_match = None
-
-        vendor_name = result.get("vendor_name")
-
-        if vendor_name:
-            provider = (
-                Provider.objects.filter(
-                    provider_name__icontains=vendor_name,
-                    status=Provider.Status.ACTIVE,
-                )
-                .select_related("category")
-                .only(
-                    "id",
-                    "provider_name",
-                    "category__name",
-                    "supports_auto_pay",
-                    "status",
-                )
-                .first()
-            )
-
-            if provider:
-                directory_match = {
-                    "id": str(provider.id),
-                    "provider_name": provider.provider_name,
-                    "category": provider.category.name if provider.category else None,
-                    "supports_auto_pay": provider.supports_auto_pay,
-                    "verified": provider.status == Provider.Status.ACTIVE,
-                }
+        match = directory_match(result.get("vendor_name"))
 
         response = {
             **result,
-            "directory_match": directory_match,
+            "directory_match": match,
         }
 
         return Response(

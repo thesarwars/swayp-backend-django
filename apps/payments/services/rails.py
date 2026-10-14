@@ -75,3 +75,17 @@ def rails_for_bill(bill):
         return ()
 
     return RAILS_BY_METHOD.get(method.method_type, ())
+
+
+def describe_method(method):
+    """What a screen needs to say where money goes, e.g. "Sent to ACH
+    ••••4821" (web C9): the method type and the masked account."""
+    if method is None:
+        return {"type": None, "account_ref": None}
+
+    return {
+        "type": method.method_type,
+        "account_ref": (
+            f"****{method.account_last4}" if method.account_last4 else None
+        ),
+    }

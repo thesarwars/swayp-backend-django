@@ -12,6 +12,19 @@ _RELATED = (
 )
 
 
+
+def _destination(payment):
+    from apps.payments.services.rails import describe_method, method_for_bill
+
+    occurrence = payment.bill_occurrence
+    method = method_for_bill(occurrence.bill) if occurrence else None
+    described = describe_method(method)
+
+    return {
+        "payment_method_type": described["type"],
+        "account_ref": described["account_ref"],
+    }
+
 class PaymentDetailSelector:
 
     def get_payment(self, user, payment_id):
@@ -143,6 +156,8 @@ class PaymentDetailSelector:
             "estimated_arrival": payment.estimated_arrival,
             "reference": payment.transaction_reference,
             "paid_on": payment.updated_at,
+            # "Sent to ACH ****4821" (web C9).
+            **_destination(payment),
         }
 
     def failure_block(self, payment):

@@ -74,7 +74,7 @@ class GoogleLoginService:
         else:
             GoogleLoginService._link(user, sub)
 
-        tokens = LoginService.login(user, request)
+        tokens = LoginService.sign_in(user, request)
 
         return {**tokens, "is_new_user": created}
 

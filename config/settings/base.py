@@ -53,6 +53,7 @@ SPECTACULAR_SETTINGS = {
         "BillSourceEnum": "apps.common.enums.BillSource",
         "VendorSourceEnum": "apps.common.enums.VendorSource",
         "VendorStatusEnum": "apps.common.enums.VendorStatus",
+        "MfaMethodEnum": "apps.authentication.services.mfa_service.METHODS",
         "ScanErrorCodeEnum": "apps.common.enums.ScanErrorCode",
         "AccountTypeEnum": "apps.users.models.AccountType",
         "TeamRoleEnum": "apps.teams.models.TeamRole",
@@ -251,6 +252,8 @@ REST_FRAMEWORK = {
         "ai_cash_context": "20/min",
         # SEC-3: register must say an address is taken; this keeps it slow.
         "register": "10/hour",
+        # Two-step codes: sign-in, setup, disable and new recovery codes.
+        "mfa": "20/min",
     },
 
     "EXCEPTION_HANDLER": "apps.common.exception_handler.custom_exception_handler",

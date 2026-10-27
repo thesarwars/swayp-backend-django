@@ -92,3 +92,65 @@ def send_otp(self, *, destination, code, purpose, channel):
     logger.info("OTP delivered via %s for %s", channel, purpose)
 
     return result.provider_reference
+
+
+# --- security notices -----------------------------------------------------
+# Sent when something changes how the account is protected, so a change the
+# owner did not make is noticed. Each ends with what to do if it wasn't them.
+
+_NOT_YOU = (
+    "If this wasn't you, reset your password now and contact Swayp support."
+)
+
+_NOTICES = {
+    "MFA_ENABLED": (
+        "Two-step verification is on",
+        "Hello,\n\nTwo-step verification was turned on for your Swayp "
+        "account. Signing in now also needs a code from your authenticator "
+        "app.\n\n" + _NOT_YOU + "\n\nThanks,\nSwayp Team\n",
+    ),
+    "MFA_DISABLED": (
+        "Two-step verification is off",
+        "Hello,\n\nTwo-step verification was turned off for your Swayp "
+        "account, and every other device was signed out.\n\n" + _NOT_YOU
+        + "\n\nThanks,\nSwayp Team\n",
+    ),
+    "MFA_RECOVERY_CODE_USED": (
+        "A recovery code was used to sign in",
+        "Hello,\n\nSomeone signed in to your Swayp account with one of your "
+        "recovery codes. Each code works once; you can make a new set in "
+        "Settings > Security.\n\n" + _NOT_YOU + "\n\nThanks,\nSwayp Team\n",
+    ),
+    "PASSWORD_CHANGED": (
+        "Your Swayp password was changed",
+        "Hello,\n\nThe password for your Swayp account was just changed, and "
+        "every other device was signed out.\n\n" + _NOT_YOU
+        + "\n\nThanks,\nSwayp Team\n",
+    ),
+}
+
+
+@shared_task(name="authentication.send_security_notice", bind=True, max_retries=3)
+def send_security_notice(self, *, destination, kind):
+    subject, body = _NOTICES[kind]
+
+    try:
+        result = get_messaging_provider().send(
+            Message(to=destination, subject=subject, body=body, channel="EMAIL")
+        )
+
+        if not result.delivered:
+            raise RuntimeError(
+                f"Notice delivery reported failure: {result.detail or 'unknown'}"
+            )
+
+    except ChannelNotSupported:
+        logger.error("security notice attempted on an unsupported channel")
+
+        return None
+
+    except Exception as exc:
+        logger.warning("security notice %s failed, retrying: %s", kind, exc)
+        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+
+    return result.provider_reference

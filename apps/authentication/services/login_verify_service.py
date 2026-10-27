@@ -18,4 +18,4 @@ class LoginVerifyService:
         otp_obj.used_at = timezone.now()
         otp_obj.save(update_fields=["used_at"])
 
-        return LoginService.login(user, request)
+        return LoginService.sign_in(user, request)

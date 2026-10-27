@@ -1,4 +1,5 @@
 from .google_login import urlpatterns as google_login_urls
+from .mfa import urlpatterns as mfa_urls
 from .otp import urlpatterns as otp_urls
 from .password_reset import urlpatterns as password_reset_urls
 from .phone_login import urlpatterns as phone_login_urls
@@ -15,5 +16,6 @@ urlpatterns = [
     *otp_urls,
     *token_urls,
     *sessions_urls,
+    *mfa_urls,
     *password_reset_urls,
 ]

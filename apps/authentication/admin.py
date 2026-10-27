@@ -22,7 +22,13 @@ code and clearing password history (which re-allows those passwords).
 from django.contrib import admin
 from django.utils import timezone
 
-from apps.authentication.models import OTP, PasswordHistory, RefreshToken
+from apps.authentication.models import (
+    OTP,
+    MFADevice,
+    MFARecoveryCode,
+    PasswordHistory,
+    RefreshToken,
+)
 
 
 @admin.register(OTP)
@@ -128,4 +134,28 @@ class PasswordHistoryAdmin(admin.ModelAdmin):
 
     exclude = ("password_hash",)
 
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(MFADevice)
+class MFADeviceAdmin(admin.ModelAdmin):
+    """Authenticator apps. Delete a row to turn a user's two-step
+    verification off, e.g. when they lost the phone and every recovery code.
+    The secret is never shown: it would let whoever reads it make codes."""
+
+    list_display = ("user", "confirmed_at", "created_at")
+    list_filter = ("confirmed_at",)
+    search_fields = ("user__email",)
+    raw_id_fields = ("user",)
+    exclude = ("secret",)
+    readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(MFARecoveryCode)
+class MFARecoveryCodeAdmin(admin.ModelAdmin):
+    list_display = ("user", "used_at", "created_at")
+    list_filter = ("used_at",)
+    search_fields = ("user__email",)
+    raw_id_fields = ("user",)
+    exclude = ("code_hash",)
     readonly_fields = ("created_at", "updated_at")

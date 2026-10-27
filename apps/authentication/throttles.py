@@ -22,3 +22,22 @@ class RegisterRateThrottle(SimpleRateThrottle):
         ).strip()
 
         return self.cache_format % {"scope": self.scope, "ident": ip}
+
+
+class MFARateThrottle(SimpleRateThrottle):
+    """Two-step code attempts per client IP.
+
+    Six digits are a million guesses; the per-challenge cap of five stops one
+    sign-in being brute-forced, and this stops starting fresh ones to get
+    around it. Same X-Real-IP keying as registration, for the same reason.
+    """
+
+    scope = "mfa"
+
+    def get_cache_key(self, request, view):
+        meta = request.META
+        ip = (
+            meta.get("HTTP_X_REAL_IP") or meta.get("REMOTE_ADDR") or ""
+        ).strip()
+
+        return self.cache_format % {"scope": self.scope, "ident": ip}

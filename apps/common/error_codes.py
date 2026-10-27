@@ -55,6 +55,12 @@ CARD_DECLINED = "card_declined"
 INVALID_SIGNATURE = "invalid_signature"
 MALFORMED_PAYLOAD = "malformed_payload"
 
+# MFA
+MFA_CODE_INVALID = "mfa_code_invalid"
+MFA_CHALLENGE_INVALID = "mfa_challenge_invalid"
+MFA_ALREADY_ENABLED = "mfa_already_enabled"
+MFA_NOT_ENABLED = "mfa_not_enabled"
+
 SPECIFIC = {
     NO_FUNDING_ACCOUNT,
     NO_PAYEE_METHOD,
@@ -78,6 +84,10 @@ SPECIFIC = {
     PHONE_TAKEN,
     ALREADY_SUBSCRIBED,
     CARD_DECLINED,
+    MFA_CODE_INVALID,
+    MFA_CHALLENGE_INVALID,
+    MFA_ALREADY_ENABLED,
+    MFA_NOT_ENABLED,
     # Already the default_code of their exceptions.
     "plan_limit",
     "role_forbidden",

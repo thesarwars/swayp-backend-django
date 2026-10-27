@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from apps.common.base_views import PublicAPIView
 
-from apps.authentication.api.serializers.token import TokenPairSerializer
+from apps.authentication.api.serializers.token import SignInSerializer
 from apps.authentication.api.serializers.user_login import LoginSerializer
 from apps.authentication.services.login_service import LoginService
 
@@ -16,12 +16,13 @@ from apps.authentication.services.login_service import LoginService
     tags=["Authentication"],
     summary="Login",
     description=(
-        "Validate credentials and return JWT tokens. One step: there is no "
-        "login OTP any more."
+        "Validate credentials and return JWT tokens. With two-step "
+        "verification on, mfa_required is true, access and refresh are "
+        "null, and the sign-in finishes at auth/login/mfa with mfa_token."
     ),
     request=LoginSerializer,
     responses={
-        200: TokenPairSerializer,
+        200: SignInSerializer,
         400: OpenApiResponse(description="Invalid credentials."),
     },
     examples=[
@@ -45,7 +46,7 @@ class LoginView(PublicAPIView):
 
         # The serializer has already refused a locked, inactive or unverified
         # account, so reaching here is the login.
-        tokens = LoginService.login(user, request)
+        tokens = LoginService.sign_in(user, request)
 
         return Response(
             {

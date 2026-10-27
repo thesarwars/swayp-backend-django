@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from apps.authentication.api.serializers.token import SignInSerializer
+
 from apps.users.models import AccountType
 
 
@@ -22,9 +24,7 @@ class GoogleLoginSerializer(serializers.Serializer):
     marketing_opt_in = serializers.BooleanField(required=False, default=False)
 
 
-class GoogleLoginResponseSerializer(serializers.Serializer):
-    access = serializers.CharField()
-    refresh = serializers.CharField()
+class GoogleLoginResponseSerializer(SignInSerializer):
     is_new_user = serializers.BooleanField(
         help_text="True when this sign-in created the account: send them "
         "to onboarding."

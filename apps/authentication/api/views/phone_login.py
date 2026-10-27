@@ -8,7 +8,7 @@ from apps.authentication.api.serializers.phone_login import (
     PhoneLoginRequestSerializer,
     PhoneLoginVerifySerializer,
 )
-from apps.authentication.api.serializers.token import TokenPairSerializer
+from apps.authentication.api.serializers.token import SignInSerializer
 from apps.authentication.models import OTPPurpose
 from apps.authentication.services.login_verify_service import (
     LoginVerifyService,
@@ -74,9 +74,12 @@ class PhoneLoginRequestView(PublicAPIView):
 @extend_schema(
     tags=["Authentication"],
     summary="Verify a phone-login OTP",
-    description="Exchanges a phone number and code for access/refresh tokens.",
+    description=(
+        "Exchanges a phone number and code for access/refresh tokens, or "
+        "for an MFA challenge when two-step verification is on (see Login)."
+    ),
     request=PhoneLoginVerifySerializer,
-    responses={200: TokenPairSerializer},
+    responses={200: SignInSerializer},
 )
 class PhoneLoginVerifyView(PublicAPIView):
 

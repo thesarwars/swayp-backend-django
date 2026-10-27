@@ -66,7 +66,7 @@ class VerifyOTPView(PublicAPIView):
         user = serializer.validated_data["user"]
         otp_obj = serializer.validated_data["otp_obj"]
 
-        tokens = VerifyOTPService.verify(user, otp_obj)
+        tokens = VerifyOTPService.verify(user, otp_obj, request)
 
         return Response(
             {

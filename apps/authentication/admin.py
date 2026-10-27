@@ -78,6 +78,7 @@ class RefreshTokenAdmin(admin.ModelAdmin):
         "created_at",
         "user",
         "ip_address",
+        "last_used_at",
         "expires_at",
         "revoked_at",
         "is_live",

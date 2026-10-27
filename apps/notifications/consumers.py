@@ -54,6 +54,11 @@ def _user_from_token(raw_token):
     except TokenError:
         return None
 
+    from apps.authentication.authentication import session_is_live
+
+    if not session_is_live(token):
+        return None
+
     user = User.objects.filter(id=token.get("user_id"), is_active=True).first()
 
     return user

@@ -67,9 +67,13 @@ class RefreshView(PublicAPIView):
             # already-rotated token is a 401 (token_not_valid), not a 500.
             raise RefreshTokenInvalid(error.args[0]) from error
 
-        tokens = RefreshTokenService.refresh(
-            serializer.validated_data, request=request
-        )
+        try:
+            tokens = RefreshTokenService.refresh(
+                serializer.validated_data, request=request
+            )
+        except TokenError as error:
+            # The session was signed out from another device.
+            raise RefreshTokenInvalid(error.args[0]) from error
 
         return Response(
             {

@@ -32,7 +32,8 @@ class RefreshLogoutTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()["data"]
         self.assertNotEqual(data["refresh"], self.tokens["refresh"])
-        self.assertEqual(RefreshToken.objects.filter(user=self.user).count(), 2)
+        # One device, one session: a refresh updates the row, not adds one.
+        self.assertEqual(RefreshToken.objects.filter(user=self.user).count(), 1)
 
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {data['access']}")
         self.assertEqual(

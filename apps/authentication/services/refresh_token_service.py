@@ -1,11 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password
-from django.db import transaction
-from django.utils import timezone
 from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import RefreshToken
 
-from apps.authentication.models import RefreshToken as RefreshTokenModel
+from apps.authentication.services.session_service import SessionService
 
 User = get_user_model()
 
@@ -20,27 +16,13 @@ def token_user(refresh):
 class RefreshTokenService:
 
     @staticmethod
-    @transaction.atomic
     def refresh(tokens, request=None):
         """Record the session minted by TokenRefreshSerializer.
 
         ``tokens`` is the serializer's validated data: the new access token
         and, with ROTATE_REFRESH_TOKENS, the rotated refresh token (the old
         one is already blacklisted). Minting again here would hand out a
-        second pair that no session row describes.
+        second pair that no session row describes. Raises TokenError for a
+        session that has been signed out.
         """
-        refresh = RefreshToken(tokens["refresh"])
-        meta = request.META if request is not None else {}
-
-        RefreshTokenModel.objects.create(
-            user=token_user(refresh),
-            token_hash=make_password(str(refresh)),
-            user_agent=meta.get("HTTP_USER_AGENT", ""),
-            ip_address=meta.get("REMOTE_ADDR"),
-            expires_at=timezone.now() + refresh.lifetime,
-        )
-
-        return {
-            "access": str(tokens["access"]),
-            "refresh": str(refresh),
-        }
+        return SessionService.rotated(tokens, request=request)

@@ -114,14 +114,16 @@ class MergedVerifyTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("purpose", response.data["errors"])
 
-    def test_a_registration_code_records_no_session(self):
+    def test_a_registration_code_opens_one_listed_session(self):
+        """The first sign-in is a session like any other, so it shows in
+        auth/sessions and can be signed out."""
         user = self.register()
         OTP.objects.filter(user=user).delete()
         self.issue(user, OTPPurpose.REGISTRATION, code="444444")
 
         self.verify(otp="444444")
 
-        self.assertEqual(RefreshToken.objects.filter(user=user).count(), 0)
+        self.assertEqual(RefreshToken.objects.filter(user=user).count(), 1)
 
     # -- picking the right row --------------------------------------------
 

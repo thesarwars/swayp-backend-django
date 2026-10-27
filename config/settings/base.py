@@ -229,7 +229,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "apps.common.schema.SwaypAutoSchema",
 
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.authentication.authentication.SessionJWTAuthentication",
     ),
 
     "DEFAULT_PERMISSION_CLASSES": (

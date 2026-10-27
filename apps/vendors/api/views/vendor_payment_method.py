@@ -45,6 +45,7 @@ from apps.vendors.selectors.vendor_selector import (
 from apps.common.exceptions import NotFoundException
 from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_VENDOR_PAYMENT_DETAILS
 
 
 @extend_schema(tags=["Vendors"])
@@ -90,6 +91,9 @@ class VendorPaymentMethodListCreateAPIView(EnvelopeResponseMixin, AccountScopedM
     # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
+    # Changing where a known vendor is paid is the classic payment fraud, so
+    # it takes more than adding the vendor did (Teams roles).
+    required_capabilities = {"POST": MANAGE_VENDOR_PAYMENT_DETAILS}
 
     def get_queryset(self):
         # 404 for a vendor that is not the caller's or not active, as
@@ -195,6 +199,8 @@ class VendorPaymentMethodDetailAPIView(EnvelopeResponseMixin, AccountScopedMixin
     # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_VENDOR_PAYMENT_DETAILS
+    safe_methods = ("GET", "HEAD", "OPTIONS")
     lookup_url_kwarg = "method_id"
 
     def get_queryset(self):
@@ -260,6 +266,7 @@ class SetPrimaryPaymentMethodAPIView(EnvelopeResponseMixin, AccountScopedMixin, 
     # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_VENDOR_PAYMENT_DETAILS
 
     def post(self, request, vendor_id, method_id):
 

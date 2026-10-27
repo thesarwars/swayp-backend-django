@@ -32,8 +32,8 @@ from apps.banking.services.import_service import BillImportService
 from apps.banking.services.link_service import BankLinkService
 from apps.banking.services.scan_service import ScanService
 from apps.common.base_views import BaseAPIView
-from apps.teams.access import AccountScopedMixin, RequiresCapability
-from apps.teams.permissions import MANAGE_BANKS
+from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_BANKS, MANAGE_BILLS
 from apps.common.responses import ApiResponse
 from apps.payments.idempotency import IdempotencyMixin
 
@@ -98,6 +98,7 @@ class InstitutionSearchAPIView(AccountScopedMixin, BaseAPIView):
 class LinkTokenAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = BankLinkService
+    required_capability = MANAGE_BANKS
 
     def post(self, request):
         serializer = LinkTokenRequestSerializer(data=request.data)
@@ -128,9 +129,6 @@ class LinkExchangeAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = BankLinkService
     # Connecting a bank exposes the account's money (E10-S1).
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BANKS
 
     def post(self, request):
@@ -192,6 +190,7 @@ class BankConnectionListAPIView(AccountScopedMixin, BaseAPIView):
 class BankConnectionDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
+    required_capabilities = {"DELETE": MANAGE_BANKS}
 
     @extend_schema(
         summary="A bank connection",
@@ -228,6 +227,8 @@ class BankConnectionDetailAPIView(AccountScopedMixin, BaseAPIView):
 class BankAccountListAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ConnectionService
+    # POST picks the default funding source: where payments debit from.
+    required_capabilities = {"POST": MANAGE_BANKS}
 
     @extend_schema(
         parameters=[
@@ -283,6 +284,8 @@ class BankAccountListAPIView(AccountScopedMixin, BaseAPIView):
 class ScanStartAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ScanService
+    # A scan turns into bills, so it is bill work.
+    required_capability = MANAGE_BILLS
 
     def post(self, request):
         serializer = StartScanSerializer(data=request.data)
@@ -354,6 +357,7 @@ class ScanCandidateListAPIView(AccountScopedMixin, BaseAPIView):
 class ScanCandidateDetailAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = BillImportService
+    required_capabilities = {"PATCH": MANAGE_BILLS}
 
     def patch(self, request, scan_id, candidate_id):
         serializer = CandidateUpdateSerializer(data=request.data)
@@ -386,6 +390,7 @@ class ScanCandidateDetailAPIView(AccountScopedMixin, BaseAPIView):
 class ScanImportAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = BillImportService
+    required_capability = MANAGE_BILLS
     idempotency_endpoint = "banking.scan_import"
 
     def post(self, request, scan_id):

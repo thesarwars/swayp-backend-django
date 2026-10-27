@@ -69,22 +69,46 @@ single-user behaviour.
 
 ## 2. Roles
 
-Three roles, fixed. The split is deliberate: **a member can prepare work but
-not move money.**
+Five roles, fixed. The split is deliberate: **an Accountant prepares work, an
+Approver moves money, and only the owner changes what the owner is charged.**
 
-| Capability | OWNER | ADMIN | MEMBER |
-|---|:---:|:---:|:---:|
-| `view` | ✅ | ✅ | ✅ |
-| `manage_bills` | ✅ | ✅ | ✅ |
-| `manage_vendors` | ✅ | ✅ | ✅ |
-| `send_money` | ✅ | ✅ | — |
-| `manage_banks` | ✅ | ✅ | — |
-| `manage_team` | ✅ | ✅ | — |
-| `manage_entities` | ✅ | ✅ | — |
-| `manage_billing` | ✅ | — | — |
+| Capability | OWNER | ADMIN | APPROVER | MEMBER (Accountant) | VIEWER |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `view` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `manage_bills` — bills, scans, mark paid | ✅ | ✅ | ✅ | ✅ | — |
+| `manage_vendors` — add, edit, delete, restore | ✅ | ✅ | ✅ | ✅ | — |
+| `schedule_payments` — create, edit, cancel, resolve | ✅ | ✅ | ✅ | ✅ | — |
+| `send_money` — confirm payments, turn autopay on | ✅ | ✅ | ✅ | — | — |
+| `manage_vendor_payment_details` — an existing vendor's payment methods | ✅ | ✅ | — | — | — |
+| `manage_banks` — link, disconnect, default funding account | ✅ | ✅ | — | — | — |
+| `manage_team` | ✅ | ✅ | — | — | — |
+| `manage_entities` | ✅ | ✅ | — | — | — |
+| `manage_billing` — plan, add-ons, card | ✅ | — | — | — | — |
+| `manage_account` — `PATCH /users/profile` | ✅ | — | — | — | — |
 
-`manage_billing` is owner-only because changing the plan changes what the owner
-is charged.
+`MEMBER` is shown as **Accountant**: the stored value stayed `MEMBER` so
+existing seats kept their role. Label roles in the UI as Owner, Admin,
+Approver, Accountant, Viewer.
+
+- **An Accountant prepares, an Approver sends.** A payment an Accountant
+  schedules waits for `confirm` from someone with `send_money`.
+- **Autopay counts as approving.** A bill request that sets `autopay_mode:
+  AUTO` or carries `autopay_consent` needs `send_money`; turning autopay off
+  needs only `manage_bills`.
+- **Adding a vendor is not repointing one.** `POST /vendors` (with its first
+  payment method) is `manage_vendors`; anything under
+  `/vendors/<id>/payment-methods` is `manage_vendor_payment_details`, because
+  redirecting a known payee's money is the classic payment fraud.
+- **Owner-only:** billing, and the account profile (business name, billing
+  address). Every role can read both.
+
+A refusal for the role is **403** with `code: "role_forbidden"` and the
+missing `capability`:
+
+```json
+{ "success": false, "message": "Your role does not allow this action.",
+  "code": "role_forbidden", "capability": "send_money" }
+```
 
 **Read capabilities from the API, do not hardcode this table.** Every member
 object and `GET /teams/me` carries a `capabilities` array; render off that and
@@ -194,8 +218,9 @@ POST /api/v1/teams/invite
 { "email": "sam@example.com", "role": "ADMIN" }
 ```
 
-`role` is optional and defaults to `MEMBER`. `OWNER` is not a valid choice —
-an account has exactly one owner.
+`role` is one of `ADMIN`, `APPROVER`, `MEMBER` (Accountant) or `VIEWER`; it
+is optional and defaults to `MEMBER`. `OWNER` is not a valid choice — an
+account has exactly one owner. The same four are valid for a role change.
 
 **201:**
 
@@ -284,7 +309,7 @@ time rather than honoured blindly.
 ### 5.4 Change a role, or remove someone
 
 ```
-PATCH  /api/v1/teams/members/<member_id>     { "role": "ADMIN" }
+PATCH  /api/v1/teams/members/<member_id>     { "role": "APPROVER" }
 DELETE /api/v1/teams/members/<member_id>
 ```
 

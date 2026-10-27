@@ -32,7 +32,7 @@ from apps.common.base_views import BaseAPIView
 from apps.common.pagination import PaginationService
 from apps.common.responses import ApiResponse
 from apps.payments.idempotency import IdempotencyMixin
-from apps.teams.access import AccountScopedMixin, RequiresCapability
+from apps.teams.access import AccountScopedMixin
 from apps.teams.permissions import MANAGE_BILLING
 
 
@@ -91,9 +91,6 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
     service_class = SubscriptionService
     # Reading the plan is fine for anyone on the team; changing it is not,
     # because it changes what the owner is charged.
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
     nullable_data = ("GET",)
@@ -203,9 +200,6 @@ class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
     may_be_unavailable = True
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BILLING
 
     def post(self, request):
@@ -254,9 +248,6 @@ class AddOnAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = AddOnService
     # Adding an add-on adds an invoice line, so it is a billing change.
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
     nullable_data = ("POST",)
@@ -400,9 +391,6 @@ class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
     may_be_unavailable = True
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BILLING
 
     def post(self, request):
@@ -463,9 +451,6 @@ class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
 class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = SubscriptionService
-    permission_classes = BaseAPIView.permission_classes + [
-        RequiresCapability
-    ]
     required_capability = MANAGE_BILLING
     safe_methods = ("GET",)
     nullable_data = ("GET",)

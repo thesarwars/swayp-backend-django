@@ -74,7 +74,7 @@ def _add_codes(response, exc, context):
     402 also carries ``limit`` and a role's 403 ``capability`` (BILLING-11).
     """
     from apps.common.exceptions import PlanLimitExceededException
-    from apps.teams.access import ROLE_FORBIDDEN_CODE
+    from apps.teams.access import ROLE_FORBIDDEN_CODE, denied_capability
 
     if isinstance(exc, PlanLimitExceededException):
         response.data["code"] = exc.body_code
@@ -86,10 +86,8 @@ def _add_codes(response, exc, context):
     response.data["code"] = code
 
     if code == ROLE_FORBIDDEN_CODE:
-        view = context.get("view") if context else None
-        response.data["capability"] = getattr(
-            view, "required_capability", None
-        )
+        request = context.get("request") if context else None
+        response.data["capability"] = denied_capability(request)
 
 
 def _leaf_codes(exc):

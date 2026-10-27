@@ -5,6 +5,7 @@ from drf_spectacular.utils import extend_schema
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_ACCOUNT
 from apps.common.swagger import BAD_REQUEST_RESPONSE, UNAUTHORIZED_RESPONSE
 from apps.users.api.serializers.profile import (
     ProfileResponseSerializer,
@@ -17,6 +18,9 @@ from apps.users.services.profile_service import ProfileService
 class ProfileAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = ProfileService
+    # The account's settings: the business name and billing address on the
+    # owner's invoices. Every teammate may read them; only the owner edits.
+    required_capabilities = {"PATCH": MANAGE_ACCOUNT}
 
     @extend_schema(
         tags=["Users"],

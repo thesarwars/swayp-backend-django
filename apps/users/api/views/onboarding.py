@@ -5,6 +5,7 @@ from drf_spectacular.utils import extend_schema
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
 from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_BANKS
 from apps.users.api.serializers.onboarding import (
     OnboardingStateResponseSerializer,
 )
@@ -48,6 +49,7 @@ class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
 class OnboardingSkipBankAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = OnboardingService
+    required_capability = MANAGE_BANKS
 
     def post(self, request):
         return ApiResponse.success(

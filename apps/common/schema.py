@@ -242,7 +242,9 @@ class SwaypAutoSchema(AutoSchema):
         )
 
     def _capability_gated(self):
-        return getattr(self.view, "required_capability", None) is not None
+        from apps.teams.access import capability_for
+
+        return capability_for(self.view, self.method) is not None
 
     def _ref(self, serializer_class):
         return self.resolve_serializer(serializer_class(), "response").ref

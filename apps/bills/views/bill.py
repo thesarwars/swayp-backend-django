@@ -13,10 +13,28 @@ from apps.bills.serializers.bill_review_serializer import (
 from apps.common.swagger import BAD_REQUEST_RESPONSE, UNAUTHORIZED_RESPONSE
 from apps.common.request_meta import request_meta
 from apps.payments.idempotency import IdempotencyMixin
-from apps.teams.access import AccountScopedMixin
+from apps.common.enums import AutopayMode
+from apps.teams.access import AccountScopedMixin, require_capability
+from apps.teams.permissions import MANAGE_BILLS, SEND_MONEY
+
+
+def require_autopay_approver(request, validated_data):
+    """Turning autopay on, or agreeing to new autopay terms, records a
+    standing authorization: an approval of every future payment in advance.
+    So it takes the role that may approve a payment, not the one that may
+    prepare a bill. Both always carry autopay_consent (validation insists),
+    and turning autopay off carries none, so it stays open to anyone who
+    edits bills."""
+    if (
+        validated_data.get("autopay_mode") == AutopayMode.AUTO
+        or validated_data.get("autopay_consent")
+    ):
+        require_capability(request, SEND_MONEY)
+
 
 class BillCreateAPIView(AccountScopedMixin, IdempotencyMixin, APIView):
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_BILLS
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -45,6 +63,7 @@ class BillCreateAPIView(AccountScopedMixin, IdempotencyMixin, APIView):
     def _create(self, request):
         serializer = BillCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        require_autopay_approver(request, serializer.validated_data)
 
         bill = self.service.create_bill(
             user=self.account(request),
@@ -98,6 +117,7 @@ class BillListAPIView(AccountScopedMixin, APIView):
 
 class BillDetailAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    required_capabilities = {"DELETE": MANAGE_BILLS}
     nullable_data = ("DELETE",)
 
     def __init__(self, **kwargs):
@@ -151,6 +171,7 @@ class BillDetailAPIView(AccountScopedMixin, APIView):
 
 class BillUpdateAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_BILLS
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -179,6 +200,7 @@ class BillUpdateAPIView(AccountScopedMixin, APIView):
         )
 
         serializer.is_valid(raise_exception=True)
+        require_autopay_approver(request, serializer.validated_data)
 
         bill = self.service.update_bill(
             bill_id=bill_id,

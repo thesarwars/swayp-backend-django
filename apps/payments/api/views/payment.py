@@ -22,8 +22,8 @@ from apps.payments.selectors.payment_detail_selector import (
 )
 from apps.payments.services.confirm_service import PaymentConfirmService
 from apps.payments.services.payment_create_service import PaymentCreateService
-from apps.teams.access import AccountScopedMixin, RequiresCapability
-from apps.teams.permissions import SEND_MONEY
+from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import SCHEDULE_PAYMENTS, SEND_MONEY
 from apps.payments.services.resolution_service import (
     PaymentResolutionService,
 )
@@ -69,6 +69,8 @@ class PaymentCreateAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentCreateService
     idempotency_endpoint = "payments.create"
+    # Scheduling moves nothing: the payment waits for someone who may confirm.
+    required_capability = SCHEDULE_PAYMENTS
 
     def post(self, request):
         serializer = PaymentCreateSerializer(data=request.data)
@@ -122,7 +124,6 @@ class BatchConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_batch"
-    permission_classes = BaseAPIView.permission_classes + [RequiresCapability]
     required_capability = SEND_MONEY
 
     def post(self, request, batch_id):
@@ -168,7 +169,6 @@ class PaymentConfirmAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
     service_class = PaymentConfirmService
     idempotency_endpoint = "payments.confirm_payment"
     # A MEMBER can prepare a payment but not authorize it (E10-S1).
-    permission_classes = BaseAPIView.permission_classes + [RequiresCapability]
     required_capability = SEND_MONEY
 
     def post(self, request, payment_id):
@@ -267,6 +267,8 @@ class BatchStatusAPIView(AccountScopedMixin, BaseAPIView):
 )
 class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
 
+    required_capabilities = {"PATCH": SCHEDULE_PAYMENTS}
+
     def get(self, request, payment_id):
         payment = PaymentDetailSelector().get_payment(
             self.account(request), payment_id
@@ -322,6 +324,7 @@ class PaymentDetailAPIView(AccountScopedMixin, BaseAPIView):
 class PaymentCancelAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
+    required_capability = SCHEDULE_PAYMENTS
 
     def post(self, request, payment_id):
         payment = self.service.cancel_payment(
@@ -343,6 +346,7 @@ class PaymentCancelAPIView(AccountScopedMixin, BaseAPIView):
 class BatchCancelAPIView(AccountScopedMixin, BaseAPIView):
 
     service_class = PaymentConfirmService
+    required_capability = SCHEDULE_PAYMENTS
 
     def post(self, request, batch_id):
         result = self.service.cancel_batch(
@@ -400,6 +404,8 @@ class PaymentResolveAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 
     service_class = PaymentResolutionService
     idempotency_endpoint = "payments.resolve"
+    # The replacement is a new payment that still needs confirming.
+    required_capability = SCHEDULE_PAYMENTS
 
     def post(self, request, payment_id):
         serializer = ResolveSerializer(data=request.data)

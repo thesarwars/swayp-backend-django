@@ -27,6 +27,7 @@ from apps.vendors.services.vendor_service import (
 )
 from apps.payments.idempotency import IdempotencyMixin
 from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_VENDORS
 from apps.vendors.models import (
     Vendor,
     VendorActivityAction,
@@ -56,6 +57,9 @@ class VendorListCreateAPIView(EnvelopeResponseMixin, AccountScopedMixin, Idempot
     # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
+    # Adding a vendor sets its first payment method too; repointing an
+    # existing vendor is MANAGE_VENDOR_PAYMENT_DETAILS (payment-methods).
+    required_capabilities = {"POST": MANAGE_VENDORS}
 
     def get_queryset(self):
 
@@ -110,6 +114,8 @@ class VendorDetailAPIView(EnvelopeResponseMixin, AccountScopedMixin, RetrieveUpd
 
     # {success, message, data} like every module (web C1).
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_VENDORS
+    safe_methods = ("GET", "HEAD", "OPTIONS")
     lookup_url_kwarg = "vendor_id"
 
     def get_object(self):
@@ -206,6 +212,7 @@ class VendorRestoreAPIView(EnvelopeResponseMixin, AccountScopedMixin, APIView):
     # {success, message, data} like every module (web C1).
 
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_VENDORS
 
     def post(self, request, vendor_id):
         vendor = get_object_or_404(

@@ -14,26 +14,30 @@ from apps.teams.api.serializers.team import (
     InviteSerializer,
     TeamMemberSerializer,
 )
-from apps.teams.permissions import capabilities_for
+from apps.teams.access import AccountScopedMixin, acting_account
+from apps.teams.permissions import (
+    MANAGE_ENTITIES,
+    MANAGE_TEAM,
+    capabilities_for,
+)
 from apps.teams.services.entity_service import EntityService
 from apps.teams.services.team_service import TeamService
 
 
-class TeamContextMixin:
+class TeamContextMixin(AccountScopedMixin):
     """Resolves which account the caller is acting on.
 
     A user who was invited into someone else's account acts on *that* account,
     not their own. Getting this wrong would silently give every invited member
     a private empty account of their own instead of access to the team's.
+
+    Account-scoped, so a view's ``required_capability`` is checked before the
+    body is read: a Viewer is refused for the role, not told the email is
+    missing. The services check again, for callers that are not views.
     """
 
     def account_for(self, request):
-        membership = TeamService().membership_for(request.user)
-
-        if membership is not None:
-            return membership.account
-
-        return request.user
+        return acting_account(request)
 
 
 @extend_schema(
@@ -108,6 +112,7 @@ class MyRoleAPIView(TeamContextMixin, BaseAPIView):
 class TeamInviteAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = TeamService
+    required_capability = MANAGE_TEAM
 
     def post(self, request):
         serializer = InviteSerializer(data=request.data)
@@ -163,6 +168,7 @@ class TeamInviteAcceptAPIView(BaseAPIView):
 class TeamMemberDetailAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = TeamService
+    required_capabilities = {"PATCH": MANAGE_TEAM, "DELETE": MANAGE_TEAM}
 
     @extend_schema(
         summary="Change a member's role",
@@ -221,6 +227,7 @@ class TeamMemberDetailAPIView(TeamContextMixin, BaseAPIView):
 class EntityListAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = EntityService
+    required_capabilities = {"POST": MANAGE_ENTITIES}
 
     def get(self, request):
         account = self.account_for(request)
@@ -275,6 +282,10 @@ class EntityListAPIView(TeamContextMixin, BaseAPIView):
 class EntityDetailAPIView(TeamContextMixin, BaseAPIView):
 
     service_class = EntityService
+    required_capabilities = {
+        "PATCH": MANAGE_ENTITIES,
+        "DELETE": MANAGE_ENTITIES,
+    }
 
     @extend_schema(
         summary="Rename an entity",

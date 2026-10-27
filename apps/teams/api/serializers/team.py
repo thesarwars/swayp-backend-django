@@ -48,6 +48,19 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         return capabilities_for(member.role)
 
 
+#: Every role but OWNER: an account has one owner, set when it registers.
+#: Order is the invite dropdown's, most access first.
+ASSIGNABLE_ROLES = [
+    (role, role.label)
+    for role in (
+        TeamRole.ADMIN,
+        TeamRole.APPROVER,
+        TeamRole.MEMBER,
+        TeamRole.VIEWER,
+    )
+]
+
+
 class InviteSerializer(serializers.Serializer):
     email = serializers.EmailField()
     # No default. A default would make "resend this invitation" — which sends
@@ -55,10 +68,7 @@ class InviteSerializer(serializers.Serializer):
     # demoting a pending admin. The service decides: new invite defaults to
     # MEMBER, resend keeps the role already chosen.
     role = serializers.ChoiceField(
-        choices=[
-            (TeamRole.ADMIN, TeamRole.ADMIN.label),
-            (TeamRole.MEMBER, TeamRole.MEMBER.label),
-        ],
+        choices=ASSIGNABLE_ROLES,
         required=False,
     )
 
@@ -69,10 +79,7 @@ class AcceptInviteSerializer(serializers.Serializer):
 
 class ChangeRoleSerializer(serializers.Serializer):
     role = serializers.ChoiceField(
-        choices=[
-            (TeamRole.ADMIN, TeamRole.ADMIN.label),
-            (TeamRole.MEMBER, TeamRole.MEMBER.label),
-        ]
+        choices=ASSIGNABLE_ROLES,
     )
 
 

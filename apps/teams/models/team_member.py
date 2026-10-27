@@ -22,7 +22,12 @@ INVITE_TTL_DAYS = 14
 class TeamRole(models.TextChoices):
     OWNER = "OWNER", "Owner"
     ADMIN = "ADMIN", "Admin"
-    MEMBER = "MEMBER", "Member"
+    APPROVER = "APPROVER", "Approver"
+    # Stored as MEMBER so every seat invited before the Accountant name keeps
+    # its role without a data migration. "Accountant" is what the product
+    # calls it.
+    MEMBER = "MEMBER", "Accountant"
+    VIEWER = "VIEWER", "Viewer"
 
 
 class TeamMemberStatus(models.TextChoices):

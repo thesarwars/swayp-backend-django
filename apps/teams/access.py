@@ -14,6 +14,7 @@ Two things every caller outside ``apps/teams`` needs:
   the pricing page for something no upgrade can fix.
 """
 
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import BasePermission
 
 from apps.teams.permissions import role_can
@@ -59,19 +60,79 @@ def acting_account(request):
 
 
 class AccountScopedMixin:
-    """Gives a view ``self.account(request)``.
+    """Gives a view ``self.account(request)``, and enforces its capability.
 
     A mixin rather than a helper import per view, so the intent is visible in
     the class definition and a view that scopes by account cannot look like
     one that does not.
+
+    Every account-scoped view gets ``RequiresCapability``, so naming
+    ``required_capability`` (or ``required_capabilities``) is all a view does
+    to be role-checked. Views set ``permission_classes`` in several styles;
+    appending here means none of them can drop the check by accident.
     """
 
     def account(self, request):
         return acting_account(request)
 
+    def get_permissions(self):
+        return super().get_permissions() + [RequiresCapability()]
+
 
 def acting_role(request):
     return TeamService().role_for(request.user, acting_account(request))
+
+
+def capability_for(view, method):
+    """The capability ``method`` on ``view`` needs, or None for none.
+
+    ``required_capabilities`` maps methods to capabilities, for a view whose
+    writes need different ones; a method it leaves out needs nothing.
+    Otherwise ``required_capability`` covers every method except
+    ``safe_methods``.
+    """
+    per_method = getattr(view, "required_capabilities", None)
+
+    if per_method is not None:
+        return per_method.get(method)
+
+    if method in getattr(view, "safe_methods", ()):
+        return None
+
+    return getattr(view, "required_capability", None)
+
+
+def denied_capability(request):
+    """The capability a 403 ``role_forbidden`` was for, for the error body."""
+    return getattr(request, "_swayp_denied_capability", None)
+
+
+def has_capability(request, capability):
+    """Does the caller's role on the acting account hold ``capability``?
+
+    No membership row at all means a solo account acting on itself, which
+    ensure_owner_seat would have made OWNER. An unresolvable role is denied
+    rather than assumed to be ownership.
+    """
+    role = acting_role(request)
+
+    return role is not None and role_can(role, capability)
+
+
+def require_capability(request, capability):
+    """Refuse with 403 ``role_forbidden`` unless the role holds it.
+
+    For a check that depends on the request body rather than the route, such
+    as turning autopay on, which only an approver may do.
+    """
+    if has_capability(request, capability):
+        return
+
+    request._swayp_denied_capability = capability
+
+    raise PermissionDenied(
+        RequiresCapability.message, code=ROLE_FORBIDDEN_CODE
+    )
 
 
 class RequiresCapability(BasePermission):
@@ -79,31 +140,29 @@ class RequiresCapability(BasePermission):
 
     The view names what it needs::
 
-        class PaymentConfirmAPIView(BaseAPIView):
+        class PaymentConfirmAPIView(AccountScopedMixin, BaseAPIView):
             required_capability = SEND_MONEY
 
-    A view that names nothing is unrestricted, so this is safe to add to the
-    default permission list without auditing every endpoint at once.
-
-    ``safe_methods`` exempts reads on a view whose writes are restricted::
+    A view that names nothing is unrestricted. ``safe_methods`` exempts reads
+    on a view whose writes are restricted::
 
         required_capability = MANAGE_BILLING
         safe_methods = ("GET",)
 
     That is the common shape: everyone on the team may see which plan they are
-    on, but only the owner may change what the owner is charged.
+    on, but only the owner may change what the owner is charged. A view whose
+    writes need different capabilities maps them instead::
+
+        required_capabilities = {"POST": MANAGE_BANKS}
     """
 
     message = "Your role does not allow this action."
     code = ROLE_FORBIDDEN_CODE
 
     def has_permission(self, request, view):
-        capability = getattr(view, "required_capability", None)
+        capability = capability_for(view, request.method)
 
         if capability is None:
-            return True
-
-        if request.method in getattr(view, "safe_methods", ()):
             return True
 
         if not request.user or not request.user.is_authenticated:
@@ -111,12 +170,9 @@ class RequiresCapability(BasePermission):
             # an anonymous caller gets 401 rather than a confusing 403.
             return True
 
-        role = acting_role(request)
+        if has_capability(request, capability):
+            return True
 
-        if role is None:
-            # No membership row at all means a solo account acting on itself,
-            # which ensure_owner_seat would have made OWNER. Treat an
-            # unresolvable role as denied rather than assuming ownership.
-            return False
+        request._swayp_denied_capability = capability
 
-        return role_can(role, capability)
+        return False

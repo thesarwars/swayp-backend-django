@@ -41,22 +41,38 @@ the same user.
 
 ## 2. Render from capabilities, never from role
 
-| Capability | OWNER | ADMIN | MEMBER |
-|---|:---:|:---:|:---:|
-| `view` | ✅ | ✅ | ✅ |
-| `manage_bills` | ✅ | ✅ | ✅ |
-| `manage_vendors` | ✅ | ✅ | ✅ |
-| `send_money` | ✅ | ✅ | — |
-| `manage_banks` | ✅ | ✅ | — |
-| `manage_team` | ✅ | ✅ | — |
-| `manage_entities` | ✅ | ✅ | — |
-| `manage_billing` | ✅ | — | — |
+| Capability | OWNER | ADMIN | APPROVER | MEMBER (Accountant) | VIEWER |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `view` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `manage_bills` — bills, scans, mark paid | ✅ | ✅ | ✅ | ✅ | — |
+| `manage_vendors` — add, edit, delete, restore | ✅ | ✅ | ✅ | ✅ | — |
+| `schedule_payments` — create, edit, cancel, resolve | ✅ | ✅ | ✅ | ✅ | — |
+| `send_money` — confirm payments, turn autopay on | ✅ | ✅ | ✅ | — | — |
+| `manage_vendor_payment_details` — an existing vendor's payment methods | ✅ | ✅ | — | — | — |
+| `manage_banks` — link, disconnect, default funding account | ✅ | ✅ | — | — | — |
+| `manage_team` | ✅ | ✅ | — | — | — |
+| `manage_entities` | ✅ | ✅ | — | — | — |
+| `manage_billing` — plan, add-ons, card | ✅ | — | — | — | — |
+| `manage_account` — `PATCH /users/profile` | ✅ | — | — | — | — |
+
+`MEMBER` is shown as **Accountant**: the stored value stayed `MEMBER` so
+existing seats kept their role. Label roles in the UI as Owner, Admin,
+Approver, Accountant, Viewer.
+
+- **An Accountant prepares, an Approver sends.** A payment an Accountant
+  schedules waits for `confirm` from someone with `send_money`.
+- **Autopay counts as approving.** A bill request that sets `autopay_mode:
+  AUTO` or carries `autopay_consent` needs `send_money`; turning autopay off
+  needs only `manage_bills`.
+- **Adding a vendor is not repointing one.** `POST /vendors` (with its first
+  payment method) is `manage_vendors`; anything under
+  `/vendors/<id>/payment-methods` is `manage_vendor_payment_details`, because
+  redirecting a known payee's money is the classic payment fraud.
+- **Owner-only:** billing, and the account profile (business name, billing
+  address). Every role can read both.
 
 Never write `if (role === 'ADMIN')`. The matrix can change server-side and a
 hardcoded check needs a client release to catch up.
-
-A member can **prepare** a payment but not authorize it. Only the owner
-touches billing, because a plan change changes what the owner is charged.
 
 Hiding a button is not security — the API checks every action itself. Hide it
 anyway, so nobody is offered something that will fail.
@@ -76,7 +92,8 @@ Both carry `message` only, both display verbatim.
 ```
 
 ```json
-{ "success": false, "message": "Your role does not allow this action." }
+{ "success": false, "message": "Your role does not allow this action.",
+  "code": "role_forbidden", "capability": "send_money" }
 ```
 
 ---
@@ -141,8 +158,10 @@ Row states to design: `ACTIVE`, `INVITED`, and `INVITED` with
 POST /api/v1/teams/invite     { "email": "sam@example.com", "role": "ADMIN" }
 ```
 
-**201.** `role` is optional and defaults to `MEMBER`. `OWNER` is not a valid
-choice — an account has exactly one owner.
+**201.** `role` is one of `ADMIN`, `APPROVER`, `MEMBER` (Accountant) or
+`VIEWER`; optional, defaulting to `MEMBER`. `OWNER` is not a valid choice — an
+account has exactly one owner. Offer them in the invite dropdown in that order,
+labelled Admin, Approver, Accountant, Viewer.
 
 The address is lower-cased and trimmed, so `Sam@Example.COM ` and
 `sam@example.com` are the same person.

@@ -9,6 +9,7 @@ from apps.bills.services.bill_occurrence_service import BillOccurrenceService
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from apps.teams.access import AccountScopedMixin
+from apps.teams.permissions import MANAGE_BILLS
 
 
 @extend_schema(
@@ -51,6 +52,7 @@ class UpcomingBillOccurrenceAPIView(AccountScopedMixin, APIView):
 )
 class MarkBillOccurrencePaidAPIView(AccountScopedMixin, APIView):
     permission_classes = [IsAuthenticated]
+    required_capability = MANAGE_BILLS
     nullable_data = ("PATCH",)
 
     def __init__(self, **kwargs):

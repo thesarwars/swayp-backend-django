@@ -9,6 +9,7 @@ Every response body in these files was captured from the running API.
 |---|---|---|
 | **E1** | [Foundations](e1-foundations.md) | conventions every other guide assumes — envelopes, dates, money, idempotency |
 | **E2** | [Authentication](e2-authentication.md) | register, OTP, login, password reset, profile, onboarding wizard |
+| **E2** | [Account security](e2-security.md) | two-step verification, signed-in sessions, password emails |
 | **E3** | [Vendors](e3-vendors.md) | payees, payment methods, directory search, QR |
 | **E4** | [Bills](e4-bills.md) | the bill wizard, occurrence list, summary, invoice |
 | **E5** | [Banking](e5-banking.md) | bank link, transaction scan, bill detection, import |
@@ -28,6 +29,7 @@ Each step has real data by the time you reach it.
 
 ```
 E2  auth        register → OTP → login
+E2  sign-in     handle mfa_required on every sign-in   ← before anyone turns MFA on
 E2  onboarding  business → plan → payment → bank
 E5  banking     scan → review detected bills → import   ← fastest path to data
 E4  bills       list, detail, summary

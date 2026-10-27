@@ -118,8 +118,13 @@ POST auth/login    { "email": "…", "password": "…" }    →  200, tokens
 
 ```json
 { "success": true, "message": "Login successful.",
-  "data": { "access": "eyJhbGciOi…", "refresh": "eyJhbGciOi…" } }
+  "data": { "access": "eyJhbGciOi…", "refresh": "eyJhbGciOi…",
+            "mfa_required": false, "mfa_token": null, "mfa_methods": [] } }
 ```
+
+⚠️ **A user with two-step verification on gets `mfa_required: true` and no
+tokens** — the same on Google and phone sign-in. Branch on `mfa_required` and
+finish at `auth/login/mfa`: see [Account security](e2-security.md#1-every-sign-in-can-now-stop-at-a-second-step-).
 
 **There is no login OTP and no second call.** `auth/login/verify` is gone and
 returns 404. Skip the Enter OTP screen entirely on the sign-in path.
@@ -484,6 +489,7 @@ POST users/password   { "current_password": "…", "new_password": "…" }
 - A wrong `current_password` returns 400 with `code: invalid_credentials`.
 - `new_password` follows the registration rules and may not repeat the previous password.
 - **Every other session is signed out.** The answer is a fresh token pair for this device; store it, because the old refresh token is now spent.
+- The user is emailed that their password changed. Sessions, two-step verification and these emails: [Account security](e2-security.md).
 
 ## 6. The onboarding wizard
 

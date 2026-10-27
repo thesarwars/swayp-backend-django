@@ -193,6 +193,11 @@ GET    /api/v1/banking/accounts
 POST   /api/v1/banking/accounts             ← set the default funding source
 ```
 
+⚠️ **Banks are Owner and Admin only.** Link token, exchange, disconnect,
+setting the default funding account and `users/onboarding/skip-bank` need
+`manage_banks`. Scans and import need `manage_bills` (Accountant and up). See
+[E10](e10-teams.md).
+
 ### Getting back to a scan
 
 Every connection carries `latest_scan: { "id", "status" }`, or `null` if it

@@ -216,6 +216,12 @@ yet. Pass `?due_date=&amount=` if you want lead-time hints.
 
 `autopay_mode` is `REMIND` or `AUTO`.
 
+⚠️ **Autopay needs an Approver or above** (`send_money`). Any create or update
+that sets `AUTO` or carries `autopay_consent` is **403 `role_forbidden`** for an
+Accountant: autopay approves every future payment in advance. An Accountant can
+still create `REMIND` bills, edit an autopay bill without new terms, and turn
+autopay off. Hide the `AUTO` option unless `teams/me` lists `send_money`.
+
 **`AUTO` without consent is a 400:**
 
 ```json

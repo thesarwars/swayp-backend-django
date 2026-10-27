@@ -93,8 +93,10 @@ const unwrap = (body) => body.data;   // every success answer
 403 is a role and nothing does. Sending a 403 to the pricing page is a dead
 end; sending a 402 to "ask your admin" hides a sale.
 
-**402, 403 and 503 carry `message` only — no `errors` object** — and every one
-of those messages is written to be shown to the user verbatim.
+**402, 403 and 503 carry no `errors` object** — every one of those messages is
+written to be shown to the user verbatim. A role refusal is 403 with `code:
+"role_forbidden"` and the missing `capability`; the five roles and what each
+may do are in [E10](e10-teams.md).
 
 ### Money, dates, ids
 

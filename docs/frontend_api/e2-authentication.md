@@ -371,6 +371,11 @@ GET   /api/v1/users/profile
 PATCH /api/v1/users/profile
 ```
 
+⚠️ **`PATCH` is owner-only** (`manage_account`): the profile is the account's
+business name and billing address. Every teammate can `GET` it; anyone else
+editing gets **403 `role_forbidden`**. Hide the edit button unless
+`teams/me` lists `manage_account`.
+
 Both answer in the standard envelope, `{ "success", "message", "data" }`.
 `data` is the profile:
 

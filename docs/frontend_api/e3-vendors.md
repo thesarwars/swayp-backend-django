@@ -129,6 +129,12 @@ POST /api/v1/vendors/<vendor_id>/payment-methods/<method_id>/set-primary
 DELETE /api/v1/vendors/<vendor_id>/payment-methods/<method_id>
 ```
 
+⚠️ **Owner and Admin only.** Every write here needs
+`manage_vendor_payment_details`; an Approver, Accountant or Viewer gets **403
+`role_forbidden`**. Changing where a known vendor is paid is the classic payment
+fraud, so it takes more than adding the vendor does: `POST /vendors`, with its
+first payment method, only needs `manage_vendors`. See [E10](e10-teams.md).
+
 **What the writes return.**
 - `POST /vendors` answers **201 with the full vendor**: the same shape as
   `GET /vendors/<id>`, including `id` and `payment_methods[].account_ref`.

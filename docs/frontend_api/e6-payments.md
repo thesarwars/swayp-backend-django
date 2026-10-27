@@ -186,8 +186,11 @@ POST /api/v1/payments/<payment_id>/confirm        ← only when batch_id was nul
 Send it back **verbatim**. Re-confirming **replays** rather than recording a
 second consent, and the response carries `"replayed": true`.
 
-⚠️ **Needs the `send_money` capability.** A MEMBER gets **403** here — they can
-prepare a payment but not authorize it. See [E10](e10-teams.md).
+⚠️ **Needs the `send_money` capability** (Owner, Admin, Approver). An
+Accountant gets **403 `role_forbidden`** here — they can schedule a payment but
+not authorize it, so show "waiting for approval" instead of the confirm button.
+Creating, editing, cancelling and resolving a payment need `schedule_payments`
+(Accountant and up); a Viewer gets 403 on all of them. See [E10](e10-teams.md).
 
 ### Step 3 — poll
 

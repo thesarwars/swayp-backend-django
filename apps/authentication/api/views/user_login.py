@@ -9,7 +9,10 @@ from apps.common.base_views import PublicAPIView
 
 from apps.authentication.api.serializers.token import SignInSerializer
 from apps.authentication.api.serializers.user_login import LoginSerializer
-from apps.authentication.services.login_service import LoginService
+from apps.authentication.services.login_service import (
+    LoginService,
+    sign_in_message,
+)
 
 
 @extend_schema(
@@ -51,7 +54,7 @@ class LoginView(PublicAPIView):
         return Response(
             {
                 "success": True,
-                "message": "Login successful.",
+                "message": sign_in_message(tokens),
                 "data": tokens,
             },
             status=status.HTTP_200_OK,

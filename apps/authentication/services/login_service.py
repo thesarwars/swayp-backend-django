@@ -4,6 +4,14 @@ from apps.authentication.services.session_service import (
 )
 
 
+#: The message for a sign-in that stopped at the second factor.
+MFA_REQUIRED_MESSAGE = "Enter the code from your authenticator app."
+
+
+def sign_in_message(result, default="Login successful."):
+    return MFA_REQUIRED_MESSAGE if result.get("mfa_required") else default
+
+
 class LoginService:
     """Issuing a session — which is now the whole of email login.
 

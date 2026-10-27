@@ -21,6 +21,7 @@ from apps.authentication.services.otp_throttle_service import (
     OTPThrottleService,
 )
 from apps.common.exceptions import OTPThrottledException
+from apps.authentication.services.login_service import sign_in_message
 from apps.common.responses import ApiResponse
 
 User = get_user_model()
@@ -96,6 +97,6 @@ class PhoneLoginVerifyView(PublicAPIView):
 
         return ApiResponse.success(
             data=tokens,
-            message="Login successful.",
+            message=sign_in_message(tokens),
             status_code=status.HTTP_200_OK,
         )

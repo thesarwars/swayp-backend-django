@@ -11,6 +11,7 @@ from apps.authentication.services.google_login_service import (
     GoogleLoginService,
 )
 from apps.common.base_views import PublicAPIView
+from apps.authentication.services.login_service import sign_in_message
 from apps.common.responses import ApiResponse
 
 
@@ -50,8 +51,9 @@ class GoogleLoginView(PublicAPIView):
 
         return ApiResponse.success(
             data=result,
-            message=(
+            message=sign_in_message(
+                result,
                 "Account created." if result["is_new_user"]
-                else "Login successful."
+                else "Login successful.",
             ),
         )

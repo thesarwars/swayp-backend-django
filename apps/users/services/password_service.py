@@ -7,6 +7,7 @@ from apps.authentication.services.password_history_service import (
 from apps.authentication.services.reset_password_service import (
     ResetPasswordService,
 )
+from apps.authentication.services.security_notice_service import notify
 
 
 class ChangePasswordService:
@@ -28,5 +29,6 @@ class ChangePasswordService:
             user.set_password(new_password)
             user.save(update_fields=["password"])
             ResetPasswordService._end_sessions(user)
+            notify(user, "PASSWORD_CHANGED")
 
         return LoginService.login(user, request)

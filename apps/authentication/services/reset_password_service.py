@@ -9,6 +9,7 @@ from apps.authentication.services.password_history_service import (
 from apps.authentication.services.reset_token_service import (
     ResetTokenService,
 )
+from apps.authentication.services.security_notice_service import notify
 from apps.authentication.utils.otp import TOO_MANY_ATTEMPTS, OTPService
 from apps.common.error_codes import OTP_ATTEMPTS_EXCEEDED, OTP_EXPIRED, OTP_INVALID, OTP_NOT_PENDING
 
@@ -47,6 +48,7 @@ class ResetPasswordService:
             account.save(update_fields=["password"])
 
             ResetPasswordService._end_sessions(account)
+            notify(account, "PASSWORD_CHANGED")
 
         return account
 

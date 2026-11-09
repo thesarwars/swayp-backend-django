@@ -4,9 +4,7 @@ Nothing created these rows before 0003, so a freshly migrated database served
 an empty ``GET /bill-categories``: Home's "Bill Types" row drew nothing and
 ``POST /bills/create``, which requires a category, could not succeed at all.
 
-``display_order`` is the part the client is pinned to — the mobile app keys
-its four hand-drawn badges to orders 1-4, not to the names — so reordering
-the first four silently puts the wrong drawing on a category.
+Migration 0005 replaced the seeded list with the agreed one and its order.
 """
 
 from django.test import TestCase
@@ -20,9 +18,7 @@ class SeededCategoryTests(TestCase):
     def test_a_migrated_database_has_categories(self):
         self.assertTrue(BillCategory.objects.exists())
 
-    def test_the_first_four_orders_are_the_drawn_utilities(self):
-        """The app's ARTWORK_BY_DISPLAY_ORDER map: 1 electricity, 2 gas,
-        3 water, 4 internet. Changing these reassigns the drawings."""
+    def test_the_first_four_orders_follow_the_agreed_list(self):
         first_four = list(
             BillCategory.objects.filter(display_order__lte=4)
             .order_by("display_order")
@@ -31,7 +27,12 @@ class SeededCategoryTests(TestCase):
 
         self.assertEqual(
             first_four,
-            [(1, "Electricity"), (2, "Gas"), (3, "Water"), (4, "Internet")],
+            [
+                (1, "Advertising & Marketing"),
+                (2, "Bank & Financial Fees"),
+                (3, "Credit Cards"),
+                (4, "Equipment"),
+            ],
         )
 
     def test_every_category_is_active_and_coloured(self):

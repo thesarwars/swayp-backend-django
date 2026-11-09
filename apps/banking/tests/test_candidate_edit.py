@@ -152,8 +152,8 @@ class CategoryGuessPreferenceTests(TestCase):
 
     def test_the_specific_category_wins_over_the_general_one(self):
         BillCategory.objects.get_or_create(
-            name="Rent",
-            defaults={"icon": "", "color": "#111", "display_order": 1},
+            name="Rent & Lease",
+            defaults={"icon": "", "color": "#111", "display_order": 14},
         )
         specific, _ = BillCategory.objects.get_or_create(
             name="Commercial Rent",
@@ -166,8 +166,8 @@ class CategoryGuessPreferenceTests(TestCase):
 
     def test_the_general_category_is_used_when_it_is_the_only_one(self):
         general, _ = BillCategory.objects.get_or_create(
-            name="Rent",
-            defaults={"icon": "", "color": "#111", "display_order": 1},
+            name="Rent & Lease",
+            defaults={"icon": "", "color": "#111", "display_order": 14},
         )
         BillCategory.objects.filter(name="Commercial Rent").delete()
 

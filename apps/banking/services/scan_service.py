@@ -49,13 +49,13 @@ THIN_HISTORY_DAYS = 180
 #: Keyword -> category name, applied to the normalised vendor name.
 _CATEGORY_HINTS = (
     (("wework", "regus", "office", "rent", "landlord", "properties"),
-     ("Commercial Rent", "Rent")),
+     ("Commercial Rent", "Rent & Lease", "Rent")),
     (("verizon", "at t", "att", "tmobile", "comcast", "spectrum"),
-     ("Telecom", "Utilities")),
+     ("Telecom", "Phone & Telecom", "Utilities")),
     (("con edison", "edison", "national grid", "pg e", "water", "gas",
       "electric"), ("Utilities",)),
     (("amazon web services", "aws", "google cloud", "azure", "github",
-      "slack", "notion", "figma", "atlassian"), ("SaaS", "Software")),
+      "slack", "notion", "figma", "atlassian"), ("SaaS", "Software & SaaS", "Software")),
     (("insurance", "geico", "allstate", "statefarm"), ("Insurance",)),
 )
 

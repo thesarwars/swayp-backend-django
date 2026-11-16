@@ -161,11 +161,15 @@ POST /api/v1/billing/subscription
 ```
 
 ```json
-{ "plan": "STANDARD", "payment_method_id": "pm_…" }
+{ "plan": "STANDARD" }
 ```
 
-`payment_method_id` comes from Stripe Elements after confirming the SetupIntent
-from §1. **The card never reaches Swayp.**
+Subscribe **without a card**. A SetupIntent needs a subscription to exist,
+so `payment-method/setup` can't come first. When money is collected and the
+plan has no trial, the response's `client_secret` is the first payment: confirm
+it with Stripe's Payment Element, which collects the card. **The card never
+reaches Swayp.** `payment_method_id` is optional and only for a card the client
+already holds. Step by step: [E9b Subscription plan §5](e9-subscription-frontend-plan.md#5-subscribing-subscribeplancode).
 
 **201** returns the subscription — and possibly one more step:
 
@@ -178,7 +182,7 @@ from §1. **The card never reaches Swayp.**
   "trial_end": null, "is_trialing": false, "trial_days_remaining": null }
 ```
 
-⚠️ **A non-empty `client_secret` means 3-D Secure. Confirm it with Stripe.js.**
+⚠️ **A non-empty `client_secret` means a payment to confirm with Stripe.js** (the first charge, or 3-D Secure).
 Skipping it leaves the subscription unpaid at Stripe even though Swayp shows
 `ACTIVE` — the entitlement is granted immediately so the customer isn't locked
 out mid-prompt, but the money has not moved.

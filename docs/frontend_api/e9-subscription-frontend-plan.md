@@ -238,15 +238,16 @@ const { error } = await stripe.confirmPayment({
 **Keep the `client_secret` for this page only.** It is returned once and
 can't be fetched again. Don't store it.
 
-⚠️ **Known gap: an abandoned first payment.** If the user leaves or reloads
-before paying, the app has no way to get the `client_secret` back, and a
-second subscribe answers `400 already_subscribed`. The subscription shows as
-`status: "ACTIVE"` with `provider_status: "incomplete"`. Stripe expires it
-after about 23 hours, it then becomes `CANCELLED`, and the user can subscribe
-again. Until the backend adds a retry, show "Your payment wasn't completed.
-Please try again tomorrow or contact support" when `GET /billing/subscription`
-returns `provider_status: "incomplete"` on a later visit. **Don't** treat
-`status: "ACTIVE"` alone as paid on the billing screen.
+**If the user leaves or reloads before paying,** the `client_secret` is gone
+and a second subscribe answers `400 already_subscribed`. The subscription
+shows `status: "ACTIVE"` with `provider_status: "incomplete"`. Recover with
+the card flow (§7.4): collect a card with a SetupIntent and
+`POST /billing/payment-method`. The backend makes it the default and **pays
+the open first invoice at once**; on success `provider_status` becomes
+`"active"`. So `/subscribe` should, on mount, check `GET /billing/subscription`
+and, when it finds `provider_status: "incomplete"`, show "Finish your payment"
+with the card form from §7.4 instead of the subscribe button. Never treat
+`status: "ACTIVE"` alone as paid.
 
 ### 5.3 Errors
 
@@ -324,7 +325,7 @@ Allowances: branch on `unlimited`, not on `limit`. `CHECKS` never blocks
 | Condition | Banner | Action |
 |---|---|---|
 | `past_due` | "Your last payment failed. Update your card to keep your plan." | "Update card" (§7.4) |
-| `provider_status === "incomplete"` | "Your first payment wasn't completed." (see §5.2 gap) | Contact support |
+| `provider_status === "incomplete"` | "Your first payment wasn't completed." | "Finish payment" → card form (§7.4) |
 | `cancel_pending` | "Your plan ends on {cancels_on}." | "Keep my plan" → §7.3 |
 | `is_trialing` | "{trial_days_remaining} days left in your free trial." When ≤ 3 and no card: "Add a card to continue after {trial_end}." | "Add card" (§7.4) |
 
@@ -360,9 +361,11 @@ To **add or replace** the card (needs a subscription first):
    `stripe.confirmSetup({ elements, redirect: "if_required" })`.
 3. `POST /api/v1/billing/payment-method { "payment_method_id": setupIntent.payment_method }`.
 
-The new card becomes the default. **If the subscription is past due, the
-unpaid invoice is charged to it at once** and the subscription returns to
-`ACTIVE`. A decline is 400 on `errors.payment_method_id`.
+The new card becomes the default. **If the subscription is past due, or its
+first payment is still incomplete, the unpaid invoice is charged to it at
+once**: `status` returns to `ACTIVE` and `provider_status` to `"active"`.
+Refetch the subscription after the call. A decline is 400 on
+`errors.payment_method_id`, and the invoice stays unpaid.
 
 With `collects_money: false`, `setup` returns `collects_money: false` and an
 empty `client_secret`: hide all card controls.
@@ -426,6 +429,8 @@ unlink, and an invite or removal.
       call subscribe again.
 - [ ] Payment succeeded but `provider_status` is still `incomplete`: wait and
       refetch, don't resubscribe.
+- [ ] User reloaded before paying: `/subscribe` finds `provider_status:
+      "incomplete"` and offers "Finish your payment" through the card form.
 - [ ] Founding spots run out between the pricing page and subscribing: show
       `effective_price` from the response ("Your price: $X/month") and don't
       promise the lock.

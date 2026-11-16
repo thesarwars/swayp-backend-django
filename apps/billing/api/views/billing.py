@@ -442,7 +442,8 @@ class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
         "GET: the default card (brand, last4, exp_month, exp_year), or null "
         "when there is none or no processor collects money. POST: replace it "
         "with a card collected against a SetupIntent (payment-method/setup). "
-        "A past-due subscription is charged with the new card at once. A "
+        "A past-due subscription, or a first payment left incomplete, is "
+        "charged with the new card at once. A "
         "declined card is a 400 on payment_method_id."
     ),
     request=ReplaceCardSerializer,

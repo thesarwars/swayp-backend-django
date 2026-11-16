@@ -232,9 +232,16 @@ class BillingProviderService:
             raise ServiceUnavailable() from error
 
     def replace_card(self, subscription, payment_method_id):
-        """Make a newly collected card the default, and settle a past-due
-        balance with it straight away rather than waiting for Stripe's next
-        retry. A decline is the customer's to fix, so it is a field error."""
+        """Make a newly collected card the default, and settle an unpaid
+        invoice with it straight away: a past-due renewal, or a first payment
+        left incomplete. A decline is the customer's to fix, so it is a field
+        error.
+
+        The incomplete case is the one way back from an abandoned first
+        payment. Its client_secret is returned once and never stored, and a
+        second subscribe is refused, so without this the customer waited for
+        Stripe to expire the subscription (about 23 hours) before they could
+        pay at all."""
         from rest_framework.exceptions import ValidationError
 
         from apps.billing.models import SubscriptionStatus
@@ -251,15 +258,23 @@ class BillingProviderService:
                 subscription_id=subscription.provider_subscription_id,
             )
 
-            if (
+            unpaid = (
                 subscription.status == SubscriptionStatus.PAST_DUE
+                or subscription.provider_status == "incomplete"
+            )
+
+            if (
+                unpaid
                 and subscription.provider_subscription_id
                 and self.provider.retry_latest_invoice(
                     subscription_id=subscription.provider_subscription_id
                 )
             ):
                 subscription.status = SubscriptionStatus.ACTIVE
-                subscription.save(update_fields=["status", "updated_at"])
+                subscription.provider_status = "active"
+                subscription.save(
+                    update_fields=["status", "provider_status", "updated_at"]
+                )
 
         except CardDeclined as error:
             raise ValidationError(

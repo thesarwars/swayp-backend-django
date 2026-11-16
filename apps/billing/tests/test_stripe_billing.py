@@ -647,6 +647,36 @@ class CardOnFileTests(TestCase):
         self.subscription.refresh_from_db()
         self.assertEqual(self.subscription.status, SubscriptionStatus.ACTIVE)
 
+    def test_an_abandoned_first_payment_is_paid_with_the_new_card(self):
+        """The first payment's client_secret is gone after a reload; adding
+        a card is how the customer pays it."""
+        self.subscription.provider_status = "incomplete"
+        self.subscription.save(update_fields=["provider_status"])
+
+        self.service.replace_card(self.subscription, "pm_new")
+
+        self.assertIn("retry_latest_invoice", dict(self.stub.calls))
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.provider_status, "active")
+
+    def test_a_paid_subscription_is_not_charged_again(self):
+        self.subscription.provider_status = "active"
+        self.subscription.save(update_fields=["provider_status"])
+
+        self.service.replace_card(self.subscription, "pm_new")
+
+        self.assertNotIn("retry_latest_invoice", dict(self.stub.calls))
+
+    def test_an_incomplete_payment_that_fails_again_stays_incomplete(self):
+        self.stub.retry_pays = False
+        self.subscription.provider_status = "incomplete"
+        self.subscription.save(update_fields=["provider_status"])
+
+        self.service.replace_card(self.subscription, "pm_new")
+
+        self.subscription.refresh_from_db()
+        self.assertEqual(self.subscription.provider_status, "incomplete")
+
     def test_a_declined_card_is_a_field_error(self):
         from rest_framework.exceptions import ValidationError
 

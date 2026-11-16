@@ -97,10 +97,14 @@ class CollectingStub(SubscriptionBillingProvider):
             id="sub_stub", status=self.status, client_secret=self.secret
         )
 
-    def change_plan(self, *, subscription_id, price_id):
-        self._record("change_plan", price_id=price_id)
+    def change_plan(self, *, subscription_id, price_id, end_trial=False):
+        self._record("change_plan", price_id=price_id, end_trial=end_trial)
 
-        return SubscriptionRef(id=subscription_id, status=self.status)
+        return SubscriptionRef(
+            id=subscription_id,
+            status=self.status,
+            client_secret=self.secret if end_trial else "",
+        )
 
     def cancel_subscription(self, *, subscription_id):
         self._record("cancel_subscription")

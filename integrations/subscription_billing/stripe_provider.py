@@ -269,7 +269,7 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
 
         return self._to_ref(sub)
 
-    def change_plan(self, *, subscription_id, price_id):
+    def change_plan(self, *, subscription_id, price_id, end_trial=False):
         current = self._call(
             self._client.v1.subscriptions.retrieve, subscription_id
         )
@@ -284,6 +284,19 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
                 # change takes effect without a credit or a mid-cycle charge.
                 # When the policy lands, this is the one line that changes.
                 "proration_behavior": "none",
+                **(
+                    {
+                        # Moving onto a plan with no trial ends the free
+                        # period now: Stripe invoices the new price at once
+                        # and charges the default card. Without a card the
+                        # invoice stays open and its confirmation secret,
+                        # expanded below, lets the client pay it.
+                        "trial_end": "now",
+                        "expand": ["latest_invoice.confirmation_secret"],
+                    }
+                    if end_trial
+                    else {}
+                ),
             },
         )
 

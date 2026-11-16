@@ -275,6 +275,13 @@ PATCH /api/v1/billing/subscription      { "plan": "ENTERPRISE" }
   once.
 - **The cycle dates stay the same and there is no proration**: no partial
   charge now and no credit. The next invoice is at the new plan's price.
+- **Exception: during a trial, a move to a plan with no trial (Founding) ends
+  the trial and charges the new price today**, starting a new cycle. If the
+  response has a non-empty `client_secret`, no card was on file: mount the
+  Payment Element with it and confirm, exactly as in the first-payment flow.
+  Dialog copy: "Founding has no free trial. Switching ends your trial and
+  charges $29 today." The switch also claims the Founding rate
+  (`locked_price`) while spots remain.
 - **There is no preview endpoint.** Build the confirm dialog from
   `GET /billing/plans` and the current subscription:
 

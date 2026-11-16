@@ -54,7 +54,7 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
             status="trialing" if trial_days else "active",
         )
 
-    def change_plan(self, *, subscription_id, price_id):
+    def change_plan(self, *, subscription_id, price_id, end_trial=False):
         return SubscriptionRef(id=subscription_id, status="active")
 
     def cancel_subscription(self, *, subscription_id):

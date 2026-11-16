@@ -155,8 +155,13 @@ class SubscriptionService:
     def change_plan(self, *, account, plan_code, today=None):
         """Move to another plan, keeping the current cycle boundaries.
 
-        The lock does not travel: leaving Founding gives it up, and coming
-        back later is a new signup subject to the 500 limit.
+        The lock does not travel: leaving Founding gives it up. Moving onto
+        Founding claims it, while spots remain, as subscribing would.
+
+        A trial belongs to the plan that offers it. Moving onto a plan with
+        no trial (Founding) ends the free period now and starts a paid
+        cycle today; otherwise a Standard trial was a back door to a free
+        Founding trial that Founding itself does not offer.
         """
         today = today or timezone.localdate()
 
@@ -174,20 +179,35 @@ class SubscriptionService:
 
         self._assert_fits(subscription, plan)
 
+        if not plan.price_locked:
+            locked_price = None
+        elif subscription.locked_price is not None:
+            locked_price = subscription.locked_price
+        elif self.founding_lock_available():
+            # Counted before the move, so this subscription is not yet one
+            # of the seats taken.
+            locked_price = plan.monthly_price
+        else:
+            locked_price = None
+
+        end_trial = subscription.is_trialing(today) and not plan.trial_days
+
         subscription.plan = plan
-        subscription.locked_price = (
-            subscription.locked_price
-            if plan.price_locked and subscription.locked_price is not None
-            else None
-        )
-        subscription.save(
-            update_fields=["plan", "locked_price", "updated_at"]
-        )
+        subscription.locked_price = locked_price
+        fields = ["plan", "locked_price", "updated_at"]
+
+        if end_trial:
+            subscription.trial_end = None
+            subscription.period_start = today
+            subscription.period_end = add_month(today)
+            fields += ["trial_end", "period_start", "period_end"]
+
+        subscription.save(update_fields=fields)
 
         # Provider-side move happens after the local one so a provider outage
         # cannot leave Swayp showing the old plan while the customer is billed
         # for the new one. The reverse mismatch is visible and reconcilable.
-        self._provider().change_plan(subscription)
+        self._provider().change_plan(subscription, end_trial=end_trial)
 
         return subscription
 

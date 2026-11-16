@@ -240,6 +240,14 @@ DELETE /api/v1/billing/subscription
 Cycle boundaries are kept and **there is no proration** — the change takes
 effect at the new price with no credit. Don't promise one.
 
+**Switching to a plan with no trial during a trial ends the trial.** A
+trialing Standard subscription moved to Founding is charged $29 now, and a new
+cycle starts today (`trial_end` becomes `null`, `period_start` is today). With
+a card on file Stripe charges it. Without one, the response carries
+`client_secret`: pay it with the Payment Element, as with a first payment.
+Moving onto Founding also claims the Founding price lock (`locked_price`) while
+spots remain.
+
 **A plan too small for the account is refused.** Moving to a plan with fewer
 seats or banks than the account uses now is a **402**, and nothing changes:
 

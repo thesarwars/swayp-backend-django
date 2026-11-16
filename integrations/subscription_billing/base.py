@@ -124,9 +124,10 @@ class SubscriptionBillingProvider(ABC):
         screen's "no card needed" true."""
 
     @abstractmethod
-    def change_plan(self, *, subscription_id: str,
-                    price_id: str) -> SubscriptionRef:
-        ...
+    def change_plan(self, *, subscription_id: str, price_id: str,
+                    end_trial: bool = False) -> SubscriptionRef:
+        """``end_trial`` stops a running free period and bills the new
+        price now: for a move onto a plan that has no trial."""
 
     @abstractmethod
     def cancel_subscription(self, *, subscription_id: str) -> SubscriptionRef:

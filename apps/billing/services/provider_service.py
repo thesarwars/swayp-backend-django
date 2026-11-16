@@ -192,16 +192,32 @@ class BillingProviderService:
         return ref
 
     @transaction.atomic
-    def change_plan(self, subscription):
+    def change_plan(self, subscription, *, end_trial=False):
         if not self.collects_money or not subscription.provider_subscription_id:
             return None
 
-        ref = self.provider.change_plan(
-            subscription_id=subscription.provider_subscription_id,
-            price_id=self.price_id(subscription.plan),
-        )
+        try:
+            ref = self.provider.change_plan(
+                subscription_id=subscription.provider_subscription_id,
+                price_id=self.price_id(subscription.plan),
+                end_trial=end_trial,
+            )
+        except CardDeclined as error:
+            raise ValidationError(
+                {"payment_method_id": str(error)}, code=CARD_DECLINED
+            )
+        except BillingProviderError as error:
+            logger.error("could not change plan: %s", error)
+
+            raise ServiceUnavailable(
+                "Our billing provider is temporarily unavailable. "
+                "Your plan has not changed — please try again."
+            )
 
         self._apply(subscription, ref)
+        # Set when ending a trial left the first invoice unpaid (no card on
+        # file): the client confirms it with the Payment Element.
+        subscription.pending_client_secret = ref.client_secret
 
         return ref
 

@@ -245,3 +245,73 @@ class TrialOnTheApiTests(TestCase):
 
         self.assertEqual(data["SEATS"]["limit"], 10)
         self.assertEqual(data["CHECKS"]["limit"], 5)
+
+
+class SwitchingOntoANoTrialPlanTests(TestCase):
+    """A trial belongs to the plan that offers it. A Standard trial switched
+    to Founding used to carry on as a free Founding trial, which Founding
+    does not offer, and without the Founding price lock."""
+
+    def setUp(self):
+        from apps.billing.tests.test_stripe_billing import CollectingStub
+
+        self.stub = CollectingStub()
+        self.service = SubscriptionService()
+        self.service._provider = lambda: BillingProviderService(
+            provider=self.stub
+        )
+        self.account = UserFactory()
+        self.start = D(2026, 11, 16)
+        self.service.subscribe(
+            account=self.account,
+            plan_code=PlanCode.STANDARD,
+            today=self.start,
+        )
+
+    def switch(self, code, today):
+        return self.service.change_plan(
+            account=self.account, plan_code=code, today=today
+        )
+
+    def provider_call(self):
+        return next(
+            kw for name, kw in self.stub.calls if name == "change_plan"
+        )
+
+    def test_the_trial_ends_and_a_paid_cycle_starts_today(self):
+        subscription = self.switch(PlanCode.FOUNDING, D(2026, 11, 17))
+
+        self.assertIsNone(subscription.trial_end)
+        self.assertFalse(subscription.is_trialing(D(2026, 11, 17)))
+        self.assertEqual(subscription.period_start, D(2026, 11, 17))
+        self.assertEqual(subscription.period_end, D(2026, 12, 17))
+        self.assertTrue(self.provider_call()["end_trial"])
+
+    def test_the_first_invoice_can_be_paid_from_the_response(self):
+        """No card on file: the client pays with the Payment Element."""
+        subscription = self.switch(PlanCode.FOUNDING, D(2026, 11, 17))
+
+        self.assertEqual(subscription.pending_client_secret, "pi_x_secret")
+
+    def test_the_founding_lock_is_claimed(self):
+        subscription = self.switch(PlanCode.FOUNDING, D(2026, 11, 17))
+
+        self.assertEqual(
+            subscription.locked_price, plan(PlanCode.FOUNDING).monthly_price
+        )
+
+    def test_no_lock_once_the_spots_are_gone(self):
+        from unittest import mock
+
+        with mock.patch(
+            "apps.billing.services.subscription_service.FOUNDING_LOCK_LIMIT", 0
+        ):
+            subscription = self.switch(PlanCode.FOUNDING, D(2026, 11, 17))
+
+        self.assertIsNone(subscription.locked_price)
+
+    def test_a_switch_after_the_trial_leaves_the_cycle_alone(self):
+        subscription = self.switch(PlanCode.FOUNDING, D(2026, 12, 1))
+
+        self.assertEqual(subscription.period_start, self.start)
+        self.assertFalse(self.provider_call()["end_trial"])

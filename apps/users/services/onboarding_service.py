@@ -80,7 +80,20 @@ class OnboardingService:
         if not BillingProviderService().collects_money:
             return True
 
-        return bool(subscription.provider_subscription_id)
+        # A plan made while nothing was collected has no provider side and
+        # no way to get one (subscribe answers already_subscribed). It was a
+        # complete signup then; don't lock the account out of the app now.
+        return bool(subscription.provider_subscription_id) or (
+            self._predates_billing(subscription)
+        )
+
+    @staticmethod
+    def _predates_billing(subscription):
+        return (
+            not subscription.provider_subscription_id
+            and not subscription.provider_status
+            and not subscription.is_trialing()
+        )
 
     def bank_complete(self, account):
         """Step 4: the account has linked a bank, ever.
@@ -176,6 +189,8 @@ class OnboardingService:
                 reasons["payment"] = "no_payment_collected"
             elif subscription.is_trialing():
                 reasons["payment"] = "trial"
+            elif self._predates_billing(subscription):
+                reasons["payment"] = "plan_predates_billing"
 
         return reasons
 

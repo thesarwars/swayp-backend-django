@@ -344,6 +344,13 @@ CORS_ALLOWED_ORIGINS = env.list(
 )
 CORS_ALLOW_CREDENTIALS = True
 
+# Request headers browsers may send. The plan buttons send an
+# Idempotency-Key per click; without it here the preflight fails and the
+# browser drops the whole request.
+from corsheaders.defaults import default_headers  # noqa: E402
+
+CORS_ALLOW_HEADERS = (*default_headers, "idempotency-key")
+
 # Headers browser code may read (web C5): the OTP countdown needs
 # Retry-After on a 429, and a CSV or PDF download takes its file name from
 # Content-Disposition. Without this the browser hides both.

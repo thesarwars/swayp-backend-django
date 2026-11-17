@@ -105,3 +105,7 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
             status="complete",
             subscription_id=_stable("sub", session_id),
         )
+
+    def create_portal_session(self, *, customer_id, return_url):
+        # Nothing to manage offline: straight back to where the user was.
+        return return_url

@@ -59,6 +59,8 @@ class SubscriptionRef:
     current_period_end: Optional[str] = None
     #: Present when the card needs 3-D Secure before the first charge clears.
     client_secret: str = ""
+    #: The provider's hosted page for an unpaid latest invoice, if any.
+    payment_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -201,3 +203,8 @@ class SubscriptionBillingProvider(ABC):
 
     def get_checkout_session(self, *, session_id: str) -> CheckoutSessionRef:
         raise BillingProviderError("Hosted checkout is not supported.")
+
+    def create_portal_session(self, *, customer_id: str,
+                              return_url: str) -> str:
+        """A hosted page for the customer's card, invoices and cancel."""
+        raise BillingProviderError("A billing portal is not supported.")

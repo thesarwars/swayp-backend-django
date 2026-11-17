@@ -8,6 +8,8 @@ from apps.billing.api.serializers.checkout import (
     CheckoutStatusSerializer,
     StartCheckoutSerializer,
 )
+from apps.billing.api.serializers.billing import PortalSessionSerializer
+from apps.billing.services.provider_service import BillingProviderService
 from apps.billing.services.checkout_service import SUBSCRIBED, CheckoutService
 from apps.common.base_views import BaseAPIView
 from apps.common.responses import ApiResponse
@@ -101,4 +103,31 @@ class CheckoutSessionDetailAPIView(AccountScopedMixin, BaseAPIView):
         return ApiResponse.success(
             data=CheckoutStatusSerializer(session).data,
             message="Checkout fetched.",
+        )
+
+
+@extend_schema(
+    tags=["Billing"],
+    summary="Open the billing portal",
+    description=(
+        "A hosted page to add or replace the card, see and pay invoices, "
+        "and cancel at period end. Plan changes stay in the app (PATCH "
+        "subscription). Use it after a no-card trial ends, or when "
+        "past_due is true. Send the browser to `url`; it returns to "
+        "/settings/billing."
+    ),
+    request=None,
+    responses={200: PortalSessionSerializer},
+)
+class PortalSessionAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
+    required_capability = MANAGE_BILLING
+    service_class = BillingProviderService
+    may_be_unavailable = True
+
+    def post(self, request):
+        return ApiResponse.success(
+            data={"url": self.service.portal_url(self.account(request))},
+            message="Continue to the billing portal.",
         )

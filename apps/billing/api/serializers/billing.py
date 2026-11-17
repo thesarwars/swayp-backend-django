@@ -103,6 +103,13 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     # when the processor wants the first charge confirmed (3-D Secure). Blank
     # everywhere else — it is a one-use secret, never stored.
     client_secret = serializers.SerializerMethodField()
+    payment_url = serializers.SerializerMethodField(
+        help_text=(
+            "Set when this response left an invoice to pay now (a trial "
+            "ended by switching to a plan without one, and no card on "
+            "file): send the user to this hosted page."
+        )
+    )
     # status stays ACTIVE through a trial, so a client cannot tell from it
     # alone whether a charge has happened. These two say so directly.
     is_trialing = serializers.SerializerMethodField()
@@ -130,6 +137,9 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     def get_client_secret(self, subscription) -> str | None:
         return getattr(subscription, "pending_client_secret", "") or ""
 
+    def get_payment_url(self, subscription) -> str:
+        return getattr(subscription, "pending_payment_url", "") or ""
+
     def get_is_trialing(self, subscription) -> bool:
         return subscription.is_trialing()
 
@@ -151,6 +161,7 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             "cancel_pending",
             "cancels_on",
             "client_secret",
+            "payment_url",
             "trial_end",
             "is_trialing",
             "trial_days_remaining",
@@ -354,3 +365,7 @@ class AllowancesSerializer(serializers.Serializer):
     CHECKS = AllowanceRowSerializer(help_text="Resets each cycle.")
     SEATS = AllowanceRowSerializer()
     BANKS = AllowanceRowSerializer()
+
+
+class PortalSessionSerializer(serializers.Serializer):
+    url = serializers.URLField()

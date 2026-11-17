@@ -552,6 +552,10 @@ STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
 STRIPE_BILLING_WEBHOOK_SECRET = env(
     "STRIPE_BILLING_WEBHOOK_SECRET", default=""
 )
+# The Customer Portal configuration (card, invoices, cancel at period end;
+# no plan changes). Written by `manage.py stripe_setup_portal`. Blank uses
+# the account's default portal configuration.
+STRIPE_PORTAL_CONFIGURATION_ID = env("STRIPE_PORTAL_CONFIGURATION_ID", default="")
 # "template" rather than "mock": if the kill switch is ever flipped on before
 # a real provider is configured, the mock's "[mock-llm] ..." echo would go
 # straight to a user. The template provider is the deterministic sentence.

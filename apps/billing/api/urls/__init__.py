@@ -3,6 +3,7 @@ from django.urls import path
 from apps.billing.api.views.checkout import (
     CheckoutSessionAPIView,
     CheckoutSessionDetailAPIView,
+    PortalSessionAPIView,
 )
 from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
 from apps.billing.api.views.billing import (
@@ -20,6 +21,11 @@ from apps.billing.api.views.billing import (
 )
 
 urlpatterns = [
+    path(
+        "/portal-session",
+        PortalSessionAPIView.as_view(),
+        name="billing-portal-session",
+    ),
     path(
         "/checkout-session",
         CheckoutSessionAPIView.as_view(),

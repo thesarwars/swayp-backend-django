@@ -296,3 +296,51 @@ class MockProviderTests(TestCase):
         self.assertEqual(response.status_code, 201, response.data)
         self.assertEqual(response.json()["data"]["action"], "subscribed")
         self.assertIsNone(response.json()["data"]["url"])
+
+
+class PortalTests(TestCase):
+
+    def test_the_portal_returns_a_url_back_to_billing_settings(self):
+        client = APIClient()
+        client.force_authenticate(user=UserFactory(is_active=True, is_verified=True))
+
+        response = client.post("/api/v1/billing/portal-session")
+
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.json()["data"]["url"].endswith("/settings/billing"))
+
+    def test_the_portal_is_the_owners(self):
+        from apps.teams.factories import ActiveMemberFactory
+        from apps.teams.models import TeamRole
+
+        mate = ActiveMemberFactory(account=UserFactory(), role=TeamRole.ADMIN).user
+        client = APIClient()
+        client.force_authenticate(user=mate)
+
+        self.assertEqual(client.post("/api/v1/billing/portal-session").status_code, 403)
+
+
+class HostedInvoiceOnSwitchTests(CheckoutTestCase):
+    """Ending a trial by switching to Founding with no card on file: the
+    response carries the hosted invoice page to pay it."""
+
+    def test_the_switch_returns_the_payment_url(self):
+        from integrations.subscription_billing.base import SubscriptionRef
+
+        self.start(PlanCode.STANDARD)
+        self.stub.change_plan = lambda **kw: SubscriptionRef(
+            id="sub_stub",
+            status="past_due",
+            payment_url="https://invoice.stripe.com/i/acct/inv",
+        )
+
+        subscription = self.subscriptions.change_plan(
+            account=self.account, plan_code=PlanCode.FOUNDING
+        )
+
+        from apps.billing.api.serializers.billing import SubscriptionSerializer
+
+        self.assertEqual(
+            SubscriptionSerializer(subscription).data["payment_url"],
+            "https://invoice.stripe.com/i/acct/inv",
+        )

@@ -354,6 +354,21 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
             expires_at=self._field(session, "expires_at"),
         )
 
+    def create_portal_session(self, *, customer_id, return_url):
+        from django.conf import settings
+
+        params = {"customer": customer_id, "return_url": return_url}
+        configuration = getattr(settings, "STRIPE_PORTAL_CONFIGURATION_ID", "")
+
+        if configuration:
+            params["configuration"] = configuration
+
+        session = self._call(
+            self._client.v1.billing_portal.sessions.create, params=params
+        )
+
+        return self._field(session, "url", "") or ""
+
     def cancel_subscription(self, *, subscription_id):
         cancelled = self._call(
             self._client.v1.subscriptions.cancel, subscription_id
@@ -563,4 +578,9 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
             status=self._field(sub, "status", "") or "",
             current_period_end=str(period_end) if period_end else None,
             client_secret=self._client_secret(invoice),
+            payment_url=(
+                self._field(invoice, "hosted_invoice_url", "") or ""
+                if self._field(invoice, "status", "") == "open"
+                else ""
+            ),
         )

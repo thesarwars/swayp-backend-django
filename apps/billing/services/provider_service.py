@@ -239,8 +239,28 @@ class BillingProviderService:
         # Set when ending a trial left the first invoice unpaid (no card on
         # file): the client confirms it with the Payment Element.
         subscription.pending_client_secret = ref.client_secret
+        # The same invoice on the provider's hosted page: what a web client
+        # sends the user to instead of mounting a card form.
+        subscription.pending_payment_url = ref.payment_url
 
         return ref
+
+    def portal_url(self, account):
+        """The provider's hosted page for card, invoices and cancel."""
+        from django.conf import settings
+
+        try:
+            return self.provider.create_portal_session(
+                customer_id=self.customer_id_for_account(account),
+                return_url=f"{settings.FRONTEND_URL.rstrip('/')}/settings/billing",
+            )
+        except BillingProviderError as error:
+            logger.error("could not open the billing portal: %s", error)
+
+            raise ServiceUnavailable(
+                "Our billing provider is temporarily unavailable. "
+                "Please try again."
+            )
 
     # --- card on file (BILLING-1) -----------------------------------------
 

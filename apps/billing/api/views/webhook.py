@@ -31,6 +31,9 @@ logger = logging.getLogger(__name__)
 #: ignored — Stripe sends a great deal that is not our business, and 400-ing
 #: it would make Stripe retry forever and eventually disable the endpoint.
 HANDLED = {
+    "checkout.session.completed",
+    "checkout.session.async_payment_succeeded",
+    "checkout.session.expired",
     "invoice.paid",
     "invoice.payment_succeeded",
     "invoice.payment_failed",
@@ -122,6 +125,10 @@ class StripeBillingWebhookAPIView(APIView):
 
     def _apply(self, event_type, event):
         obj = (event.get("data") or {}).get("object") or {}
+
+        if event_type.startswith("checkout.session."):
+            return self._checkout(event_type, obj)
+
         subscription = self._locate(obj)
 
         if subscription is None:
@@ -161,6 +168,18 @@ class StripeBillingWebhookAPIView(APIView):
             )
 
         return False
+
+    def _checkout(self, event_type, obj):
+        from apps.billing.services.checkout_service import CheckoutService
+
+        session_id = obj.get("id", "")
+
+        if event_type == "checkout.session.expired":
+            CheckoutService().expire(session_id)
+
+            return True
+
+        return CheckoutService().fulfil(session_id) is not None
 
     def _locate(self, obj):
         reference = obj.get("subscription") or obj.get("id") or ""

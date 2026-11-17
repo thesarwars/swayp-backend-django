@@ -28,6 +28,7 @@ from django.conf import settings
 
 from integrations.subscription_billing.base import (
     CardRef,
+    CheckoutSessionRef,
     InvoiceRef,
     BillingProviderError,
     CardDeclined,
@@ -301,6 +302,57 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
         )
 
         return self._to_ref(updated)
+
+    # --- hosted checkout ----------------------------------------------------
+
+    def create_checkout_session(self, *, customer_id, price_id, success_url,
+                                cancel_url, metadata, idempotency_key=""):
+        metadata = {k: str(v) for k, v in metadata.items()}
+        params = {
+            "mode": "subscription",
+            "customer": customer_id,
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "client_reference_id": metadata.get("account_id", ""),
+            # On both: the session's for checkout.session.completed, the
+            # subscription's so every later subscription event names the
+            # account too. The account is never found by email.
+            "metadata": metadata,
+            "subscription_data": {"metadata": metadata},
+        }
+        options = (
+            {"idempotency_key": idempotency_key} if idempotency_key else None
+        )
+
+        session = self._call(
+            self._client.v1.checkout.sessions.create,
+            params=params,
+            options=options,
+        )
+
+        return self._to_checkout_ref(session)
+
+    def get_checkout_session(self, *, session_id):
+        session = self._call(
+            self._client.v1.checkout.sessions.retrieve, session_id
+        )
+
+        return self._to_checkout_ref(session)
+
+    def _to_checkout_ref(self, session):
+        subscription = self._field(session, "subscription", "") or ""
+
+        if not isinstance(subscription, str):
+            subscription = self._field(subscription, "id", "") or ""
+
+        return CheckoutSessionRef(
+            id=self._field(session, "id", "") or "",
+            url=self._field(session, "url", "") or "",
+            status=self._field(session, "status", "") or "",
+            subscription_id=subscription,
+            expires_at=self._field(session, "expires_at"),
+        )
 
     def cancel_subscription(self, *, subscription_id):
         cancelled = self._call(

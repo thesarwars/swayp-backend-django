@@ -62,6 +62,20 @@ class SubscriptionRef:
 
 
 @dataclass(frozen=True)
+class CheckoutSessionRef:
+    """A Stripe-hosted Checkout page for the first payment."""
+
+    id: str
+    url: str
+    #: "open", "complete" or "expired".
+    status: str
+    #: The provider subscription, once the session completed.
+    subscription_id: str = ""
+    #: Unix seconds.
+    expires_at: Optional[int] = None
+
+
+@dataclass(frozen=True)
 class CardRef:
     """The card on file, as safe to show: never a number or a token."""
 
@@ -174,3 +188,16 @@ class SubscriptionBillingProvider(ABC):
         rather than charged one by one, which is both cheaper in processor
         fees and what the invoice preview already shows.
         """
+
+    # --- hosted checkout (not abstract: providers without it raise) -------
+
+    def create_checkout_session(self, *, customer_id: str, price_id: str,
+                                success_url: str, cancel_url: str,
+                                metadata: dict,
+                                idempotency_key: str = "") -> CheckoutSessionRef:
+        """A hosted page that collects the card and pays the first invoice.
+        The subscription is created by the provider when it completes."""
+        raise BillingProviderError("Hosted checkout is not supported.")
+
+    def get_checkout_session(self, *, session_id: str) -> CheckoutSessionRef:
+        raise BillingProviderError("Hosted checkout is not supported.")

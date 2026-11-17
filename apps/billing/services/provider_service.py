@@ -97,19 +97,40 @@ class BillingProviderService:
         if subscription.provider_customer_id:
             return subscription.provider_customer_id
 
-        account = subscription.account
-        customer = self.provider.ensure_customer(
-            account_id=str(account.pk),
-            email=account.email or "",
-            name=f"{account.first_name} {account.last_name}".strip(),
+        subscription.provider_customer_id = self.customer_id_for_account(
+            subscription.account
         )
-
-        subscription.provider_customer_id = customer.id
         subscription.save(
             update_fields=["provider_customer_id", "updated_at"]
         )
 
-        return customer.id
+        return subscription.provider_customer_id
+
+    def customer_id_for_account(self, account):
+        """The provider customer for an account that may have no
+        subscription yet (Checkout opens before one exists). One per
+        account: an earlier subscription's customer is reused, and
+        ``ensure_customer`` is idempotent per account otherwise."""
+        from apps.billing.models import Subscription
+
+        known = (
+            Subscription.objects.filter(account=account)
+            .exclude(provider_customer_id="")
+            # Ids from the offline provider mean nothing to Stripe.
+            .exclude(provider_customer_id__contains="_mock_")
+            .order_by("-created_at")
+            .values_list("provider_customer_id", flat=True)
+            .first()
+        )
+
+        if known:
+            return known
+
+        return self.provider.ensure_customer(
+            account_id=str(account.pk),
+            email=account.email or "",
+            name=f"{account.first_name} {account.last_name}".strip(),
+        ).id
 
     def price_id(self, plan):
         """The provider price for this plan, remembered on the row.

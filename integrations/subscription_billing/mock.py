@@ -15,6 +15,7 @@ from decimal import Decimal
 
 from integrations.subscription_billing.base import (
     CardRef,
+    CheckoutSessionRef,
     CustomerRef,
     SetupIntentRef,
     SubscriptionBillingProvider,
@@ -79,3 +80,28 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
     def add_invoice_item(self, *, customer_id, amount, description,
                          currency="usd", idempotency_key=""):
         return _stable("ii", customer_id, description, Decimal(amount))
+
+    # Nothing to pay, so a session is complete the moment it exists and the
+    # "Stripe page" is the success page itself: local development and tests
+    # run the whole round trip without Stripe.
+
+    def create_checkout_session(self, *, customer_id, price_id, success_url,
+                                cancel_url, metadata, idempotency_key=""):
+        session_id = _stable("cs", customer_id, price_id, idempotency_key)
+
+        return CheckoutSessionRef(
+            id=session_id,
+            url=success_url.replace("{CHECKOUT_SESSION_ID}", session_id),
+            status="complete",
+            subscription_id=_stable("sub", session_id),
+        )
+
+    def get_checkout_session(self, *, session_id):
+        from django.conf import settings
+
+        return CheckoutSessionRef(
+            id=session_id,
+            url=f"{settings.FRONTEND_URL}/billing/success?session_id={session_id}",
+            status="complete",
+            subscription_id=_stable("sub", session_id),
+        )

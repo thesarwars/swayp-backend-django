@@ -4,6 +4,7 @@ from .allowance_counter import (
     AllowanceCounter,
     AllowanceKind,
 )
+from .checkout_session import CheckoutSession, CheckoutStatus
 from .enterprise_addon import (
     ADDON_PRICES,
     SINGLE_QUANTITY_KINDS,
@@ -31,6 +32,8 @@ __all__ = [
     "AddOnKind",
     "AllowanceCounter",
     "AllowanceKind",
+    "CheckoutSession",
+    "CheckoutStatus",
     "EnterpriseAddOn",
     "FeeCharge",
     "FeeKind",

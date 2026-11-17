@@ -1,5 +1,9 @@
 from django.urls import path
 
+from apps.billing.api.views.checkout import (
+    CheckoutSessionAPIView,
+    CheckoutSessionDetailAPIView,
+)
 from apps.billing.api.views.webhook import StripeBillingWebhookAPIView
 from apps.billing.api.views.billing import (
     AddOnAPIView,
@@ -16,6 +20,16 @@ from apps.billing.api.views.billing import (
 )
 
 urlpatterns = [
+    path(
+        "/checkout-session",
+        CheckoutSessionAPIView.as_view(),
+        name="billing-checkout-session",
+    ),
+    path(
+        "/checkout-session/<str:session_id>",
+        CheckoutSessionDetailAPIView.as_view(),
+        name="billing-checkout-session-detail",
+    ),
     path("/plans", PlanListAPIView.as_view(), name="billing-plan-list"),
     path("/config", BillingConfigAPIView.as_view(), name="billing-config"),
     path(

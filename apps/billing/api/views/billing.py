@@ -51,6 +51,8 @@ from apps.teams.permissions import MANAGE_BILLING
 )
 class PlanListAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     # Public (web §4): the marketing pricing page shows the plans before
     # anyone signs up. A token still personalises trial_eligible; without
     # one it is true, which is what a new account would get.
@@ -87,6 +89,8 @@ class PlanListAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: SubscriptionSerializer},
 )
 class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
+
+    requires_subscription = False
 
     service_class = SubscriptionService
     # Reading the plan is fine for anyone on the team; changing it is not,
@@ -198,6 +202,8 @@ class SubscriptionAPIView(AccountScopedMixin, IdempotencyMixin, BaseAPIView):
 )
 class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     service_class = SubscriptionService
     may_be_unavailable = True
     required_capability = MANAGE_BILLING
@@ -222,6 +228,8 @@ class SubscriptionResumeAPIView(AccountScopedMixin, BaseAPIView):
 )
 class AllowanceAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     def get(self, request):
         subscription = SubscriptionService().current(self.account(request))
 
@@ -245,6 +253,8 @@ class AllowanceAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: AddOnSerializer(many=True)},
 )
 class AddOnAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
 
     service_class = AddOnService
     # Adding an add-on adds an invoice line, so it is a billing change.
@@ -307,6 +317,8 @@ class AddOnAPIView(AccountScopedMixin, BaseAPIView):
 )
 class InvoicePreviewAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     service_class = AddOnService
 
     def get(self, request):
@@ -337,6 +349,8 @@ class InvoicePreviewAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: FeeChargeSerializer(many=True)},
 )
 class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
 
     # pagination beside data in the schema (apps/common/schema.py).
     paginated_response = True
@@ -388,6 +402,8 @@ class FeeChargeListAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: SetupIntentSerializer},
 )
 class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
 
     service_class = SubscriptionService
     may_be_unavailable = True
@@ -450,6 +466,8 @@ class PaymentMethodSetupAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: CardSerializer},
 )
 class PaymentMethodAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
 
     service_class = SubscriptionService
     required_capability = MANAGE_BILLING

@@ -17,6 +17,8 @@ from apps.users.services.profile_service import ProfileService
 
 class ProfileAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     service_class = ProfileService
     # The account's settings: the business name and billing address on the
     # owner's invoices. Every teammate may read them; only the owner edits.

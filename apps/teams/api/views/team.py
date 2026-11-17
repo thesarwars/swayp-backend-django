@@ -76,6 +76,8 @@ class TeamMemberListAPIView(TeamContextMixin, BaseAPIView):
 )
 class MyRoleAPIView(TeamContextMixin, BaseAPIView):
 
+    requires_subscription = False
+
     service_class = TeamService
 
     def get(self, request):

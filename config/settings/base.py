@@ -726,3 +726,9 @@ BILL_DUE_REMINDER_OVERDUE_DAYS = env.int(
 LATE_FEE_WARNING_THRESHOLD_DAYS = env.int(
     "LATE_FEE_WARNING_THRESHOLD_DAYS", default=7
 )
+
+# The paywall (D4): product endpoints answer 402 subscription_required to an
+# account with no live subscription. Billing, profile and onboarding stay
+# open so a planless account can buy one. False only where billing cannot
+# run yet; the test settings turn it off and the paywall tests turn it on.
+SUBSCRIPTION_REQUIRED = env.bool("SUBSCRIPTION_REQUIRED", default=True)

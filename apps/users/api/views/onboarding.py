@@ -25,6 +25,8 @@ from apps.users.services.onboarding_service import OnboardingService
 )
 class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
 
+    requires_subscription = False
+
     service_class = OnboardingService
 
     def get(self, request):
@@ -47,6 +49,8 @@ class OnboardingAPIView(AccountScopedMixin, BaseAPIView):
     responses={200: OnboardingStateResponseSerializer},
 )
 class OnboardingSkipBankAPIView(AccountScopedMixin, BaseAPIView):
+
+    requires_subscription = False
 
     service_class = OnboardingService
     required_capability = MANAGE_BANKS

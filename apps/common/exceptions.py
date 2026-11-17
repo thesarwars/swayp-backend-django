@@ -144,3 +144,15 @@ class PlanLimitExceededException(APIException):
         # preselect the plan that lifts it.
         self.limit = str(limit) if limit else None
 
+
+
+class SubscriptionRequiredException(PlanLimitExceededException):
+    """The account has no live subscription (paywall, D4).
+
+    A 402 like a plan limit, so the client's one 402 handler sends the user
+    to the pricing page; ``code`` tells the two apart.
+    """
+
+    default_detail = "Choose a plan to continue."
+    default_code = "subscription_required"
+    body_code = "subscription_required"

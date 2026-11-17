@@ -33,7 +33,7 @@ from apps.common.serializers import (
 ERROR_DESCRIPTIONS = {
     "400": "Validation failed: read `errors` and `code`.",
     "401": "Missing or expired token (`code`: not_authenticated, token_not_valid).",
-    "402": "Plan limit (`code`: plan_limit, with `limit`).",
+    "402": "Plan limit (`code`: plan_limit, with `limit`), or no live subscription (`code`: subscription_required, `limit` null).",
     "403": "Not allowed (`code`: forbidden, role_forbidden).",
     "404": "Not found, or not yours.",
     "503": "A provider is unreachable; nothing was charged or changed. Retry.",

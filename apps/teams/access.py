@@ -75,8 +75,15 @@ class AccountScopedMixin:
     def account(self, request):
         return acting_account(request)
 
+    #: False on views a planless account still needs: billing (to buy a
+    #: plan), profile, onboarding, and the caller's own role.
+    requires_subscription = True
+
     def get_permissions(self):
-        return super().get_permissions() + [RequiresCapability()]
+        return super().get_permissions() + [
+            RequiresSubscription(),
+            RequiresCapability(),
+        ]
 
 
 def acting_role(request):
@@ -176,3 +183,37 @@ class RequiresCapability(BasePermission):
         request._swayp_denied_capability = capability
 
         return False
+
+
+class RequiresSubscription(BasePermission):
+    """The paywall (D4): product endpoints need a live subscription.
+
+    Live is ACTIVE or PAST_DUE (a failed card keeps the plan while it is
+    fixed); a trial is ACTIVE. Judged on the acting account, so a teammate
+    is covered by the owner's plan. Answers 402 ``subscription_required``.
+
+    Off when ``settings.SUBSCRIPTION_REQUIRED`` is False: the test settings,
+    and any environment that has to run before billing is set up.
+    """
+
+    def has_permission(self, request, view):
+        from django.conf import settings
+
+        if not getattr(settings, "SUBSCRIPTION_REQUIRED", True):
+            return True
+
+        if not getattr(view, "requires_subscription", True):
+            return True
+
+        if not request.user or not request.user.is_authenticated:
+            return True
+
+        from apps.billing.services.subscription_service import (
+            SubscriptionService,
+        )
+        from apps.common.exceptions import SubscriptionRequiredException
+
+        if SubscriptionService().current(acting_account(request)) is None:
+            raise SubscriptionRequiredException()
+
+        return True

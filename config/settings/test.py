@@ -49,3 +49,6 @@ CACHES = {
 }
 
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# Most tests exercise features, not the paywall; test_paywall.py turns it on.
+SUBSCRIPTION_REQUIRED = False

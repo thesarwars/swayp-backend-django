@@ -60,6 +60,19 @@ class CheckoutStub(CollectingStub):
     def get_checkout_session(self, *, session_id):
         return self.sessions[session_id]
 
+    def expire_checkout_session(self, *, session_id):
+        self._record("expire_checkout_session", session_id=session_id)
+        ref = self.sessions[session_id]
+        if ref.status != "open":
+            from integrations.subscription_billing.base import (
+                BillingProviderError,
+            )
+
+            raise BillingProviderError("not open")
+        self.sessions[session_id] = CheckoutSessionRef(
+            id=session_id, url="", status="expired"
+        )
+
     def pay(self, sid):
         self.sessions[sid] = CheckoutSessionRef(
             id=sid, url="", status="complete", subscription_id=f"sub_{sid}"
@@ -130,6 +143,26 @@ class RouteTests(CheckoutTestCase):
 
         self.assertEqual(first.pk, second.pk)
         self.assertEqual(CheckoutSession.objects.count(), 1)
+
+    def test_a_trial_closes_a_checkout_page_left_open(self):
+        """A Founding tab left open must not be payable once a trial runs."""
+        _, page = self.start(PlanCode.FOUNDING)
+
+        self.start(PlanCode.STANDARD)
+
+        page.refresh_from_db()
+        self.assertEqual(page.status, CheckoutStatus.EXPIRED)
+        self.assertEqual(self.stub.sessions[page.provider_session_id].status, "expired")
+
+    def test_paying_one_page_closes_the_others(self):
+        _, founding = self.start(PlanCode.FOUNDING)
+        _, enterprise = self.start(PlanCode.ENTERPRISE)
+        self.stub.pay(founding.provider_session_id)
+
+        self.service.fulfil(founding.provider_session_id)
+
+        enterprise.refresh_from_db()
+        self.assertEqual(enterprise.status, CheckoutStatus.EXPIRED)
 
     def test_refused_when_already_subscribed(self):
         self.start(PlanCode.STANDARD)

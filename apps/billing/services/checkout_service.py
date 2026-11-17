@@ -79,6 +79,7 @@ class CheckoutService:
             subscription = self.subscriptions.subscribe(
                 account=account, plan_code=plan_code
             )
+            self.close_open_sessions(account)
 
             return SUBSCRIBED, subscription
 
@@ -259,7 +260,33 @@ class CheckoutService:
         session.subscription = subscription
         session.save(update_fields=["status", "subscription", "updated_at"])
 
+        self.close_open_sessions(session.account)
+
         return subscription
+
+    def close_open_sessions(self, account):
+        """Once the account has a plan, any other Checkout page still open in
+        another tab must not be payable: it would buy a second plan."""
+        for session in CheckoutSession.objects.filter(
+            account=account, status=CheckoutStatus.OPEN
+        ):
+            try:
+                self.provider.provider.expire_checkout_session(
+                    session_id=session.provider_session_id
+                )
+            except BillingProviderError as error:
+                # Already completed or expired on Stripe's side; fulfil's
+                # duplicate guard still catches a completed one.
+                logger.warning(
+                    "could not expire checkout %s: %s",
+                    session.provider_session_id,
+                    error,
+                )
+
+                continue
+
+            session.status = CheckoutStatus.EXPIRED
+            session.save(update_fields=["status", "updated_at"])
 
     def expire(self, session_id):
         CheckoutSession.objects.filter(

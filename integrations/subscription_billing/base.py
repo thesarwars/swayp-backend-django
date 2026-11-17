@@ -204,6 +204,10 @@ class SubscriptionBillingProvider(ABC):
     def get_checkout_session(self, *, session_id: str) -> CheckoutSessionRef:
         raise BillingProviderError("Hosted checkout is not supported.")
 
+    def expire_checkout_session(self, *, session_id: str) -> None:
+        """Close an open hosted page so it can no longer be paid."""
+        raise BillingProviderError("Hosted checkout is not supported.")
+
     def create_portal_session(self, *, customer_id: str,
                               return_url: str) -> str:
         """A hosted page for the customer's card, invoices and cancel."""

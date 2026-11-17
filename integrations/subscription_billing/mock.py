@@ -106,6 +106,9 @@ class MockSubscriptionBillingProvider(SubscriptionBillingProvider):
             subscription_id=_stable("sub", session_id),
         )
 
+    def expire_checkout_session(self, *, session_id):
+        return None
+
     def create_portal_session(self, *, customer_id, return_url):
         # Nothing to manage offline: straight back to where the user was.
         return return_url

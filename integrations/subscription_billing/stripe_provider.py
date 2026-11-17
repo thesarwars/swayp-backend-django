@@ -346,6 +346,9 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
 
         return self._to_checkout_ref(session)
 
+    def expire_checkout_session(self, *, session_id):
+        self._call(self._client.v1.checkout.sessions.expire, session_id)
+
     def _to_checkout_ref(self, session):
         subscription = self._field(session, "subscription", "") or ""
 

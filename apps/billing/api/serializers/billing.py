@@ -119,8 +119,10 @@ class SubscriptionSerializer(serializers.ModelSerializer):
     )
     past_due = serializers.SerializerMethodField(
         help_text=(
-            "The last charge failed. The plan stays in force; replace the "
-            "card (POST billing/payment-method) to recover."
+            "The last charge failed. The plan stays in force. To recover, "
+            "update the card: on web through the customer portal "
+            "(POST billing/portal-session); on mobile with POST "
+            "billing/payment-method."
         )
     )
 

@@ -293,6 +293,12 @@ class StripeSubscriptionBillingProvider(SubscriptionBillingProvider):
                         # invoice stays open and its confirmation secret,
                         # expanded below, lets the client pay it.
                         "trial_end": "now",
+                        # Without this Stripe refuses the update outright
+                        # when the customer has no card ("no attached
+                        # payment source"). default_incomplete applies the
+                        # change and leaves the invoice open to pay on its
+                        # hosted page.
+                        "payment_behavior": "default_incomplete",
                         "expand": ["latest_invoice.confirmation_secret"],
                     }
                     if end_trial

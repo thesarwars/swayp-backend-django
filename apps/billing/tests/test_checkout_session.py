@@ -221,7 +221,7 @@ class CheckoutWebhookTests(CheckoutTestCase):
 
     def event(self, type_, obj):
         return {
-            "id": "evt_1",
+            "id": f"evt_{type_}",
             "object": "event",
             "type": type_,
             "data": {"object": obj},

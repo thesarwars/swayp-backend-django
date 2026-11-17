@@ -4,6 +4,7 @@ from .allowance_counter import (
     AllowanceCounter,
     AllowanceKind,
 )
+from .billing_webhook_event import BillingWebhookEvent
 from .checkout_session import CheckoutSession, CheckoutStatus
 from .enterprise_addon import (
     ADDON_PRICES,
@@ -32,6 +33,7 @@ __all__ = [
     "AddOnKind",
     "AllowanceCounter",
     "AllowanceKind",
+    "BillingWebhookEvent",
     "CheckoutSession",
     "CheckoutStatus",
     "EnterpriseAddOn",

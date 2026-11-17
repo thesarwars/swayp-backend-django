@@ -483,8 +483,10 @@ class BillingWebhookTests(TestCase):
         # "object": "event" is present on every real Stripe event and the SDK
         # reads it during construction, so a fixture without it is not a
         # payload Stripe would ever send.
+        import uuid
+
         return {
-            "id": "evt_1",
+            "id": f"evt_{uuid.uuid4().hex}",
             "object": "event",
             "type": type_,
             "data": {"object": obj},

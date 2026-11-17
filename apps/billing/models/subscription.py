@@ -55,6 +55,11 @@ class Subscription(BaseModel):
     # when Stripe ends a cancelled trialing subscription.
     cancels_on = models.DateField(null=True, blank=True)
 
+    #: ``created`` of the last provider event applied to this row (Unix
+    #: seconds). Stripe delivers out of order; an older event than this one
+    #: must not overwrite what a newer one said.
+    provider_event_at = models.BigIntegerField(null=True, blank=True)
+
     # When the free period ends, or null if there was never one. The
     # entitlement is ACTIVE throughout: a trial is a promise not to charge
     # yet, not a reduced product.

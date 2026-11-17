@@ -15,12 +15,18 @@ import json
 import logging
 
 from django.conf import settings
+from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.billing.models import Subscription, SubscriptionStatus
+from apps.billing.models import (
+    BillingWebhookEvent,
+    Plan,
+    Subscription,
+    SubscriptionStatus,
+)
 from apps.billing.services.provider_service import swayp_status
 from apps.common.error_codes import INVALID_SIGNATURE
 from apps.common.responses import ApiResponse
@@ -117,7 +123,22 @@ class StripeBillingWebhookAPIView(APIView):
             # endpoint — taking the events we *do* care about with it.
             return Response({"received": True, "handled": False})
 
-        handled = self._apply(event_type, event)
+        event_id = event.get("id", "") if hasattr(event, "get") else ""
+
+        with transaction.atomic():
+            # Claimed in the same transaction as the work: a handler that
+            # fails rolls the claim back, so Stripe's retry runs it again.
+            if event_id:
+                _, new = BillingWebhookEvent.objects.get_or_create(
+                    event_id=event_id, defaults={"type": event_type}
+                )
+
+                if not new:
+                    return Response(
+                        {"received": True, "handled": False, "duplicate": True}
+                    )
+
+            handled = self._apply(event_type, event)
 
         return Response({"received": True, "handled": handled})
 
@@ -158,14 +179,26 @@ class StripeBillingWebhookAPIView(APIView):
             )
 
         if event_type == "customer.subscription.updated":
+            created = event.get("created")
+
+            if (
+                created is not None
+                and subscription.provider_event_at is not None
+                and created < subscription.provider_event_at
+            ):
+                logger.info("stale subscription event ignored")
+
+                return False
+
+            synced = self._sync(subscription, obj, created)
             mapped = swayp_status(obj.get("status", ""))
 
             if mapped is None:
-                return False
+                return synced
 
             return self._set_status(
                 subscription, mapped, obj.get("status", "")
-            )
+            ) or synced
 
         return False
 
@@ -180,6 +213,76 @@ class StripeBillingWebhookAPIView(APIView):
             return True
 
         return CheckoutService().fulfil(session_id) is not None
+
+    def _sync(self, subscription, obj, created):
+        """Plan, period, trial and pending cancel, as Stripe has them.
+
+        So a change made in Stripe (the dashboard, the portal, a schedule)
+        cannot leave Swayp showing a different plan from the one billed.
+        """
+        import datetime as dt
+
+        def day(ts):
+            return (
+                dt.datetime.fromtimestamp(int(ts), tz=dt.timezone.utc).date()
+                if ts
+                else None
+            )
+
+        items = ((obj.get("items") or {}).get("data")) or [{}]
+        item = items[0] or {}
+        fields = []
+
+        price_id = ((item.get("price") or {}).get("id")) or ""
+        plan = (
+            Plan.objects.filter(provider_price_id=price_id).first()
+            if price_id
+            else None
+        )
+
+        if plan is not None and plan.pk != subscription.plan_id:
+            subscription.plan = plan
+            fields.append("plan")
+
+            if not plan.price_locked and subscription.locked_price is not None:
+                subscription.locked_price = None
+                fields.append("locked_price")
+
+        start = day(item.get("current_period_start") or obj.get("current_period_start"))
+        end = day(item.get("current_period_end") or obj.get("current_period_end"))
+
+        if start and end and (start, end) != (
+            subscription.period_start, subscription.period_end
+        ):
+            subscription.period_start, subscription.period_end = start, end
+            fields += ["period_start", "period_end"]
+
+        if "trial_end" in obj:
+            trial_end = day(obj.get("trial_end"))
+
+            if trial_end != subscription.trial_end:
+                subscription.trial_end = trial_end
+                fields.append("trial_end")
+
+        if "cancel_at_period_end" in obj:
+            cancels_on = (
+                (subscription.cancels_on or subscription.period_end)
+                if obj.get("cancel_at_period_end")
+                else None
+            )
+
+            if cancels_on != subscription.cancels_on:
+                subscription.cancels_on = cancels_on
+                fields.append("cancels_on")
+
+        if created is not None:
+            subscription.provider_event_at = created
+            fields.append("provider_event_at")
+
+        if fields:
+            subscription.save(update_fields=fields + ["updated_at"])
+
+        return bool(set(fields) - {"provider_event_at"})
 
     def _locate(self, obj):
         reference = obj.get("subscription") or obj.get("id") or ""

@@ -17,7 +17,8 @@ Every response body in these files was captured from the running API.
 | **E7** | [AI Advisor](e7-ai-advisor.md) | consent, cash context, balance projection |
 | **E8** | [Dashboard & Reports](e8-dashboard-reports.md) | home, reports, 1099, notifications |
 | **E9** | [Billing](e9-billing.md) | plans, trial, card collection, allowances, fees, invoice |
-| **E9b** | [Subscription frontend plan](e9-subscription-frontend-plan.md) | pricing → sign-up → subscribe (trial, or pay with Stripe Elements), change plan, cancel, card, 402 gates |
+| **E9b** | [Subscription frontend plan](e9-subscription-frontend-plan.md) | pricing → sign-up → start a plan (trial, or Stripe Checkout), change plan, portal, paywall, 402 gates |
+| **E9c** | [Checkout frontend instructions](e9-checkout-frontend-instructions.md) | **Start here for the Checkout change:** what to build, remove and test |
 | **E10** | [Teams](e10-teams.md) | seats, roles, invitations, entities |
 
 **Base URL:** `/api/v1` · **Interactive schema:** `/api/docs`

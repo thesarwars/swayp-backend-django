@@ -4,9 +4,13 @@ How the web app takes a visitor from **"Get Started"** on the pricing page to a
 paid or trialling subscription, and how it handles plan changes, cancellation,
 the card on file and plan limits afterwards.
 
-**Every endpoint here is live today.** There is no hosted Stripe Checkout and
-no customer portal: the card is collected in the app with **Stripe Elements**,
-and Swayp creates the subscription itself.
+**The app never shows a card form.** Every payment happens on a page Stripe
+hosts: **Stripe Checkout** for the first payment, the **Customer Portal** for
+the card, invoices and cancel, and the **hosted invoice page** when a plan
+switch ends a trial. A trial starts with no Stripe page at all.
+
+The older in-app card flow (SetupIntent, Payment Element, `client_secret`)
+still works and is kept for mobile; the web app should not use it.
 
 ← [Index](README.md) · Reference with full response bodies: [E9 Billing](e9-billing.md)
 
@@ -19,7 +23,10 @@ and Swayp creates the subscription itself.
 | GET | `/api/v1/billing/plans` | public | Pricing page, compare table |
 | GET | `/api/v1/billing/config` | public | `collects_money`, Stripe publishable key, fee schedule |
 | GET | `/api/v1/billing/subscription` | any teammate | Current plan, or `null` |
-| POST | `/api/v1/billing/subscription` | owner | Subscribe |
+| POST | `/api/v1/billing/checkout-session` | owner | **Start a plan** (every plan button): starts a trial, or returns the Stripe Checkout URL |
+| GET | `/api/v1/billing/checkout-session/{session_id}` | owner | Success page polls until `complete` |
+| POST | `/api/v1/billing/portal-session` | owner | Stripe Customer Portal URL: card, invoices, cancel |
+| POST | `/api/v1/billing/subscription` | owner | Subscribe in-app (mobile; not for web) |
 | PATCH | `/api/v1/billing/subscription` | owner | Change plan |
 | DELETE | `/api/v1/billing/subscription` | owner | Cancel at period end |
 | POST | `/api/v1/billing/subscription/resume` | owner | Undo a pending cancellation |
@@ -161,101 +168,73 @@ async function routeAfterAuth() {
 
 ---
 
-## 5. Subscribing (`/subscribe?plan=CODE`)
+## 5. Starting a plan (`/subscribe?plan=CODE`)
 
-Show the plan summary (name, `monthly_price`, features) and one confirm
-button. What happens on confirm depends on two things:
-
-```
-GET /api/v1/billing/config  →  { "collects_money": true, "publishable_key": "pk_test_…", "fees": { … } }
-```
-
-| Case | When | Flow |
-|---|---|---|
-| **A. Free trial** | `collects_money` and the plan's `trial_eligible` and `trial_days > 0` | §5.1, no card |
-| **B. Paid** | `collects_money`, no trial | §5.2, card through Stripe |
-| **C. Not charging** | `collects_money: false` (the mock deployment) | §5.1, no card ever |
-
-Every subscribe call:
+Show the plan summary (name, `monthly_price`, features) and one button. The
+label follows the plan ("Start Free Trial" when `trial_eligible` and
+`trial_days > 0`, otherwise "Get Started"), but **the backend decides what
+happens**, not the label: a returning account gets no second trial, whatever
+the button said. Every plan uses the same call:
 
 ```
-POST /api/v1/billing/subscription
+POST /api/v1/billing/checkout-session
 Idempotency-Key: <one uuid per click>
-{ "plan": "STANDARD" }
+{ "plan": "FOUNDING" }
 ```
 
-The `Idempotency-Key` makes a double click or a retry return the same
-subscription instead of starting a second one. Make a new key per click, and
-reuse it only when retrying that same click.
+Follow `action` in the answer:
 
-### 5.1 Trial or not charging: one call
-
-`201`, with `client_secret` empty:
+| `action` | Status | When | Do |
+|---|---|---|---|
+| `subscribed` | 201 | A trial applies | `subscription` is set and `url` is null. No payment, no card. Clear the plan intent, refresh the subscription, go to onboarding or the dashboard. |
+| `redirect` | 200 | Anything to pay now (Founding, Enterprise, Standard without a trial) | `window.location.href = url` (Stripe's page). Nothing is created in Swayp yet. |
 
 ```json
-{ "id": "…", "plan": { "code": "STANDARD", "…": "…" }, "status": "ACTIVE",
-  "effective_price": "99.00", "locked_price": null,
-  "is_trialing": true, "trial_days_remaining": 14, "trial_end": "2026-11-30",
-  "provider_status": "trialing", "client_secret": "",
-  "past_due": false, "cancel_pending": false, "cancels_on": null }
+{ "action": "redirect",
+  "url": "https://checkout.stripe.com/c/pay/cs_test_…",
+  "session_id": "cs_test_…",
+  "subscription": null }
 ```
 
-Done: `clearPlanIntent()`, refresh the cached subscription, show "Welcome to
-Standard", go to onboarding or the dashboard. The card can be added later
-(§7.4); remind the user before `trial_end`.
+A second click while a page is still open returns **the same** page, so a
+user cannot pay twice.
 
-### 5.2 Paid: subscribe, then pay with Stripe
+### 5.1 Coming back from Stripe
 
-1. **Subscribe first**, as above, with no card. When money is collected, the
-   `201` carries a non-empty **`client_secret`**: the first invoice's payment,
-   waiting for a card. `provider_status` is `"incomplete"`.
-2. **Mount Stripe's Payment Element with that `client_secret`** and confirm:
+- **Paid:** Stripe sends the browser to
+  `/billing/success?session_id=cs_test_…`. That page polls
+  `GET /api/v1/billing/checkout-session/{session_id}` every 2 s until
+  `status` is `complete` (usually the first or second call), then clears the
+  plan intent, refreshes the subscription and goes to onboarding or the
+  dashboard. After about 30 s, show "We're confirming your payment" with a
+  Refresh button. **Never start checkout again from this page.**
 
-```ts
-const stripe = await loadStripe(config.publishable_key);
-const elements = stripe.elements({ clientSecret: sub.client_secret });
-elements.create("payment").mount("#card");
+  ```json
+  { "session_id": "cs_test_…", "status": "complete", "plan": "FOUNDING",
+    "subscription": { "plan": { "code": "FOUNDING" }, "status": "ACTIVE", "locked_price": "29.00", "…": "…" } }
+  ```
 
-// on "Pay $99":
-const { error } = await stripe.confirmPayment({
-  elements,
-  confirmParams: { return_url: `${location.origin}/subscribe/done` },
-  redirect: "if_required",
-});
-```
+  `status: "expired"` means the page timed out unpaid: send the user to
+  `/pricing?plan=CODE`.
+- **Backed out:** Stripe sends the browser to `/pricing?plan=CODE`. Nothing
+  was created; the account still has no plan, and the paywall (§8) keeps
+  sending it to pricing.
 
-   Stripe handles 3-D Secure inside `confirmPayment`. The card goes to Stripe
-   only and never to Swayp.
-3. **On success,** refetch `GET /billing/subscription` until `provider_status`
-   is `"active"` (every 1.5 s, up to about 20 s; it is updated by Stripe's
-   webhook). Then clear the plan intent and continue as in §5.1. If it's still
-   `"incomplete"` after 20 s, say "We're confirming your payment" with a
-   Refresh button. **Don't subscribe again.**
-4. **On `error`** (declined, 3-D Secure failed): show `error.message` and let
-   the user try another card **in the same Payment Element**. Don't call
-   subscribe again; the subscription already exists.
+**The Founding rate is claimed when the payment completes**, not when the
+page opens. Near the last spot, a user who opened the page may pay list
+price: the success page shows `locked_price` (null means no founder rate).
 
-**Keep the `client_secret` for this page only.** It is returned once and
-can't be fetched again. Don't store it.
+**Locally** (`collects_money: false`), `url` points straight at
+`/billing/success?session_id=…` and the session is already `complete`, so
+the whole round trip works without Stripe.
 
-**If the user leaves or reloads before paying,** the `client_secret` is gone
-and a second subscribe answers `400 already_subscribed`. The subscription
-shows `status: "ACTIVE"` with `provider_status: "incomplete"`. Recover with
-the card flow (§7.4): collect a card with a SetupIntent and
-`POST /billing/payment-method`. The backend makes it the default and **pays
-the open first invoice at once**; on success `provider_status` becomes
-`"active"`. So `/subscribe` should, on mount, check `GET /billing/subscription`
-and, when it finds `provider_status: "incomplete"`, show "Finish your payment"
-with the card form from §7.4 instead of the subscribe button. Never treat
-`status: "ACTIVE"` alone as paid.
-
-### 5.3 Errors
+### 5.2 Errors
 
 | Response | Meaning | Show |
 |---|---|---|
 | 400 `already_subscribed` | the account has a plan already | go to `/settings/billing` |
-| 400 `card_declined` on `errors.payment_method_id` | only when a card was sent | "Your card was declined." |
 | 403 `role_forbidden` | not the owner | "Only the account owner can choose a plan" |
+| 404 on the status poll | not this account's checkout | go to `/pricing` |
 | 503 | billing provider unreachable | "Billing is temporarily unavailable. You have not been charged." with Retry |
 
 ---
@@ -277,8 +256,9 @@ PATCH /api/v1/billing/subscription      { "plan": "ENTERPRISE" }
   charge now and no credit. The next invoice is at the new plan's price.
 - **Exception: during a trial, a move to a plan with no trial (Founding) ends
   the trial and charges the new price today**, starting a new cycle. If the
-  response has a non-empty `client_secret`, no card was on file: mount the
-  Payment Element with it and confirm, exactly as in the first-payment flow.
+  response has a non-empty **`payment_url`**, no card was on file: send the
+  browser to it (Stripe's hosted invoice page). Until it is paid,
+  `past_due` is true and the past-due banner shows.
   Dialog copy: "Founding has no free trial. Switching ends your trial and
   charges $29 today." The switch also claims the Founding rate
   (`locked_price`) while spots remain.
@@ -331,10 +311,9 @@ Allowances: branch on `unlimited`, not on `limit`. `CHECKS` never blocks
 
 | Condition | Banner | Action |
 |---|---|---|
-| `past_due` | "Your last payment failed. Update your card to keep your plan." | "Update card" (§7.4) |
-| `provider_status === "incomplete"` | "Your first payment wasn't completed." | "Finish payment" → card form (§7.4) |
+| `past_due` | "Your last payment failed. Update your card to keep your plan." | "Update card" → portal (§7.4) |
 | `cancel_pending` | "Your plan ends on {cancels_on}." | "Keep my plan" → §7.3 |
-| `is_trialing` | "{trial_days_remaining} days left in your free trial." When ≤ 3 and no card: "Add a card to continue after {trial_end}." | "Add card" (§7.4) |
+| `is_trialing` | "{trial_days_remaining} days left in your free trial." When ≤ 3 and no card: "Add a card to continue after {trial_end}." | "Add card" → portal (§7.4) |
 
 `trial_days_remaining` is `0` when the trial has run out and `null` when there
 was never one. Treat them differently.
@@ -360,22 +339,18 @@ GET  /api/v1/billing/payment-method
 → { "brand": "visa", "last4": "4242", "exp_month": 12, "exp_year": 2030 }   or null
 ```
 
-To **add or replace** the card (needs a subscription first):
+To **add or replace** the card, or **pay an unpaid invoice**, open the
+Stripe Customer Portal:
 
-1. `POST /api/v1/billing/payment-method/setup` → `{ client_secret: "seti_…", publishable_key, collects_money }`.
-   Call it only when opening the card form; every call creates a SetupIntent.
-2. Mount the Payment Element with that `client_secret` and call
-   `stripe.confirmSetup({ elements, redirect: "if_required" })`.
-3. `POST /api/v1/billing/payment-method { "payment_method_id": setupIntent.payment_method }`.
+```ts
+const { url } = (await api.post("/billing/portal-session")).data;
+window.location.href = url;   // Stripe returns the user to /settings/billing
+```
 
-The new card becomes the default. **If the subscription is past due, or its
-first payment is still incomplete, the unpaid invoice is charged to it at
-once**: `status` returns to `ACTIVE` and `provider_status` to `"active"`.
-Refetch the subscription after the call. A decline is 400 on
-`errors.payment_method_id`, and the invoice stays unpaid.
-
-With `collects_money: false`, `setup` returns `collects_money: false` and an
-empty `client_secret`: hide all card controls.
+The portal also lists invoices and lets the owner cancel at period end. It
+does **not** change plans; that stays in the app (§6). On return, refetch
+the subscription: Stripe's webhook updates `past_due`, `cancels_on` and the
+card. Locally (`collects_money: false`) `url` is just `/settings/billing`.
 
 ### 7.5 Invoices
 
@@ -398,6 +373,10 @@ Put this in the one fetch wrapper. **402 = a bigger plan fixes it. 403 = the
 role forbids it. Never treat them alike.**
 
 ```ts
+if (res.status === 402 && body.code === "subscription_required") {
+  // No live plan (never subscribed, backed out of Stripe, or cancelled).
+  return isOwner ? go("/pricing") : go("/no-plan");
+}
 if (res.status === 402 && body.code === "plan_limit") {
   // body.limit: "SEATS" | "BANKS"
   return openUpgradeDialog({
@@ -415,6 +394,12 @@ if (res.status === 402 && body.code === "plan_limit") {
 - When the account is past due, show the past-due banner instead of an
   upgrade prompt.
 
+**The paywall.** With no live subscription, every product endpoint (bills,
+vendors, payments, banks, team, reports, dashboard) answers
+`402 subscription_required`, `limit: null`. Billing, profile, onboarding and
+`GET /teams/me` stay open so the user can choose a plan. A trial and a
+past-due plan both keep access; a cancelled plan loses it once it ends.
+
 **Avoid the 402 up front:** before opening Plaid, check
 `allowances.BANKS.remaining`; before inviting, check `SEATS.remaining`. If
 it's 0, show the upgrade prompt instead.
@@ -428,27 +413,25 @@ unlink, and an invite or removal.
 
 ## 9. Edge cases
 
-- [ ] Double click on Subscribe: disable the button while waiting; the
-      `Idempotency-Key` makes a retry safe.
-- [ ] Two tabs subscribe at once: the second gets `400 already_subscribed` →
-      go to billing settings.
-- [ ] Card declined in the Payment Element: retry in the same element, never
-      call subscribe again.
-- [ ] Payment succeeded but `provider_status` is still `incomplete`: wait and
-      refetch, don't resubscribe.
-- [ ] User reloaded before paying: `/subscribe` finds `provider_status:
-      "incomplete"` and offers "Finish your payment" through the card form.
-- [ ] Founding spots run out between the pricing page and subscribing: show
-      `effective_price` from the response ("Your price: $X/month") and don't
-      promise the lock.
-- [ ] Trial already used: Standard shows "Get Started" and goes through the
-      paid flow (§5.2).
-- [ ] Teammate without `manage_billing`: never sees subscribe, change, cancel
-      or card buttons.
-- [ ] `collects_money: false`: the whole flow works with no card screens.
-- [ ] Back button onto `/subscribe` after subscribing: check
-      `GET /billing/subscription` on mount and redirect to billing settings
-      if one exists.
+- [ ] Double click on the plan button: disable it while waiting; the
+      `Idempotency-Key` and the reused open session make a retry safe.
+- [ ] Two tabs pay two Checkout pages: only one subscription is created.
+      The other tab's success page still lands on the one plan.
+- [ ] Card declined on Stripe's page: Stripe handles the retry; the app
+      sees nothing until the payment succeeds.
+- [ ] Success page loads before the webhook: the status poll asks Stripe
+      directly; keep polling, never restart checkout.
+- [ ] Backed out of Stripe: back on `/pricing`, still no plan; the paywall
+      402 keeps the user there.
+- [ ] Founding spots run out while the page is open: the success page shows
+      `locked_price: null`; don't promise the founder rate.
+- [ ] Trial already used: the button may say "Start Free Trial", but the
+      answer is `redirect`; just follow it.
+- [ ] Teammate without `manage_billing`: never sees plan, change, cancel or
+      card buttons; on the paywall 402 show `/no-plan`.
+- [ ] `collects_money: false`: the round trip works with no Stripe pages.
+- [ ] Back button onto Stripe's page after paying: Stripe shows it as
+      complete; the success page handles a repeat visit.
 
 ---
 
@@ -458,10 +441,10 @@ unlink, and an invite or removal.
 |---|---|
 | 1 | Pricing page from `GET /plans`, buttons, `planIntent` helpers, `?plan=` on register and login |
 | 2 | Post-sign-in router, `useSubscription()` store, global 402 handler |
-| 3 | `/subscribe`: trial and not-charging flow (§5.1) |
-| 4 | `/subscribe`: paid flow with the Payment Element (§5.2) |
+| 3 | `/subscribe`: `POST checkout-session`, follow `action` (§5) |
+| 4 | `/billing/success`: the status poll (§5.1) |
 | 5 | Billing settings: plan card, usage, banners, cancel and resume, invoices |
-| 6 | Card on file: add or replace (§7.4) |
+| 6 | "Manage card / invoices" → Customer Portal (§7.4) |
 | 7 | Change-plan dialog with the fit check (§6) |
 
 ---
@@ -471,10 +454,12 @@ unlink, and an invite or removal.
 | Scenario | Card | Expect |
 |---|---|---|
 | Standard, first time | none | `is_trialing: true`, `trial_days_remaining: 14`, no card screen |
-| Founding, paid | `4242 4242 4242 4242` | `provider_status` becomes `active`; `locked_price` set while spots remain |
-| 3-D Secure | `4000 0025 0000 3155` | Stripe shows the challenge inside `confirmPayment`, then success |
-| Declined | `4000 0000 0000 0002` | Error in the Payment Element; retry in place; no second subscription |
+| Founding, paid | `4242 4242 4242 4242` on Stripe's page | Back on `/billing/success`, `status: complete`; `locked_price` set while spots remain |
+| 3-D Secure | `4000 0025 0000 3155` | Stripe shows the challenge on its page, then success |
+| Declined | `4000 0000 0000 0002` | Stripe shows the error and lets the user retry; nothing created in Swayp |
+| Backed out | — | Back on `/pricing`; product pages answer 402 `subscription_required` |
+| Trial → Founding, no card | — | `PATCH` returns `payment_url`; paying it clears `past_due` |
 | Downgrade that doesn't fit | Standard → Founding with 2 banks | Button disabled; forcing it returns 402 `plan_limit` |
 | Cancel, then resume | — | `cancel_pending` true with `cancels_on`, then false |
-| Past due | update to `4000 0000 0000 0341`, let a renewal fail | `past_due` banner; replacing the card returns it to `ACTIVE` |
-| Not charging | mock deployment | No card screens anywhere; subscribe is one call |
+| Past due | update to `4000 0000 0000 0341` in the portal, let a renewal fail | `past_due` banner; a new card in the portal returns it to `ACTIVE` |
+| Not charging | mock deployment | No Stripe pages anywhere; the round trip completes at once |

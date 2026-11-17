@@ -1,6 +1,6 @@
 # Stripe Subscription — Checkout, Plan Changes, Proration, Feature Gates
 
-Status: **plan, not built** · Owner: billing (`apps/billing`) · Date: 2026-11-14 · Revised: 2026-11-17
+Status: **Phases 0, 1, 3 and 3b built; 2 (proration) and 4 (feature gates) to do** · Owner: billing (`apps/billing`) · Date: 2026-11-14 · Revised: 2026-11-17
 
 Related: [Billing API](billing-api-documentation.md) · [Stripe Treasury plan](stripe-treasury-integration-plan.md)
 

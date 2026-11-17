@@ -1,6 +1,6 @@
 # Stripe Subscription — Checkout, Plan Changes, Proration, Feature Gates
 
-Status: **plan, not built** · Owner: billing (`apps/billing`) · Date: 2026-11-14
+Status: **plan, not built** · Owner: billing (`apps/billing`) · Date: 2026-11-14 · Revised: 2026-11-17
 
 Related: [Billing API](billing-api-documentation.md) · [Stripe Treasury plan](stripe-treasury-integration-plan.md)
 
@@ -10,10 +10,10 @@ Related: [Billing API](billing-api-documentation.md) · [Stripe Treasury plan](s
 
 | # | Question | Why it matters | Recommendation |
 |---|---|---|---|
-| D1 | **Founding price: $29 or $49?** The pricing page and comparison table say **$29**. `PLAN_SPECS`, the PRD (FR-8.1) and the BRD §6.2 say **$49**. | Stripe charges whatever the plan row holds. Shipping with this mismatch means charging customers more than the page they clicked on. | Product confirms. If it's $29, update the BRD, `PLAN_SPECS`, and add a data migration. `ensure_price` makes a new Stripe Price the first time it runs. No customer has been charged $49 yet. |
+| D1 ✅ | **Settled: $29.** ~~Founding price: $29 or $49?~~ The pricing page and comparison table say **$29**. `PLAN_SPECS`, the PRD (FR-8.1) and the BRD §6.2 say **$49**. | Stripe charges whatever the plan row holds. Shipping with this mismatch means charging customers more than the page they clicked on. | Product confirms. If it's $29, update the BRD, `PLAN_SPECS`, and add a data migration. `ensure_price` makes a new Stripe Price the first time it runs. No customer has been charged $49 yet. |
 | D2 | **Enterprise "Get Started": self-serve checkout at $299, or contact sales?** `PLAN_SPECS` says it is "sales-led and negotiated". | Decides whether Enterprise goes through the Checkout flow at all. | Self-serve at the $299 base, with add-ons added later in-app (`POST /billing/addons`). Negotiated deals get a custom price added from the admin. |
 | D3 | **Downgrade timing** | Proration policy (see §4) | Upgrades take effect immediately with a prorated charge. Downgrades take effect at the end of the period with no refund. |
-| D4 | **What can a signed-up user with no subscription do?** Today `current_plan_code` falls back to FOUNDING, so a user who never paid gets Founding limits. | Without a paywall, Checkout is optional. | Add a hard gate: with no live subscription, the product APIs answer 402 `subscription_required`. Auth, billing, profile and onboarding stay open (§6). |
+| D4 ⚠️ required | **What can a signed-up user with no subscription do?** With Checkout a user can sign up and back out of the Stripe page, so this is no longer optional. Today `current_plan_code` falls back to FOUNDING, so a user who never paid gets Founding limits. | Without a paywall, Checkout is optional. | Add a hard gate: with no live subscription, the product APIs answer 402 `subscription_required`. Auth, billing, profile and onboarding stay open (§6). |
 | D5 | **Plan changes inside the Stripe Customer Portal?** | The portal can't run our "does the account fit the smaller plan" check (402). | No. The portal handles **cancel, card and invoices only**. Plan changes stay in-app through `PATCH /billing/subscription`. |
 
 ---
@@ -82,7 +82,25 @@ Pricing page ──click plan──▶ /register?plan=STANDARD  (or /login?plan=
 
 **How the selected plan survives auth.** The frontend keeps `plan` in the query string and in `sessionStorage`, then sends it through register, verify-email and 2FA. The backend also stores it as `User.profile.intended_plan` (optional `plan` field on `POST /auth/register`). That way a user who verifies their email on another device still lands on the right checkout. If no plan was selected, the user goes to `/pricing` after auth.
 
-**One flow for all three plans.** Standard's "Start Free Trial" uses the same Checkout. The session just carries `trial_period_days=14` and `payment_method_collection="if_required"`, so the card step is skipped, which keeps "no card needed" true.
+**The backend chooses the route, not the button.** The button label ("Get Started" or "Start Free Trial") is display only. Whether a trial applies is the backend's call: `trial_eligible` is false for an account that has subscribed before, so a returning user clicking "Start Free Trial" must pay. The frontend always calls `POST /billing/checkout-session {plan}` and follows the answer:
+
+| Answer | When | Frontend does |
+|---|---|---|
+| `{ "action": "subscribed", "subscription": {...} }` | Trial applies (`trial_eligible` and `plan.trial_days`) | Go to the dashboard. No Stripe page, no card ("no card needed" stays true). The subscription is created through the existing no-card path. |
+| `{ "action": "redirect", "url": "https://checkout.stripe.com/…", "session_id": "cs_…" }` | Anything to pay now (Founding, Enterprise, Standard without a trial) | `window.location = url` |
+
+Trials never go through Checkout.
+
+**Every "pay now" moment uses a Stripe-hosted page.** The goal is that the frontend never builds a card form. Checkout covers the first payment; the other moments are:
+
+| Moment | Hosted page |
+|---|---|
+| First payment | Checkout Session (§3) |
+| Switching from a trial to a plan with no trial (ends the trial and charges now, see §4.1) | The invoice's `hosted_invoice_url`, returned on `PATCH` instead of `client_secret` |
+| Trial ended with no card, or a charge failed (PAST_DUE) | Customer Portal (§7) to add a card; it pays the open invoice |
+| Add or replace a card any time | Customer Portal (§7) |
+
+The Payment Element / `client_secret` path is then only kept for mobile and older clients.
 
 ---
 
@@ -92,7 +110,7 @@ Pricing page ──click plan──▶ /register?plan=STANDARD  (or /login?plan=
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/v1/billing/checkout-session` | owner (`MANAGE_BILLING`) | Body `{plan}` → `{url, session_id}`. 400 `already_subscribed` if a live sub exists. |
+| POST | `/api/v1/billing/checkout-session` | owner (`MANAGE_BILLING`) | Body `{plan}` → `{action: "redirect", url, session_id}` or, when a trial applies, `{action: "subscribed", subscription}` (§2). 400 `already_subscribed` if a live sub exists. |
 | GET | `/api/v1/billing/checkout-session/{id}` | owner | `{status: open\|complete\|expired, subscription}`, polled by the success page. |
 | POST | `/api/v1/billing/portal-session` | owner | `{url}` to the Stripe Customer Portal (cancel, card, invoices). |
 
@@ -101,7 +119,7 @@ Pricing page ──click plan──▶ /register?plan=STANDARD  (or /login?plan=
 - `customer`: reuse or create through `BillingProviderService.customer_id`. Lift the customer id from `Subscription` onto the account (`User.stripe_customer_id`, or a small `BillingCustomer` model), because no `Subscription` row exists yet at checkout time.
 - `mode="subscription"`, `line_items=[{price: price_id(plan), quantity: 1}]`.
 - **Founding lock**: if the lock is still available, record `locked_price` in `metadata`. The price is the plan's own price, so no special Stripe price is needed today. If the list price ever changes, locked customers must stay on the **old** Stripe Price id. Keep `provider_price_id` per *price amount*, not per plan, so old prices are never deleted.
-- **Trial**: only when `trial_eligible(account)` and `plan.trial_days`. Set `subscription_data.trial_period_days` and `trial_settings.end_behavior.missing_payment_method=create_invoice` (matching the existing path), plus `payment_method_collection="if_required"`.
+- **Trial**: never in a session. When `trial_eligible(account)` and `plan.trial_days`, the endpoint does not create a session at all: it calls `SubscriptionService.subscribe` (no card, `trial_settings.end_behavior.missing_payment_method=create_invoice`) and answers `action: "subscribed"`.
 - `metadata` **and** `subscription_data.metadata`: `{account_id, plan_code, locked_price}`. The webhook resolves the account from these, never from the email.
 - `client_reference_id=account_id`.
 - `success_url=f"{FRONTEND_URL}/billing/success?session_id={{CHECKOUT_SESSION_ID}}"`, `cancel_url=f"{FRONTEND_URL}/pricing?plan={code}"`.
@@ -113,7 +131,7 @@ Pricing page ──click plan──▶ /register?plan=STANDARD  (or /login?plan=
 - Locate the account from `metadata.account_id`, then retrieve the Stripe subscription.
 - Inside one transaction: `select_for_update` on the account. If a live `Subscription` already exists, do nothing (a webhook retry, or a double click across two tabs). Otherwise create a `Subscription` from the Stripe object: plan from the price id, `period_start/end` from `current_period_*`, `trial_end`, `locked_price` (check `founding_lock_available()` **again** here), and the `provider_*` ids.
 - Also run on `GET /checkout-session/{id}` when Stripe says `complete` and the webhook hasn't landed yet. Both paths call the same idempotent `fulfil(session_id)`.
-- Founding spots are claimed **at fulfilment**, not when the session is created. At the 500 boundary a few checkouts may complete at once. Each one gets the lock only if a spot is left at fulfilment, otherwise list price. The pricing page counter is "best effort". *(Fix while here: `founding_seats_taken` counts current `plan=FOUNDING` rows, so a founder who upgrades frees their spot and the number goes back up. Count `locked_price IS NOT NULL` claims instead.)*
+- Founding spots are claimed **at fulfilment**, not when the session is created. At the 500 boundary a few checkouts may complete at once. Each one gets the lock only if a spot is left at fulfilment, otherwise list price. The pricing page counter is "best effort". *(Phase 0 fix: `founding_seats_taken` counts current `plan=FOUNDING` rows, so a founder who upgrades frees their spot and the number goes back up. Count `locked_price IS NOT NULL` claims instead.)*
 
 ### 3.4 What happens to the old SetupIntent subscribe path
 
@@ -129,7 +147,8 @@ Keep `POST /billing/subscription` working for mobile and for existing clients, a
 |---|---|---|---|
 | **Upgrade** (Founding→Standard, *→Enterprise) | Immediately | Prorated difference is charged **now** (`proration_behavior="always_invoice"`). If the charge fails the plan doesn't change (`payment_behavior="pending_if_incomplete"`) | None. A bigger plan always fits. |
 | **Downgrade** (Enterprise→Standard, *→Founding) | At `period_end` | No refund, no credit. The customer keeps what they paid for until then. | `_assert_fits` at request time **and again** when it takes effect |
-| **During a trial** | Immediately | Nothing charged. Billing starts at `trial_end` at the new plan's price | Same fit check for downgrades. Moving to Founding (no trial) keeps the trial that has already started. |
+| **During a trial, to a plan with a trial** | Immediately | Nothing charged. Billing starts at `trial_end` at the new plan's price | Same fit check for downgrades |
+| **During a trial, to a plan with no trial** (Founding, Enterprise) | Immediately; **the trial ends** | The new price is charged now and a new cycle starts today. With no card on file, `PATCH` returns `hosted_invoice_url` to pay. *(Built in `d60fc28`, which returns `client_secret` today; switch it to `hosted_invoice_url`.)* | Same fit check. Moving onto Founding claims the lock while spots remain. |
 | **Same plan** | Nothing happens | — | — |
 | **Back to Founding** | — | Locked price **only** if a founding spot is still free. Otherwise list price. Leaving Founding gives up the lock (current rule, kept). | — |
 
@@ -205,7 +224,9 @@ Also:
 
 ---
 
-## 7. Phase 5: Cancel through the Stripe Customer Portal
+## 7. Phase 3b: Stripe Customer Portal (cancel, card, unpaid invoices)
+
+Moved up from last: with no card screen in the app, the portal is where a user adds a card after a no-card trial and pays a PAST_DUE invoice.
 
 - Portal configuration (created once by a management command, `manage.py stripe_setup_portal`, so it's versioned rather than set by hand in the dashboard):
   - `subscription_cancel.enabled=true`, `mode=at_period_end`, `cancellation_reason.enabled=true`
@@ -237,7 +258,8 @@ With the mock provider, `POST /checkout-session` returns `url = {FRONTEND_URL}/b
 ## 9. Tests (pytest, `apps/billing/tests/`)
 
 - `test_checkout_session.py`:
-  - creates a session with the right price, trial and metadata
+  - creates a session with the right price and metadata
+  - a trial-eligible Standard answers `subscribed` with no session; a returning account on Standard answers `redirect`
   - reuses an open session
   - 400 when already subscribed
   - no trial on a second subscription
@@ -270,10 +292,10 @@ With the mock provider, `POST /checkout-session` returns `url = {FRONTEND_URL}/b
 
 | Phase | Scope | Size |
 |---|---|---|
-| 0 | Settle D1–D5. Fix the Founding price if needed. Fix `founding_seats_taken` | S |
-| 1 | Checkout Session, fulfilment, success polling, `intended_plan` on register | M |
+| 0 | Settle D2 (Enterprise self-serve or sales) and D3/D5. Build the paywall (D4). Fix `founding_seats_taken` | S–M |
+| 1 | Checkout Session with the two-answer response (§2), fulfilment, success polling, `intended_plan` on register | M |
 | 3 | Webhook dedupe and plan/period sync (Phase 1 depends on it, so do it alongside) | S |
+| 3b | Customer Portal, and `hosted_invoice_url` on the trial→paid switch: removes the remaining Payment Element uses | S |
 | 2 | Proration: preview, immediate upgrade, scheduled downgrade | M |
-| 4 | Feature gates, entity downgrade check, paywall | M |
-| 5 | Customer Portal | S |
+| 4 | Feature gates, entity downgrade check | M |
 | — | Update `billing-api-documentation.md` (§3, §10, §11 "No proration") and `frontend-integration-guide.md` | S |

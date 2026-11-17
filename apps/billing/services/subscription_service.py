@@ -71,9 +71,19 @@ class SubscriptionService:
         )
 
     def founding_seats_taken(self):
-        return Subscription.objects.filter(
-            plan__code=PlanCode.FOUNDING
-        ).count()
+        """Accounts that ever claimed the founder rate.
+
+        Counted by the claim (``founding_claimed_at``), not by who is on Founding
+        now: counting current Founding rows let a founder who upgraded or
+        cancelled hand their spot back, so the counter went up again and
+        more than 500 accounts could end up with the rate.
+        """
+        return (
+            Subscription.objects.filter(founding_claimed_at__isnull=False)
+            .values("account")
+            .distinct()
+            .count()
+        )
 
     def founding_lock_available(self):
         return self.founding_seats_taken() < FOUNDING_LOCK_LIMIT
@@ -133,6 +143,7 @@ class SubscriptionService:
             period_start=today,
             period_end=add_month(today),
             locked_price=locked_price,
+            founding_claimed_at=timezone.now() if locked_price else None,
             trial_end=trial_end,
         )
 
@@ -183,10 +194,12 @@ class SubscriptionService:
             locked_price = None
         elif subscription.locked_price is not None:
             locked_price = subscription.locked_price
-        elif self.founding_lock_available():
-            # Counted before the move, so this subscription is not yet one
-            # of the seats taken.
+        elif (
+            subscription.founding_claimed_at is None
+            and self.founding_lock_available()
+        ):
             locked_price = plan.monthly_price
+            subscription.founding_claimed_at = timezone.now()
         else:
             locked_price = None
 
@@ -194,7 +207,7 @@ class SubscriptionService:
 
         subscription.plan = plan
         subscription.locked_price = locked_price
-        fields = ["plan", "locked_price", "updated_at"]
+        fields = ["plan", "locked_price", "founding_claimed_at", "updated_at"]
 
         if end_trial:
             subscription.trial_end = None

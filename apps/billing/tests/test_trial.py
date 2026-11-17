@@ -315,3 +315,30 @@ class SwitchingOntoANoTrialPlanTests(TestCase):
 
         self.assertEqual(subscription.period_start, self.start)
         self.assertFalse(self.provider_call()["end_trial"])
+
+
+class FoundingSeatCountTests(TestCase):
+    """A spot is a claim of the founder rate, and claims are not handed
+    back by leaving Founding."""
+
+    def test_leaving_founding_keeps_the_spot_taken(self):
+        service = SubscriptionService()
+        account = UserFactory()
+        service.subscribe(account=account, plan_code=PlanCode.FOUNDING)
+        before = service.founding_spots_remaining()
+
+        service.change_plan(account=account, plan_code=PlanCode.ENTERPRISE)
+
+        self.assertEqual(service.founding_spots_remaining(), before)
+
+    def test_founding_at_list_price_takes_no_spot(self):
+        from unittest import mock
+
+        service = SubscriptionService()
+
+        with mock.patch(
+            "apps.billing.services.subscription_service.FOUNDING_LOCK_LIMIT", 0
+        ):
+            service.subscribe(account=UserFactory(), plan_code=PlanCode.FOUNDING)
+
+        self.assertEqual(service.founding_seats_taken(), 0)

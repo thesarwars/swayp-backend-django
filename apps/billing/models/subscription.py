@@ -42,6 +42,10 @@ class Subscription(BaseModel):
         null=True,
         blank=True,
     )
+    #: When this subscription claimed one of the founder spots. Kept after
+    #: leaving Founding (which clears ``locked_price``): a spot, once
+    #: claimed, is not handed back.
+    founding_claimed_at = models.DateTimeField(null=True, blank=True)
 
     cancelled_at = models.DateTimeField(null=True, blank=True)
 
